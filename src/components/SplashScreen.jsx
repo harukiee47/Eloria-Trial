@@ -19,7 +19,7 @@ export default function SplashScreen({ onFinish }) {
       clearTimeout(fadeTimer);
       clearTimeout(finishTimer);
     };
-  }, [onFinish]);
+  }, []);
 
   return (
     <div className={`splash-root ${fadeOut ? "fade-out" : ""}`}>

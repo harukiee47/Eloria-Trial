@@ -43,16 +43,17 @@ export default function Sidebar({
   setSidebarOpen(false);   // ADD THIS
   if (onLogout) onLogout();
 };
-useEffect(() => {
-  const updated = chats.map(c => {
-    if (c.animate) {
-      return { ...c, animate: false };
-    }
-    return c;
-  });
 
-  setChats(updated);
+useEffect(() => {
+  const updated = chats.map((c) =>
+    c.animate ? { ...c, animate: false } : c
+  );
+
+  if (chats.some((c) => c.animate)) {
+    setChats(updated);
+  }
 }, [chats]);
+
   return (
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
       {/* Header */}
