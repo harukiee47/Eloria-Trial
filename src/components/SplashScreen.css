@@ -1,0 +1,111 @@
+.splash-root {
+  height: 100vh;
+  width: 100%;
+  background: radial-gradient(circle at center, #0b0f1a, #05060a);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+/* glowing background orb */
+.splash-glow {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(124,140,255,0.25), transparent 60%);
+  filter: blur(60px);
+  animation: floatGlow 4s ease-in-out infinite;
+}
+
+@keyframes floatGlow {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+}
+
+/* LOGO */
+.splash-logo {
+  width: 120px;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.8s ease;
+  filter: drop-shadow(0 0 20px rgba(124,140,255,0.4));
+}
+
+/* PHASE ANIMATIONS */
+.phase-0 {
+  opacity: 0;
+}
+
+.phase-1 {
+  opacity: 0.4;
+  transform: scale(0.9);
+}
+
+.phase-2 {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.phase-3 {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* TEXT */
+.splash-text {
+  margin-top: 20px;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  letter-spacing: 1px;
+  animation: fadeText 1s ease-in-out;
+}
+
+@keyframes fadeText {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* LOGO */
+.splash-logo {
+  width: 120px;
+  height: 100px;
+
+  margin-bottom: 18px;
+
+  filter: drop-shadow(0 0 25px rgba(124, 140, 255, 0.6));
+
+  animation: logoPulse 2.5s ease-in-out infinite;
+}
+
+/* LOGO ANIMATION */
+@keyframes logoPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+/* FADE OUT ANIMATION */
+.splash-root {
+  opacity: 1;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.splash-root.fade-out {
+  opacity: 0;
+  transform: scale(1.03);
+}

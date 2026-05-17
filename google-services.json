@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "253379248208",
+    "project_id": "speed-eb68b",
+    "storage_bucket": "speed-eb68b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253379248208:android:b6c02222e3024ba8411155",
+        "android_client_info": {
+          "package_name": "speed.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "253379248208-j73rgl8d5sp3pvu700q0kpbh2on8b5uc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCc6CGNhzR7Sj90h09zo-3re0KQGa5Bqcg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "253379248208-j73rgl8d5sp3pvu700q0kpbh2on8b5uc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

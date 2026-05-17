@@ -1,0 +1,133 @@
+import React, { useState, useEffect } from "react";
+import "./App.css";
+import "./mobile.css";
+
+import SplashScreen from "./components/SplashScreen";
+import Login from "./components/Login";
+import Sidebar from "./components/Sidebar";
+import ChatWindow from "./components/ChatWindow";
+
+import { checkAuth } from "./services/auth";
+
+export default function App() {
+  const [stage, setStage] = useState("splash");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // MOBILE SIDEBAR
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [chats, setChats] = useState(() => {
+    const saved = localStorage.getItem("chats");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [activeChatId, setActiveChatId] = useState(() => {
+    const saved = localStorage.getItem("activeChatId");
+    return saved ? JSON.parse(saved) : null;
+  });
+
+useEffect(() => {
+  console.log("SIDEBAR STATE:", sidebarOpen);
+}, [sidebarOpen]);
+
+  // AUTH CHECK
+  useEffect(() => {
+  const unsubscribe = checkAuth((u) => {
+    setUser(u);
+    setLoading(false);
+
+    // ONLY set stage if user didn't manually logout
+    if (u) {
+      setStage("chat");
+    } else {
+      setStage("login");
+    }
+  });
+
+  return unsubscribe;
+}, []);
+
+  // SAVE DATA
+  useEffect(() => {
+  if (user) {
+    localStorage.setItem("chats", JSON.stringify(chats));
+  }
+}, [chats, user]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "activeChatId",
+      JSON.stringify(activeChatId)
+    );
+  }, [activeChatId]);
+
+  const activeChat =
+    chats.find((c) => c.id === activeChatId) || null;
+
+  // LOADING SCREEN
+  if (loading) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  // SPLASH SCREEN
+  if (stage === "splash") {
+    return (
+      <SplashScreen
+        onFinish={() => {
+          setStage(user ? "chat" : "login");
+        }}
+      />
+    );
+  }
+
+  // LOGIN SCREEN
+  if (stage === "login") {
+    return (
+      <Login
+        onLogin={(u) => {
+          setUser(u);
+          setStage("chat");
+        }}
+      />
+    );
+  }
+
+  // CHAT SCREEN
+ 
+return (
+  <div className="app-root">
+
+      {/* MOBILE OVERLAY */}
+      {sidebarOpen && (
+        <div
+  className="mobile-overlay"
+  onClick={() => setSidebarOpen(false)}
+/>
+      )}
+
+      <Sidebar
+  user={user}
+  chats={chats}
+  setChats={setChats}
+  activeChatId={activeChatId}
+  setActiveChatId={setActiveChatId}
+  sidebarOpen={sidebarOpen}
+  setSidebarOpen={setSidebarOpen}
+  onLogout={() => {
+  setUser(null);
+  setActiveChatId(null);
+  setStage("login");
+}}
+/>
+
+<ChatWindow
+  user={user}
+  chat={activeChat}
+  setChats={setChats}
+  setSidebarOpen={setSidebarOpen}
+/>
+
+    </div>
+  );
+}
