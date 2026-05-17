@@ -52,7 +52,7 @@ useEffect(() => {
   });
 
   setChats(updated);
-}, [chats.length]);
+}, [chats]);
   return (
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
       {/* Header */}

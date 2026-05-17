@@ -28,6 +28,12 @@ export default function App() {
   });
 
 useEffect(() => {
+  if (!activeChatId && chats.length > 0) {
+    setActiveChatId(chats[0].id);
+  }
+}, [chats]);
+
+useEffect(() => {
   console.log("SIDEBAR STATE:", sidebarOpen);
 }, [sidebarOpen]);
 
@@ -53,6 +59,7 @@ useEffect(() => {
   if (user) {
     localStorage.setItem("chats", JSON.stringify(chats));
   }
+
 }, [chats, user]);
 
   useEffect(() => {
@@ -63,8 +70,9 @@ useEffect(() => {
   }, [activeChatId]);
 
   const activeChat =
-    chats.find((c) => c.id === activeChatId) || null;
-
+  chats.find((c) => c.id === activeChatId) ||
+  chats[0] ||
+  null;
   // LOADING SCREEN
   if (loading) {
     return <div className="loading">Loading...</div>;

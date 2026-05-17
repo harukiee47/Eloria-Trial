@@ -3,8 +3,7 @@ import Message from "./Message";
 import "../App.css";
 import "../mobile.css";
 import logo from "../assets/logo.png";
-import { FaImage, FaMicrophone, FaFileAlt, FaPlus } from "react-icons/fa";
-import { FiSend, FiMenu } from "react-icons/fi";
+import { FaImage, FaMicrophone, FaFileAlt } from "react-icons/fa";
 
 export default function ChatWindow({
   chat,
@@ -22,6 +21,7 @@ export default function ChatWindow({
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
+
   useEffect(() => {
     if (chat) {
       setMessages(chat.messages || []);
@@ -29,9 +29,21 @@ export default function ChatWindow({
     }
   }, [chat]);
 
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+
+  if (!chat) {
+  return (
+    <main className="chat-main">
+      <div style={{ padding: 20, color: "white" }}>
+        No chat selected
+      </div>
+    </main>
+  );
+}
 
   const handleFileUpload = (type) => {
   if (!fileInputRef.current) return;
