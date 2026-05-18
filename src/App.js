@@ -31,7 +31,7 @@ useEffect(() => {
   if (!activeChatId && chats.length > 0) {
     setActiveChatId(chats[0].id);
   }
-}, [chats]);
+}, [chats, activeChatId]);
 
 useEffect(() => {
   console.log("SIDEBAR STATE:", sidebarOpen);
