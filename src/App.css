@@ -39,9 +39,10 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-height: 100vh;
   position: relative;
   overflow: hidden;
-margin-left: 280px;
+  margin-left: 280px;
   transition: 0.3s ease;
   background: #0b0f17;
   color: #e8eaf0;
@@ -339,7 +340,8 @@ margin-left: 280px;
 
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 9999;
+  flex-shrink: 0;
   transition: 0.2s ease;
   border-left: 1px solid rgba(255,255,255,0.04);
   border-right: 1px solid rgba(255,255,255,0.04);
@@ -820,3 +822,4 @@ margin-left: 280px;
   color: white;
   transform: scale(1.1);
 }
+

@@ -270,7 +270,7 @@
   }
 
   .chat-main {
-    margin-left: 260px; /* desktop-style sidebar space */
+    margin-left: 0px; /* desktop-style sidebar space */
   }
 
   .mobile-menu-btn {
