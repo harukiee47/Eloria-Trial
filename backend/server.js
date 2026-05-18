@@ -86,7 +86,7 @@ app.post("/api/chat", async (req, res) => {
    START SERVER
 ========================= */
 
-const PORT = 5001;
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
   console.log(`🔥 Eloria AI running on http://localhost:${PORT}`);
