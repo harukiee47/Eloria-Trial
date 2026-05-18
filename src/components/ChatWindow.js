@@ -111,7 +111,7 @@ export default function ChatWindow({
 );
 
     try {
-      const res = await fetch("http://localhost:5001/api/chat", {
+      const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
