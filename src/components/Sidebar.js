@@ -55,7 +55,7 @@ useEffect(() => {
 }, [chats, setChats]);
 
   return (
-    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+    <aside className={`sidebar ${sidebarOpen ? "open" : ""} desktop-visible`}>
       {/* Header */}
       <div className="sidebar-header">
         <div className="sidebar-brand">

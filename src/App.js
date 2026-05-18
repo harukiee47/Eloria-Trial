@@ -94,13 +94,29 @@ useEffect(() => {
     return (
       <Login
         onLogin={(u) => {
-          setUser(u);
-          setStage("chat");
-        }}
+  setUser(u);
+  setStage("chat");
+
+  // AUTO CREATE FIRST CHAT IF EMPTY
+  setChats((prev) => {
+    if (prev.length === 0) {
+      const firstChat = {
+        id: Date.now(),
+        title: "New Chat",
+        messages: []
+      };
+      setActiveChatId(firstChat.id);
+      return [firstChat];
+    }
+    return prev;
+  });
+}}
       />
     );
   }
 
+
+  
   // CHAT SCREEN
  
 return (
