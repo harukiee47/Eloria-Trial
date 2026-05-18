@@ -62,7 +62,6 @@
   /* CHAT MAIN */
   .chat-main {
     width: 100%;
-    height: 100dvh; /* important fix for mobile browsers */
     margin-left: 0 !important;
   }
 
