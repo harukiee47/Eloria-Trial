@@ -1,5 +1,5 @@
 import React from "react";
-import { FaImage, FaMicrophone, FaFileAlt } from "react-icons/fa";
+import { FiCopy, FiRefreshCw } from "react-icons/fi";
 
 export default function Message({
   sender,
