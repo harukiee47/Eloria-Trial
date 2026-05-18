@@ -40,10 +40,10 @@ useEffect(() => {
 }, [sidebarOpen]);
 
 useEffect(() => {
-  if (!activeChatId && chats.length > 0) {
+  if (chats.length > 0 && !chats.find(c => c.id === activeChatId)) {
     setActiveChatId(chats[0].id);
   }
-}, [chats]);
+}, [chats, activeChatId, setActiveChatId]);
 
   // AUTH CHECK
   useEffect(() => {
