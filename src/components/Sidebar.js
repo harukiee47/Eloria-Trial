@@ -52,7 +52,7 @@ useEffect(() => {
   if (chats.some((c) => c.animate)) {
     setChats(updated);
   }
-}, [chats]);
+}, [chats, setChats]);
 
   return (
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
