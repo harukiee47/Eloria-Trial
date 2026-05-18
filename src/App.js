@@ -27,30 +27,13 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  useEffect(() => {
-  if (user && chats.length === 0) {
-    const newChat = {
-      id: Date.now(),
-      title: "New Chat",
-      messages: []
-    };
-
-    setChats([newChat]);
-    setActiveChatId(newChat.id);
-  }
-}, [user]);
 
 useEffect(() => {
   if (window.innerWidth < 768) {
-    setSidebarOpen(true);
-  }
+  setSidebarOpen(false);
+}
 }, []);
 
-useEffect(() => {
-  if (!activeChatId && chats.length > 0) {
-    setActiveChatId(chats[0].id);
-  }
-}, [chats, activeChatId]);
 
 useEffect(() => {
   console.log("SIDEBAR STATE:", sidebarOpen);
@@ -124,17 +107,17 @@ useEffect(() => {
 
   // AUTO CREATE FIRST CHAT IF EMPTY
   setChats((prev) => {
-    if (prev.length === 0) {
-      const firstChat = {
-        id: Date.now(),
-        title: "New Chat",
-        messages: []
-      };
-      setActiveChatId(firstChat.id);
-      return [firstChat];
-    }
-    return prev;
-  });
+  if (prev.length > 0) return prev;
+
+  const firstChat = {
+    id: Date.now(),
+    title: "New Chat",
+    messages: []
+  };
+
+  setActiveChatId(firstChat.id);
+  return [firstChat];
+});
 }}
       />
     );
