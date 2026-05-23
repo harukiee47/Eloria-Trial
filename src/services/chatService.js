@@ -41,7 +41,7 @@ export async function loadChats(uid) {
 // SAVE chats to Firebase
 export async function saveChats(uid, chats) {
   const { doc, setDoc } = await import("firebase/firestore");
-  const { db } = await import("../firebase");
+  const { db } = await import("./firebase");
 
   for (const chat of chats) {
     await setDoc(
