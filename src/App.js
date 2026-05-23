@@ -19,24 +19,30 @@ export default function App() {
   // MOBILE SIDEBAR
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [chats, setChats] = useState(() => {
-    const saved = localStorage.getItem("chats");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [activeChatId, setActiveChatId] = useState(() => {
-    const saved = localStorage.getItem("activeChatId");
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  useEffect(() => {
+useEffect(() => {
   if (!user) return;
 
   const fetchChats = async () => {
     const data = await loadChats(user.uid);
-    setChats(data);
-    setActiveChatId(data?.[0]?.id || null);
+
+    if (data && data.length > 0) {
+      setChats(data);
+      setActiveChatId(data[0].id);
+    } else {
+      // create default chat if nothing exists
+      const firstChat = {
+        id: Date.now(),
+        title: "New Chat",
+        messages: []
+      };
+
+      setChats([firstChat]);
+      setActiveChatId(firstChat.id);
+
+      await saveChats(user.uid, [firstChat]);
+    }
   };
+
   fetchChats();
 }, [user]);
 
@@ -52,12 +58,6 @@ useEffect(() => {
   console.log("SIDEBAR STATE:", sidebarOpen);
 }, [sidebarOpen]);
 
-useEffect(() => {
-  if (chats.length > 0 && !chats.find(c => c.id === activeChatId)) {
-    setActiveChatId(chats[0].id);
-  }
-}, [chats, activeChatId, setActiveChatId]);
-
   // AUTH CHECK
   useEffect(() => {
   const unsubscribe = checkAuth((u) => {
@@ -69,8 +69,8 @@ useEffect(() => {
 }, []);
 
   // SAVE DATA
- useEffect(() => {
-  if (!user || !chats.length) return;
+useEffect(() => {
+  if (!user || !chats) return;
 
   const save = async () => {
     await saveChats(user.uid, chats);
