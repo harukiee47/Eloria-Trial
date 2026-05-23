@@ -6,6 +6,16 @@ import SplashScreen from "./components/SplashScreen";
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
+import { loadChats, saveChats } from "./services/chatService";
+
+import {
+  collection,
+  doc,
+  setDoc,
+  getDocs
+} from "firebase/firestore";
+
+import { db } from "./firebase";
 
 import { checkAuth } from "./services/auth";
 
@@ -26,6 +36,17 @@ export default function App() {
     const saved = localStorage.getItem("activeChatId");
     return saved ? JSON.parse(saved) : null;
   });
+
+  useEffect(() => {
+  if (!user) return;
+
+  const fetchChats = async () => {
+    const data = await loadChats(user.uid);
+    setChats(data);
+    setActiveChatId(data?.[0]?.id || null);
+  };
+  fetchChats();
+}, [user]);
 
 
 useEffect(() => {
@@ -56,11 +77,14 @@ useEffect(() => {
 }, []);
 
   // SAVE DATA
-  useEffect(() => {
-  if (user) {
-    localStorage.setItem("chats", JSON.stringify(chats));
-  }
+ useEffect(() => {
+  if (!user || !chats.length) return;
 
+  const save = async () => {
+    await saveChats(user.uid, chats);
+  };
+
+  save();
 }, [chats, user]);
 
   useEffect(() => {
