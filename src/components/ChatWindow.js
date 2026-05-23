@@ -87,6 +87,7 @@ useEffect(() => {
 
     const newMessages = [...messages, userMsg];
 
+    setMessages(newMessages);
     setInput("");
     setPendingFile(null);
 
@@ -126,6 +127,7 @@ useEffect(() => {
 
       const finalMessages = [...newMessages, aiMsg];
 
+      setMessages(finalMessages);
 
       setChats((prev) =>
   prev.map((c) => {
@@ -143,7 +145,7 @@ useEffect(() => {
   })
 );
     } catch (err) {
-  ([
+      setMessages([
         ...newMessages,
         {
           id: Date.now() + 2,
@@ -205,6 +207,8 @@ const regenerateMessage = async (messageId) => {
         text: data?.reply || "No response",
       },
     ];
+
+    setMessages(newMessages);
 
     setChats(prev =>
       prev.map(c =>
