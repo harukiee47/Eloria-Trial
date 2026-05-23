@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Message from "./Message";
 import "../App.css";
 import "../mobile.css";
@@ -19,7 +19,9 @@ export default function ChatWindow({
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const messages = chat?.messages || [];
+  const messages = useMemo(() => {
+  return chat?.messages || [];
+}, [chat]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
