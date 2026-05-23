@@ -8,14 +8,6 @@ import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import { loadChats, saveChats } from "./services/chatService";
 
-import {
-  collection,
-  doc,
-  setDoc,
-  getDocs
-} from "firebase/firestore";
-
-import { db } from "./services/firebase";
 
 import { checkAuth } from "./services/auth";
 
