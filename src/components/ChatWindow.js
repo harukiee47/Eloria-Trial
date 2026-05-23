@@ -87,7 +87,6 @@ useEffect(() => {
 
     const newMessages = [...messages, userMsg];
 
-    setMessages(newMessages);
     setInput("");
     setPendingFile(null);
 
@@ -127,7 +126,6 @@ useEffect(() => {
 
       const finalMessages = [...newMessages, aiMsg];
 
-      setMessages(finalMessages);
 
       setChats((prev) =>
   prev.map((c) => {
@@ -145,14 +143,14 @@ useEffect(() => {
   })
 );
     } catch (err) {
-      setMessages([
-        ...newMessages,
-        {
-          id: Date.now() + 2,
-          sender: "ai",
-          text: "Eloria couldn't respond.",
-        },
-      ]);
+     setMessages([
+  ...newMessages,
+  {
+    id: Date.now() + 2,
+    sender: "ai",
+    text: "Eloria couldn't respond.",
+  },
+]);
     }
 
     setIsThinking(false);
@@ -189,7 +187,7 @@ const regenerateMessage = async (messageId) => {
   setIsThinking(true);
 
   try {
-    const res = await fetch("http://localhost:5001/api/chat", {
+    const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -208,7 +206,6 @@ const regenerateMessage = async (messageId) => {
       },
     ];
 
-    setMessages(newMessages);
 
     setChats(prev =>
       prev.map(c =>
