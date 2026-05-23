@@ -124,10 +124,15 @@
   }
 
   /* MESSAGES */
-  .messages {
-    padding: 16px 12px 150px;
-     padding-bottom: 190px; 
-  }
+ .messages {
+  flex: 1;
+  overflow-y: auto;
+
+  padding: 14px 10px;
+  padding-bottom: 100px;
+
+  min-height: 0;
+}
 
   .bubble {
     max-width: 90%;
