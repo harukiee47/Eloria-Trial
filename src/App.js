@@ -15,7 +15,7 @@ import {
   getDocs
 } from "firebase/firestore";
 
-import { db } from "./firebase";
+import { db } from "./services/firebase";
 
 import { checkAuth } from "./services/auth";
 
