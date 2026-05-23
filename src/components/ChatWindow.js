@@ -11,7 +11,6 @@ export default function ChatWindow({
   setSidebarOpen,
 }) {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
   const [showIntro, setShowIntro] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
 
@@ -20,19 +19,17 @@ export default function ChatWindow({
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
-
-
-  useEffect(() => {
-    if (chat) {
-      setMessages(chat.messages || []);
-      setShowIntro(!chat.messages?.length);
-    }
-  }, [chat]);
-
+  const messages = chat?.messages || [];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+
+useEffect(() => {
+  setShowIntro(messages.length === 0);
+}, [messages]);
+
 
 
   if (!chat) {
@@ -90,7 +87,6 @@ export default function ChatWindow({
 
     const newMessages = [...messages, userMsg];
 
-    setMessages(newMessages);
     setInput("");
     setPendingFile(null);
 
@@ -130,7 +126,6 @@ export default function ChatWindow({
 
       const finalMessages = [...newMessages, aiMsg];
 
-      setMessages(finalMessages);
 
       setChats((prev) =>
   prev.map((c) => {
@@ -148,7 +143,7 @@ export default function ChatWindow({
   })
 );
     } catch (err) {
-      setMessages([
+  ([
         ...newMessages,
         {
           id: Date.now() + 2,
@@ -210,8 +205,6 @@ const regenerateMessage = async (messageId) => {
         text: data?.reply || "No response",
       },
     ];
-
-    setMessages(newMessages);
 
     setChats(prev =>
       prev.map(c =>
