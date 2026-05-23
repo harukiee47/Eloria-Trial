@@ -143,14 +143,22 @@ useEffect(() => {
   })
 );
     } catch (err) {
-     setMessages([
+   const failedMessages = [
   ...newMessages,
   {
     id: Date.now() + 2,
     sender: "ai",
     text: "Eloria couldn't respond.",
   },
-]);
+];
+
+setChats((prev) =>
+  prev.map((c) =>
+    c.id === chat.id
+      ? { ...c, messages: failedMessages }
+      : c
+  )
+);
     }
 
     setIsThinking(false);
