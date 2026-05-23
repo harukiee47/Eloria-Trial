@@ -50,13 +50,6 @@ useEffect(() => {
   const unsubscribe = checkAuth((u) => {
     setUser(u);
     setLoading(false);
-
-    // ONLY set stage if user didn't manually logout
-    if (u) {
-      setStage("chat");
-    } else {
-      setStage("login");
-    }
   });
 
   return unsubscribe;
@@ -82,10 +75,9 @@ useEffect(() => {
   chats[0] ||
   null;
   // LOADING SCREEN
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
-
+ if (loading && stage !== "splash") {
+  return <div className="loading">Loading...</div>;
+}
   // SPLASH SCREEN
   if (stage === "splash") {
     return (
