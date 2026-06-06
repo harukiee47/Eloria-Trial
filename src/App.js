@@ -19,7 +19,16 @@ export default function App() {
   // MOBILE SIDEBAR
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const [chats, setChats] = useState([]);
+const [activeChatId, setActiveChatId] = useState(null);
+
 useEffect(() => {
+  if (!activeChatId && chats.length > 0) {
+    setActiveChatId(chats[0].id);
+  }
+}, [chats]);
+
+  useEffect(() => {
   if (!user) return;
 
   const fetchChats = async () => {
@@ -29,7 +38,6 @@ useEffect(() => {
       setChats(data);
       setActiveChatId(data[0].id);
     } else {
-      // create default chat if nothing exists
       const firstChat = {
         id: Date.now(),
         title: "New Chat",
@@ -46,6 +54,15 @@ useEffect(() => {
   fetchChats();
 }, [user]);
 
+useEffect(() => {
+  console.log("USER:", user);
+}, [user]);
+
+useEffect(() => {
+  if (!chats.find(c => c.id === activeChatId)) {
+    setActiveChatId(chats[0]?.id || null);
+  }
+}, [chats, activeChatId]);
 
 useEffect(() => {
   if (window.innerWidth < 768) {
@@ -70,13 +87,10 @@ useEffect(() => {
 
   // SAVE DATA
 useEffect(() => {
-  if (!user || !chats) return;
+  if (!user) return;
+  if (!chats.length) return;
 
-  const save = async () => {
-    await saveChats(user.uid, chats);
-  };
-
-  save();
+  saveChats(user.uid, chats);
 }, [chats, user]);
 
   useEffect(() => {
@@ -86,10 +100,12 @@ useEffect(() => {
     );
   }, [activeChatId]);
 
-  const activeChat =
-  chats.find((c) => c.id === activeChatId) ||
-  chats[0] ||
-  null;
+
+const activeChat = React.useMemo(() => {
+  return chats.find(c => c.id === activeChatId) || null;
+}, [chats, activeChatId]);
+
+
   // LOADING SCREEN
  if (loading && stage !== "splash") {
   return <div className="loading">Loading...</div>;
@@ -113,19 +129,18 @@ useEffect(() => {
   setUser(u);
   setStage("chat");
 
-  // AUTO CREATE FIRST CHAT IF EMPTY
   setChats((prev) => {
-  if (prev.length > 0) return prev;
+    if (prev.length > 0) return prev;
 
-  const firstChat = {
-    id: Date.now(),
-    title: "New Chat",
-    messages: []
-  };
+    const firstChat = {
+      id: Date.now(),
+      title: "New Chat",
+      messages: []
+    };
 
-  setActiveChatId(firstChat.id);
-  return [firstChat];
-});
+    setActiveChatId(firstChat.id);
+    return [firstChat];
+  });
 }}
       />
     );
@@ -136,38 +151,39 @@ useEffect(() => {
   // CHAT SCREEN
  
 return (
-  <div className="app-root">
+  <div className="app-shell">
 
-      {/* MOBILE OVERLAY */}
-      {sidebarOpen && (
-        <div
-  className="mobile-overlay"
-  onClick={() => setSidebarOpen(false)}
-/>
-      )}
+    {sidebarOpen && (
+      <div
+        className="mobile-overlay"
+        onClick={() => setSidebarOpen(false)}
+      />
+    )}
 
-      <Sidebar
-  user={user}
-  chats={chats}
-  setChats={setChats}
-  activeChatId={activeChatId}
-  setActiveChatId={setActiveChatId}
-  sidebarOpen={sidebarOpen}
-  setSidebarOpen={setSidebarOpen}
-  onLogout={() => {
-  setUser(null);
-  setActiveChatId(null);
-  setStage("login");
-}}
-/>
+    <Sidebar
+      user={user}
+      chats={chats}
+      setChats={setChats}
+      activeChatId={activeChatId}
+      setActiveChatId={setActiveChatId}
+      sidebarOpen={sidebarOpen}
+      setSidebarOpen={setSidebarOpen}
+      onLogout={() => {
+        setUser(null);
+        setActiveChatId(null);
+        setStage("login");
+      }}
+    />
 
-<ChatWindow
-  user={user}
-  chat={activeChat}
-  setChats={setChats}
-  setSidebarOpen={setSidebarOpen}
-/>
-
+    <div className="app-main">
+      <ChatWindow
+        user={user}
+        chat={activeChat}
+        setChats={setChats}
+        setSidebarOpen={setSidebarOpen}
+      />
     </div>
-  );
+
+  </div>
+);
 }

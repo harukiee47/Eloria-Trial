@@ -1,5 +1,6 @@
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 
 /* =========================
    AI MESSAGE API (your current code)
@@ -35,18 +36,16 @@ export async function loadChats(uid) {
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
 
-  return snap.exists() ? snap.data().chats || [] : [];
+  if (!snap.exists()) return [];
+
+  return snap.data().chats || [];
 }
 
 // SAVE chats to Firebase
 export async function saveChats(uid, chats) {
-  const { doc, setDoc } = await import("firebase/firestore");
-  const { db } = await import("./firebase");
+  const ref = doc(db, "users", uid);
 
-  for (const chat of chats) {
-    await setDoc(
-      doc(db, "users", uid, "chats", String(chat.id)),
-      chat
-    );
-  }
+  await setDoc(ref, {
+    chats
+  });
 }
