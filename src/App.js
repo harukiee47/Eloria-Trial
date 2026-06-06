@@ -26,7 +26,7 @@ useEffect(() => {
   if (!activeChatId && chats.length > 0) {
     setActiveChatId(chats[0].id);
   }
-}, [activeChatId]);
+}, [chats]);
 
   useEffect(() => {
   if (!user) return;
