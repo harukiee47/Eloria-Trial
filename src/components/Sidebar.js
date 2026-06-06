@@ -578,16 +578,6 @@ export default function Sidebar({
   const filtered = chats.filter(c => c.title?.toLowerCase().includes(search.toLowerCase()));
   const initials = user?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
 
-  /* SVG icons */
-  const Icon = ({ d, fill, points, cx, cy, r, x1,y1,x2,y2, type="path" }) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {type==="path"     && <path d={d} />}
-      {type==="polyline" && <polyline points={points} />}
-      {type==="circle"   && <><circle cx={cx} cy={cy} r={r}/><line x1={x1} y1={y1} x2={x2} y2={y2}/></>}
-      {type==="lines"    && <><line x1={x1} y1={y1} x2={18} y2={18}/><line x1={6} y1={6} x2={x2||18} y2={y2||18}/></>}
-    </svg>
-  );
-
   return (
     <>
       {/* overlay when panel open */}

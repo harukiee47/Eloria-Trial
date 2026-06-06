@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Message from "./Message";
 import logo from "../assets/logo.png";
-import { FaImage, FaMicrophone, FaFileAlt } from "react-icons/fa";
 
 /* ─────────────────────────────────────────────────────────────
    CHATWINDOW STYLES  (injected once into <head>)
