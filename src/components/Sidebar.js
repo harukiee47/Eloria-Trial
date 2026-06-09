@@ -1,71 +1,44 @@
 import React, { useState, useEffect, useRef } from "react";
 import logo from "../assets/logo.png";
 
-/* ─────────────────────────────────────────────────────────────
-   DESIGN TOKENS  (shared with ChatWindow via CSS custom props
-   injected on :root — ChatWindow reads the same vars)
-───────────────────────────────────────────────────────────── */
 const GLOBAL_STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
     --font: 'DM Sans', system-ui, sans-serif;
-
-    /* surfaces */
     --bg-app:      #f9f9f7;
     --bg-strip:    #f2f1ee;
     --bg-panel:    #ffffff;
     --bg-chat:     #ffffff;
-
-    /* borders */
     --border:      #e5e4e0;
     --border-soft: #eeede9;
-
-    /* text */
     --t1: #1c1c1a;
     --t2: #5a5a57;
     --t3: #9a9a97;
-
-    /* accent — warm amber */
     --accent:      #c17f2a;
     --accent-bg:   #fdf3e3;
     --accent-deep: #a8691e;
-
-    /* danger */
     --danger:      #d64242;
     --danger-bg:   #fff1f1;
-
-    /* strip */
     --strip-w:     64px;
     --panel-w:     264px;
-
-    /* radii */
     --r-sm: 6px;
     --r-md: 10px;
     --r-lg: 16px;
-
-    /* shadows */
     --shadow-panel: 2px 0 20px rgba(0,0,0,0.07);
     --shadow-pop:   0 8px 32px rgba(0,0,0,0.13);
   }
-
   html, body, #root {
     height: 100%;
     font-family: var(--font);
     background: var(--bg-app);
     color: var(--t1);
   }
-
-  /* app shell */
   .app-shell {
     display: flex;
     height: 100vh;
     overflow: hidden;
   }
-
-  /* main area shifts right by strip width */
   .app-main {
     flex: 1;
     min-width: 0;
@@ -76,13 +49,14 @@ const GLOBAL_STYLE = `
     overflow: hidden;
     transition: margin-left 0.22s cubic-bezier(.4,0,.2,1);
   }
+  /* on mobile the strip is hidden; app-main takes full width */
+  @media(max-width: 640px) {
+    .app-main { margin-left: 0; }
+  }
 `;
 
-/* ─────────────────────────────────────────────────────────────
-   COMPONENT STYLES
-───────────────────────────────────────────────────────────── */
 const SIDEBAR_STYLE = `
-  /* ── STRIP ───────────────────────────────────────────── */
+  /* ── STRIP ─────────────────────────────────────────────── */
   .sb-strip {
     position: fixed;
     top: 0; left: 0;
@@ -98,13 +72,15 @@ const SIDEBAR_STYLE = `
     z-index: 300;
     user-select: none;
   }
+  /* hide strip on mobile — sidebar becomes a full drawer */
+  @media(max-width: 640px) {
+    .sb-strip { display: none; }
+  }
 
   .sb-logo {
     width: 32px; height: 32px;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 12px;
-    flex-shrink: 0;
+    border-radius: 8px; overflow: hidden;
+    margin-bottom: 12px; flex-shrink: 0;
   }
   .sb-logo img { width: 100%; height: 100%; object-fit: contain; }
 
@@ -115,40 +91,36 @@ const SIDEBAR_STYLE = `
     cursor: pointer;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: 3px;
-    color: var(--t2);
+    gap: 3px; color: var(--t2);
     font-family: var(--font);
     transition: background .14s, color .14s;
     position: relative;
   }
   .sb-btn:hover  { background: #e9e8e4; color: var(--t1); }
   .sb-btn.active { background: #e3e2de; color: var(--t1); }
-  .sb-btn svg   { width: 19px; height: 19px; flex-shrink: 0; }
-  .sb-btn span  { font-size: 9px; font-weight: 500; letter-spacing:.02em; line-height:1; }
+  .sb-btn svg  { width: 19px; height: 19px; flex-shrink: 0; }
+  .sb-btn span { font-size: 9px; font-weight: 500; letter-spacing:.02em; line-height:1; }
 
   .sb-spacer { flex: 1; }
 
-  /* ── ACCOUNT AVATAR ───────────────────────────────────── */
+  /* ── ACCOUNT AVATAR ─────────────────────────────────────── */
   .sb-avatar-wrap { position: relative; }
   .sb-avatar {
-    width: 32px; height: 32px;
-    border-radius: 50%;
+    width: 32px; height: 32px; border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), #e8a84a);
-    color: #fff;
-    font-size: 13px; font-weight: 600;
+    color: #fff; font-size: 13px; font-weight: 600;
     border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--font);
-    transition: box-shadow .14s;
+    font-family: var(--font); transition: box-shadow .14s;
   }
   .sb-avatar:hover { box-shadow: 0 0 0 3px rgba(193,127,42,.22); }
 
-  /* account popup */
+  /* popup: on desktop anchors bottom-left of strip; on mobile top-left of drawer */
   .acct-popup {
-    position: absolute;
-    bottom: calc(100% + 10px);
-    left: 50%; transform: translateX(-50%);
-    width: 224px;
+    position: fixed;
+    bottom: 16px;
+    left: calc(var(--strip-w) + 8px);
+    width: 220px;
     background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
@@ -158,11 +130,20 @@ const SIDEBAR_STYLE = `
     animation: popIn .15s ease;
   }
   @keyframes popIn {
-    from { opacity:0; transform: translateX(-50%) translateY(6px); }
-    to   { opacity:1; transform: translateX(-50%) translateY(0); }
+    from { opacity:0; transform:translateY(6px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  /* on mobile the strip is gone, popup sits inside the drawer */
+  @media(max-width: 640px) {
+    .acct-popup {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 8px;
+      width: calc(var(--panel-w) - 16px);
+    }
   }
   .acct-head { display:flex; align-items:center; gap:10px; padding-bottom:10px; }
-  .acct-av   {
+  .acct-av {
     width:36px; height:36px; border-radius:50%;
     background: linear-gradient(135deg, var(--accent), #e8a84a);
     color:#fff; font-size:14px; font-weight:600;
@@ -179,9 +160,9 @@ const SIDEBAR_STYLE = `
     transition: background .12s;
   }
   .acct-logout:hover { background: var(--danger-bg); }
-  .acct-logout svg   { width:15px; height:15px; flex-shrink:0; }
+  .acct-logout svg { width:15px; height:15px; flex-shrink:0; }
 
-  /* ── SLIDE PANEL ──────────────────────────────────────── */
+  /* ── SLIDE PANEL (desktop) ──────────────────────────────── */
   .sb-panel {
     position: fixed;
     top: 0;
@@ -198,57 +179,65 @@ const SIDEBAR_STYLE = `
   }
   .sb-panel.open { width: var(--panel-w); }
 
+  /* on mobile panel becomes a full-screen drawer from left:0 */
+  @media(max-width: 640px) {
+    .sb-panel {
+      left: 0;
+      width: 0;
+      border-right: none;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+    }
+    .sb-panel.open { width: min(300px, 85vw); }
+  }
+
   .panel-inner {
     width: var(--panel-w);
     height: 100%;
     display: flex; flex-direction: column;
     overflow: hidden;
   }
+  @media(max-width: 640px) {
+    .panel-inner { width: min(300px, 85vw); }
+  }
 
-  /* panel header */
   .panel-hdr {
     display:flex; align-items:center; justify-content:space-between;
-    padding: 18px 14px 10px;
-    flex-shrink: 0;
+    padding: 18px 14px 10px; flex-shrink: 0;
   }
   .panel-title { font-size:14px; font-weight:600; color:var(--t1); letter-spacing:-.01em; }
   .panel-x {
-    width:26px; height:26px;
-    border:none; background:none; border-radius:var(--r-sm);
-    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border:none; background:none;
+    border-radius:var(--r-sm); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
     color:var(--t3); transition: background .12s, color .12s;
   }
   .panel-x:hover { background:#f0f0ec; color:var(--t1); }
   .panel-x svg  { width:14px; height:14px; }
 
-  /* search bar */
   .panel-search {
     display:flex; align-items:center; gap:8px;
-    margin: 0 12px 10px;
-    padding: 7px 10px;
+    margin: 0 12px 10px; padding: 7px 10px;
     background:#f5f5f2; border-radius:var(--r-md);
     border:1px solid transparent; transition: border-color .13s, background .13s;
     flex-shrink:0;
   }
   .panel-search:focus-within { border-color:var(--accent); background:#fff; }
-  .panel-search svg { width:13px; height:13px; color:var(--t3); flex-shrink:0; }
+  .panel-search svg   { width:13px; height:13px; color:var(--t3); flex-shrink:0; }
   .panel-search input {
     border:none; background:none; outline:none;
     font-size:13px; color:var(--t1); width:100%; font-family:var(--font);
   }
   .panel-search input::placeholder { color:var(--t3); }
 
-  /* scroll list */
   .panel-list {
     flex:1; overflow-y:auto; padding:0 8px 16px;
     scrollbar-width:thin; scrollbar-color:#e0e0da transparent;
   }
-  .panel-list::-webkit-scrollbar { width:4px; }
+  .panel-list::-webkit-scrollbar       { width:4px; }
   .panel-list::-webkit-scrollbar-thumb { background:#ddddd8; border-radius:2px; }
 
   .panel-empty { font-size:12px; color:var(--t3); text-align:center; padding:28px 12px; line-height:1.6; }
 
-  /* chat row */
   .chat-row {
     display:flex; align-items:center;
     padding: 2px 4px 2px 10px;
@@ -274,7 +263,7 @@ const SIDEBAR_STYLE = `
     opacity:0; transition:opacity .12s, background .12s; flex-shrink:0;
   }
   .chat-row:hover .row-menu-btn,
-  .proj-row:hover .row-menu-btn  { opacity:1; }
+  .proj-row:hover .row-menu-btn { opacity:1; }
   .row-menu-btn:hover { background:#ebebE7; color:var(--t1); }
 
   .row-dropdown {
@@ -292,7 +281,7 @@ const SIDEBAR_STYLE = `
     cursor:pointer; font-family:var(--font); transition:background .11s;
   }
   .row-dropdown button:hover { background:#f4f4f0; }
-  .row-dropdown button.del    { color:var(--danger); }
+  .row-dropdown button.del   { color:var(--danger); }
   .row-dropdown button.del:hover { background:var(--danger-bg); }
 
   .rename-input-row {
@@ -302,10 +291,9 @@ const SIDEBAR_STYLE = `
     margin:4px 0;
   }
 
-  /* ── PROJECTS ─────────────────────────────────────────── */
+  /* ── PROJECTS ───────────────────────────────────────────── */
   .new-proj-btn {
-    margin: 0 12px 10px;
-    padding: 7px 12px;
+    margin: 0 12px 10px; padding: 7px 12px;
     background: var(--accent-bg);
     border: 1px dashed rgba(193,127,42,.4);
     border-radius: var(--r-md);
@@ -343,7 +331,7 @@ const SIDEBAR_STYLE = `
   .proj-block { margin-bottom:2px; }
   .proj-row {
     display:flex; align-items:center; gap:4px;
-    padding:2px 4px 2px 4px; border-radius:var(--r-sm);
+    padding:2px 4px; border-radius:var(--r-sm);
     position:relative; transition:background .12s;
   }
   .proj-row:hover { background:#f4f4f0; }
@@ -369,8 +357,7 @@ const SIDEBAR_STYLE = `
   .proj-chat-remove {
     background:none; border:none; cursor:pointer;
     color:var(--t3); font-size:12px; padding:2px 5px;
-    border-radius:4px; opacity:0; transition:opacity .12s, color .12s;
-    flex-shrink:0;
+    border-radius:4px; opacity:0; transition:opacity .12s, color .12s; flex-shrink:0;
   }
   .chat-row:hover .proj-chat-remove { opacity:1; }
   .proj-chat-remove:hover { color:var(--danger); }
@@ -392,40 +379,40 @@ const SIDEBAR_STYLE = `
   }
   .picker-item:hover { background:#f0f0ec; }
 
-  /* ── CODE PLACEHOLDER ─────────────────────────────────── */
+  /* ── CODE PLACEHOLDER ───────────────────────────────────── */
   .code-ph {
     flex:1; display:flex; flex-direction:column;
     align-items:center; justify-content:center;
     gap:12px; padding:32px 24px; text-align:center; color:var(--t3);
   }
-  .code-ph svg  { width:42px; height:42px; color:#ccc8be; }
-  .code-ph h3   { margin:0; font-size:15px; font-weight:600; color:var(--t2); }
-  .code-ph p    { margin:0; font-size:13px; line-height:1.6; }
-  .code-badge   {
+  .code-ph svg { width:42px; height:42px; color:#ccc8be; }
+  .code-ph h3  { margin:0; font-size:15px; font-weight:600; color:var(--t2); }
+  .code-ph p   { margin:0; font-size:13px; line-height:1.6; }
+  .code-badge  {
     display:inline-block; background:var(--accent-bg); color:var(--accent);
     font-size:10px; font-weight:600; padding:2px 8px; border-radius:20px;
     letter-spacing:.05em; text-transform:uppercase;
   }
 
-  /* ── OVERLAY ──────────────────────────────────────────── */
+  /* ── OVERLAY ────────────────────────────────────────────── */
   .sb-overlay {
     position:fixed; inset:0; z-index:280;
-    background:rgba(0,0,0,.12); backdrop-filter:blur(1px);
+    background:rgba(0,0,0,.18); backdrop-filter:blur(1px);
     animation:fadeIn .15s ease;
   }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 
-  /* ── LOGOUT MODAL ─────────────────────────────────────── */
+  /* ── LOGOUT MODAL ───────────────────────────────────────── */
   .modal-back {
     position:fixed; inset:0; z-index:600;
     background:rgba(0,0,0,.28);
     display:flex; align-items:center; justify-content:center;
     animation:fadeIn .15s ease;
   }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   .modal-box {
     background:var(--bg-panel); border-radius:var(--r-lg);
     padding:24px; width:300px; box-shadow:0 24px 60px rgba(0,0,0,.18);
-    animation:slideUp .17s ease;
+    animation:slideUp .17s ease; margin: 0 16px;
   }
   @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
   .modal-box h4 { margin:0 0 8px; font-size:16px; font-weight:600; color:var(--t1); }
@@ -444,34 +431,24 @@ const SIDEBAR_STYLE = `
   }
   .m-confirm:hover { opacity:.87; }
 
-  /* new chat flash */
   @keyframes chatSlide {
     from{opacity:0;transform:translateX(-8px)}
     to  {opacity:1;transform:translateX(0)}
   }
   .new-chat-anim { animation:chatSlide .2s ease; }
-
-  /* mobile strip collapse */
-  @media(max-width:640px){
-    .sb-panel.open { width:min(var(--panel-w), calc(100vw - var(--strip-w))); }
-  }
 `;
 
-/* ═══════════════════════════════════════════════════════════
-   SIDEBAR COMPONENT
-═══════════════════════════════════════════════════════════ */
 export default function Sidebar({
   user, chats, setChats,
   activeChatId, setActiveChatId,
   onLogout, sidebarOpen, setSidebarOpen,
 }) {
-  const [panel, setPanel]           = useState(null); // "chats"|"projects"|"code"
-  const [search, setSearch]         = useState("");
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const [showAcct, setShowAcct]     = useState(false);
-  const [showLogout, setShowLogout] = useState(false);
+  const [panel, setPanel]             = useState(null);
+  const [search, setSearch]           = useState("");
+  const [openMenuId, setOpenMenuId]   = useState(null);
+  const [showAcct, setShowAcct]       = useState(false);
+  const [showLogout, setShowLogout]   = useState(false);
 
-  // projects
   const [projects, setProjects]           = useState(() => {
     try { return JSON.parse(localStorage.getItem("eloria_projects") || "[]"); } catch { return []; }
   });
@@ -483,7 +460,6 @@ export default function Sidebar({
 
   const acctRef = useRef(null);
 
-  // inject styles once
   useEffect(() => {
     if (!document.getElementById("eloria-global")) {
       const tag = document.createElement("style");
@@ -493,26 +469,28 @@ export default function Sidebar({
     }
   }, []);
 
-  // persist projects
   useEffect(() => {
     localStorage.setItem("eloria_projects", JSON.stringify(projects));
-    // Firestore: projects.forEach(p => setDoc(doc(db,"users",user.uid,"projects",String(p.id)),p));
   }, [projects]);
 
-  // clear animate flag
   useEffect(() => {
     if (chats.some(c => c.animate))
       setChats(chats.map(c => c.animate ? { ...c, animate: false } : c));
   }, [chats, setChats]);
 
-  // close account popup on outside click
   useEffect(() => {
-    const h = e => { if (acctRef.current && !acctRef.current.contains(e.target)) setShowAcct(false); };
+    const h = e => {
+      if (acctRef.current && !acctRef.current.contains(e.target)) setShowAcct(false);
+    };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  /* actions */
+  // on mobile, sidebarOpen (from hamburger) opens the chats panel
+  useEffect(() => {
+    if (sidebarOpen) { setPanel("chats"); setSidebarOpen(false); }
+  }, [sidebarOpen, setSidebarOpen]);
+
   const addChat = () => {
     const nc = { id: Date.now(), title: "New Chat", messages: [], animate: true };
     setChats(p => [...p, nc]);
@@ -578,16 +556,20 @@ export default function Sidebar({
   const filtered = chats.filter(c => c.title?.toLowerCase().includes(search.toLowerCase()));
   const initials = user?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
 
+  const CloseX = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  );
+
   return (
     <>
-      {/* overlay when panel open */}
       {panel && <div className="sb-overlay" onClick={() => setPanel(null)} />}
 
-      {/* ── STRIP ── */}
+      {/* ── STRIP (desktop only) ── */}
       <aside className="sb-strip">
         <div className="sb-logo"><img src={logo} alt="Eloria" /></div>
 
-        {/* New Chat */}
         <button className="sb-btn" title="New Chat" onClick={addChat}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -595,7 +577,6 @@ export default function Sidebar({
           <span>New</span>
         </button>
 
-        {/* Chats */}
         <button className={`sb-btn${panel==="chats"?" active":""}`} title="Chats" onClick={()=>togglePanel("chats")}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
@@ -603,7 +584,6 @@ export default function Sidebar({
           <span>Chats</span>
         </button>
 
-        {/* Projects */}
         <button className={`sb-btn${panel==="projects"?" active":""}`} title="Projects" onClick={()=>togglePanel("projects")}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
@@ -611,7 +591,6 @@ export default function Sidebar({
           <span>Projects</span>
         </button>
 
-        {/* Eloria Code */}
         <button className={`sb-btn${panel==="code"?" active":""}`} title="Eloria Code" onClick={()=>togglePanel("code")}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
@@ -621,12 +600,10 @@ export default function Sidebar({
 
         <div className="sb-spacer" />
 
-        {/* Account */}
         <div className="sb-avatar-wrap" ref={acctRef}>
           <button className="sb-avatar" onClick={()=>setShowAcct(v=>!v)} title="Account">
             {initials}
           </button>
-
           {showAcct && (
             <div className="acct-popup">
               <div className="acct-head">
@@ -650,28 +627,22 @@ export default function Sidebar({
         </div>
       </aside>
 
-      {/* ── PANEL ── */}
+      {/* ── SLIDE PANEL ── */}
       <div className={`sb-panel${panel?" open":""}`}>
         <div className="panel-inner">
 
-          {/* ── CHATS ── */}
+          {/* CHATS */}
           {panel==="chats" && <>
             <div className="panel-hdr">
               <span className="panel-title">Chats</span>
-              <button className="panel-x" onClick={()=>setPanel(null)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
+              <button className="panel-x" onClick={()=>setPanel(null)}><CloseX/></button>
             </div>
-
             <div className="panel-search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
               <input placeholder="Search chats…" value={search} onChange={e=>setSearch(e.target.value)} />
             </div>
-
             <div className="panel-list">
               {filtered.length===0 && <p className="panel-empty">No chats yet — hit New to start one.</p>}
               {filtered.map(chat => (
@@ -697,19 +668,13 @@ export default function Sidebar({
             </div>
           </>}
 
-          {/* ── PROJECTS ── */}
+          {/* PROJECTS */}
           {panel==="projects" && <>
             <div className="panel-hdr">
               <span className="panel-title">Projects</span>
-              <button className="panel-x" onClick={()=>setPanel(null)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
+              <button className="panel-x" onClick={()=>setPanel(null)}><CloseX/></button>
             </div>
-
             <button className="new-proj-btn" onClick={()=>setShowNewProj(true)}>+ New Project</button>
-
             {showNewProj && (
               <div className="new-proj-form">
                 <input autoFocus placeholder="Project name…" value={newProjName}
@@ -721,7 +686,6 @@ export default function Sidebar({
                 </div>
               </div>
             )}
-
             <div className="panel-list">
               {projects.length===0 && <p className="panel-empty">No projects yet — organize your chats into projects.</p>}
               {projects.map(proj => (
@@ -753,7 +717,6 @@ export default function Sidebar({
                       </div>
                     )}
                   </div>
-
                   {addChatProj===proj.id && (
                     <div className="add-chat-picker">
                       <p className="picker-lbl">Add a chat</p>
@@ -765,7 +728,6 @@ export default function Sidebar({
                       <button className="btn-cancel" style={{marginTop:6}} onClick={()=>setAddChatProj(null)}>Cancel</button>
                     </div>
                   )}
-
                   {openProjId===proj.id && (
                     <div className="proj-chats">
                       {(proj.chatIds||[]).length===0 && <p className="panel-empty" style={{fontSize:"11px",paddingLeft:0}}>No chats — use ⋯ → Add Chat.</p>}
@@ -786,15 +748,11 @@ export default function Sidebar({
             </div>
           </>}
 
-          {/* ── ELORIA CODE ── */}
+          {/* CODE */}
           {panel==="code" && <>
             <div className="panel-hdr">
               <span className="panel-title">Eloria Code</span>
-              <button className="panel-x" onClick={()=>setPanel(null)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
+              <button className="panel-x" onClick={()=>setPanel(null)}><CloseX/></button>
             </div>
             <div className="code-ph">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -806,10 +764,50 @@ export default function Sidebar({
             </div>
           </>}
 
+          {/* MOBILE: account section at bottom of drawer */}
+          <div style={{flexShrink:0, padding:"12px", borderTop:"1px solid var(--border)", display:"flex", alignItems:"center", gap:"10px"}} className="sb-mobile-acct">
+            <div ref={acctRef} style={{position:"relative", width:"100%", display:"flex", alignItems:"center", gap:"10px"}}>
+              <button className="sb-avatar" onClick={()=>setShowAcct(v=>!v)} style={{flexShrink:0}}>
+                {initials}
+              </button>
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{fontSize:"13px", fontWeight:600, color:"var(--t1)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{user?.username||"Account"}</div>
+                <div style={{fontSize:"11px", color:"var(--t3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{user?.email||""}</div>
+              </div>
+              <button onClick={()=>{setShowAcct(false);setShowLogout(true);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--danger)",padding:"6px",borderRadius:"var(--r-sm)",display:"flex",alignItems:"center"}}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="16" height="16">
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+              </button>
+              {showAcct && (
+                <div className="acct-popup">
+                  <div className="acct-head">
+                    <div className="acct-av">{initials}</div>
+                    <div>
+                      <div className="acct-name">{user?.username||"Account"}</div>
+                      <div className="acct-email">{user?.email||"guest@eloria.ai"}</div>
+                    </div>
+                  </div>
+                  <div className="acct-div" />
+                  <button className="acct-logout" onClick={()=>{setShowAcct(false);setShowLogout(true);}}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                      <polyline points="16 17 21 12 16 7"/>
+                      <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {/* ── LOGOUT MODAL ── */}
+      {/* LOGOUT MODAL */}
       {showLogout && (
         <div className="modal-back">
           <div className="modal-box">

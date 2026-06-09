@@ -1,24 +1,19 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Message from "./Message";
 import logo from "../assets/logo.png";
+import { FaImage, FaMicrophone, FaFileAlt } from "react-icons/fa";
 
-/* ─────────────────────────────────────────────────────────────
-   CHATWINDOW STYLES  (injected once into <head>)
-   Shares design tokens from Sidebar's GLOBAL_STYLE injection.
-   If Sidebar hasn't loaded yet these vars still exist because
-   both use the same :root block — first-writer wins, harmless.
-───────────────────────────────────────────────────────────── */
 const CW_STYLE = `
   /* ── SHELL ───────────────────────────────────────────── */
   .cw-root {
-    flex: 1;
     display: flex;
     flex-direction: column;
     height: 100vh;
+    min-height: 0;
     background: var(--bg-chat);
     overflow: hidden;
-    /* push right of the strip — Sidebar already handles strip width via .app-main,
-       but if ChatWindow is used standalone we add a fallback */
+    /* critical: this makes the column layout work on iOS safari too */
+    position: relative;
   }
 
   /* ── HEADER ──────────────────────────────────────────── */
@@ -26,46 +21,51 @@ const CW_STYLE = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 16px;
     height: 56px;
+    min-height: 56px;        /* never shrink */
+    flex-shrink: 0;          /* never shrink */
     border-bottom: 1px solid var(--border-soft);
     background: var(--bg-chat);
-    flex-shrink: 0;
-    gap: 12px;
+    z-index: 10;
+    gap: 10px;
   }
 
   .cw-header-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
+    flex: 1;
   }
 
-  /* hamburger — only visible on mobile */
+  /* hamburger — mobile only */
   .cw-hamburger {
     display: none;
     background: none; border: none;
     color: var(--t2); cursor: pointer;
-    width: 32px; height: 32px;
+    width: 34px; height: 34px;
     border-radius: var(--r-sm);
     align-items: center; justify-content: center;
-    transition: background .12s;
     flex-shrink: 0;
+    transition: background .12s;
   }
   .cw-hamburger:hover { background: #f0f0ec; }
-  .cw-hamburger svg   { width: 18px; height: 18px; }
+  .cw-hamburger svg { width: 18px; height: 18px; }
 
   @media(max-width: 640px) {
     .cw-hamburger { display: flex; }
+    .cw-header    { padding: 0 12px; }
   }
 
-  .cw-logo { width: 26px; height: 26px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
-  .cw-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .cw-logo { width: 26px; height: 26px; border-radius: 6px; overflow:hidden; flex-shrink:0; }
+  .cw-logo img { width:100%; height:100%; object-fit:contain; }
 
-  .cw-brand h2  { font-size: 15px; font-weight: 600; color: var(--t1); line-height: 1.2; }
-  .cw-brand sub { font-size: 11px; color: var(--t3); font-weight: 400; display:block; line-height:1; }
+  .cw-brand { min-width: 0; }
+  .cw-brand h2  { font-size:15px; font-weight:600; color:var(--t1); line-height:1.2; white-space:nowrap; }
+  .cw-brand sub { font-size:11px; color:var(--t3); font-weight:400; display:block; line-height:1; }
 
-  /* upgrade pill */
+  /* upgrade — always visible */
   .cw-upgrade {
     padding: 6px 14px;
     background: var(--accent);
@@ -77,22 +77,27 @@ const CW_STYLE = `
     transition: opacity .12s, box-shadow .12s;
     letter-spacing: .01em;
   }
-  .cw-upgrade:hover { opacity: .88; box-shadow: 0 2px 12px rgba(193,127,42,.35); }
+  .cw-upgrade:hover { opacity:.88; box-shadow:0 2px 12px rgba(193,127,42,.35); }
+  @media(max-width: 640px) {
+    .cw-upgrade { padding: 5px 11px; font-size: 11.5px; }
+  }
 
-  /* ── BODY ────────────────────────────────────────────── */
+  /* ── BODY (scrollable area) ──────────────────────────── */
   .cw-body {
     flex: 1;
+    min-height: 0;           /* essential — lets flex child scroll */
     overflow-y: auto;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: #e0e0da transparent;
   }
   .cw-body::-webkit-scrollbar       { width: 5px; }
   .cw-body::-webkit-scrollbar-thumb { background: #ddddd8; border-radius: 3px; }
 
-  /* ── INTRO / WELCOME ─────────────────────────────────── */
+  /* ── INTRO ───────────────────────────────────────────── */
   .cw-intro {
     flex: 1;
     display: flex;
@@ -107,59 +112,48 @@ const CW_STYLE = `
     from { opacity:0; transform:translateY(14px); }
     to   { opacity:1; transform:translateY(0); }
   }
+  @media(max-width: 640px) {
+    .cw-intro { padding: 28px 16px 16px; gap: 20px; }
+  }
 
   .cw-intro-logo {
-    width: 52px; height: 52px; border-radius: 14px; overflow:hidden;
-    box-shadow: 0 4px 20px rgba(193,127,42,.2);
+    width:52px; height:52px; border-radius:14px; overflow:hidden;
+    box-shadow:0 4px 20px rgba(193,127,42,.2); flex-shrink:0;
   }
   .cw-intro-logo img { width:100%; height:100%; object-fit:contain; }
 
+  .cw-intro-text { display:flex; flex-direction:column; align-items:center; gap:10px; }
   .cw-intro-headline {
     font-size: clamp(20px, 4vw, 28px);
-    font-weight: 600;
-    color: var(--t1);
-    text-align: center;
-    line-height: 1.3;
-    letter-spacing: -.02em;
+    font-weight: 600; color: var(--t1);
+    text-align: center; line-height: 1.3; letter-spacing:-.02em;
   }
   .cw-intro-sub {
-    font-size: 14px;
-    color: var(--t3);
-    text-align: center;
-    margin-top: -2px;
-    line-height: 1.5;
+    font-size: 14px; color: var(--t3);
+    text-align: center; line-height: 1.5;
   }
 
   .cw-cards {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-    max-width: 560px;
-    width: 100%;
+    display: flex; flex-wrap: wrap; gap: 10px;
+    justify-content: center; max-width: 560px; width: 100%;
   }
   .cw-card {
-    flex: 1 1 160px;
-    max-width: 220px;
+    flex: 1 1 150px; max-width: 210px;
     padding: 12px 14px;
-    background: #faf9f6;
-    border: 1px solid var(--border);
+    background: #faf9f6; border: 1px solid var(--border);
     border-radius: var(--r-md);
-    font-size: 13px;
-    color: var(--t2);
-    cursor: pointer;
-    line-height: 1.4;
-    transition: background .13s, border-color .13s, transform .13s;
-    font-family: var(--font);
-    text-align: left;
+    font-size: 13px; color: var(--t2); cursor: pointer;
+    line-height: 1.4; transition: background .13s, border-color .13s, transform .13s;
+    font-family: var(--font); text-align: left;
   }
   .cw-card:hover {
-    background: #fff;
-    border-color: rgba(193,127,42,.4);
-    transform: translateY(-1px);
-    color: var(--t1);
+    background:#fff; border-color:rgba(193,127,42,.4);
+    transform:translateY(-1px); color:var(--t1);
   }
-  .cw-card-icon { font-size: 16px; margin-bottom: 6px; display:block; }
+  .cw-card-icon { font-size:16px; margin-bottom:6px; display:block; }
+  @media(max-width: 640px) {
+    .cw-card { flex: 1 1 130px; }
+  }
 
   /* ── MESSAGES ────────────────────────────────────────── */
   .cw-messages {
@@ -169,49 +163,39 @@ const CW_STYLE = `
     flex-direction: column;
   }
 
-  /* thinking indicator */
   .cw-thinking {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 24px;
-    max-width: 720px;
-    width: 100%;
-    margin: 0 auto;
+    display:flex; align-items:center; gap:10px;
+    padding:12px 24px; max-width:720px; width:100%; margin:0 auto;
   }
-  .cw-thinking-dots {
-    display: flex; gap: 4px; align-items: center;
-  }
+  .cw-thinking-dots { display:flex; gap:4px; align-items:center; }
   .cw-thinking-dots span {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--accent); opacity: .4;
-    animation: dotPulse 1.2s ease-in-out infinite;
+    width:6px; height:6px; border-radius:50%;
+    background:var(--accent); opacity:.4;
+    animation:dotPulse 1.2s ease-in-out infinite;
   }
-  .cw-thinking-dots span:nth-child(2) { animation-delay: .2s; }
-  .cw-thinking-dots span:nth-child(3) { animation-delay: .4s; }
+  .cw-thinking-dots span:nth-child(2) { animation-delay:.2s; }
+  .cw-thinking-dots span:nth-child(3) { animation-delay:.4s; }
   @keyframes dotPulse {
     0%,80%,100% { opacity:.25; transform:scale(.85); }
     40%          { opacity:1;   transform:scale(1); }
   }
-  .cw-thinking-label { font-size: 13px; color: var(--t3); font-style: italic; }
+  .cw-thinking-label { font-size:13px; color:var(--t3); font-style:italic; }
 
-  /* ── INPUT AREA ──────────────────────────────────────── */
+  /* ── INPUT ───────────────────────────────────────────── */
   .cw-input-wrap {
     flex-shrink: 0;
-    padding: 12px 16px 16px;
+    padding: 10px 16px 14px;
     background: var(--bg-chat);
+  }
+  @media(max-width: 640px) {
+    .cw-input-wrap { padding: 8px 10px 12px; }
   }
 
   .cw-input-box {
-    max-width: 720px;
-    margin: 0 auto;
-    background: #fafaf8;
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-lg);
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    max-width: 720px; margin: 0 auto;
+    background: #fafaf8; border: 1.5px solid var(--border);
+    border-radius: var(--r-lg); padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px;
     transition: border-color .15s, box-shadow .15s;
   }
   .cw-input-box:focus-within {
@@ -220,138 +204,87 @@ const CW_STYLE = `
     background: #fff;
   }
 
-  /* file preview */
   .cw-file-preview {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    background: var(--accent-bg);
-    border-radius: var(--r-sm);
-    border: 1px solid rgba(193,127,42,.2);
+    display:flex; align-items:center; gap:8px;
+    padding:6px 8px; background:var(--accent-bg);
+    border-radius:var(--r-sm); border:1px solid rgba(193,127,42,.2);
   }
-  .cw-file-preview img { height: 48px; border-radius: 4px; object-fit: cover; }
-  .cw-file-chip { font-size: 12px; color: var(--t2); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cw-file-preview img { height:48px; border-radius:4px; object-fit:cover; }
+  .cw-file-chip { font-size:12px; color:var(--t2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .cw-file-remove {
-    background: none; border: none; cursor: pointer;
-    color: var(--t3); font-size: 13px; padding: 2px 4px;
-    border-radius: 4px; transition: color .12s;
-    flex-shrink: 0;
+    background:none; border:none; cursor:pointer;
+    color:var(--t3); font-size:13px; padding:2px 4px;
+    border-radius:4px; transition:color .12s; flex-shrink:0;
   }
-  .cw-file-remove:hover { color: var(--danger); }
+  .cw-file-remove:hover { color:var(--danger); }
 
-  /* textarea row */
-  .cw-textarea-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-  }
+  .cw-textarea-row { display:flex; align-items:flex-end; gap:8px; }
 
   .cw-textarea {
-    flex: 1;
-    border: none; background: none; outline: none;
-    font-family: var(--font);
-    font-size: 14px;
-    color: var(--t1);
-    resize: none;
-    min-height: 22px;
-    max-height: 160px;
-    line-height: 1.55;
-    overflow-y: auto;
-    scrollbar-width: thin;
+    flex:1; border:none; background:none; outline:none;
+    font-family:var(--font); font-size:14px; color:var(--t1);
+    resize:none; min-height:22px; max-height:160px;
+    line-height:1.55; overflow-y:auto; scrollbar-width:thin;
   }
-  .cw-textarea::placeholder { color: var(--t3); }
+  .cw-textarea::placeholder { color:var(--t3); }
 
-  /* attach button */
-  .cw-attach {
-    position: relative;
-    flex-shrink: 0;
-  }
+  .cw-attach { position:relative; flex-shrink:0; }
   .cw-attach-btn {
-    width: 30px; height: 30px;
-    border: none; border-radius: var(--r-sm);
-    background: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--t3); transition: background .12s, color .12s;
-    font-size: 18px; line-height: 1;
+    width:30px; height:30px; border:none; border-radius:var(--r-sm);
+    background:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--t3); transition:background .12s, color .12s;
   }
-  .cw-attach-btn:hover { background: #f0f0ec; color: var(--t1); }
+  .cw-attach-btn:hover { background:#f0f0ec; color:var(--t1); }
+  .cw-attach-btn svg  { width:17px; height:17px; }
 
   .cw-attach-menu {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 0;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    box-shadow: var(--shadow-pop);
-    padding: 4px;
-    min-width: 140px;
-    z-index: 200;
-    animation: ddIn .12s ease;
+    position:absolute; bottom:calc(100% + 8px); left:0;
+    background:var(--bg-panel); border:1px solid var(--border);
+    border-radius:var(--r-md); box-shadow:var(--shadow-pop);
+    padding:4px; min-width:140px; z-index:200;
+    animation:ddIn .12s ease;
   }
   .cw-attach-menu-item {
-    display: flex; align-items: center; gap: 9px;
-    padding: 8px 10px; font-size: 13px; color: var(--t1);
-    border-radius: var(--r-sm); cursor: pointer;
-    transition: background .11s; font-family: var(--font);
+    display:flex; align-items:center; gap:9px;
+    padding:8px 10px; font-size:13px; color:var(--t1);
+    border-radius:var(--r-sm); cursor:pointer;
+    transition:background .11s; font-family:var(--font);
   }
-  .cw-attach-menu-item:hover { background: #f4f4f0; }
-  .cw-attach-menu-item svg  { width: 14px; height: 14px; color: var(--t3); flex-shrink:0; }
+  .cw-attach-menu-item:hover { background:#f4f4f0; }
+  .cw-attach-menu-item svg { width:14px; height:14px; color:var(--t3); flex-shrink:0; }
 
-  /* send button */
   .cw-send {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: var(--accent);
-    border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: opacity .13s, box-shadow .13s;
-    color: #fff;
+    width:32px; height:32px; border-radius:50%;
+    background:var(--accent); border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; color:#fff;
+    transition:opacity .13s, box-shadow .13s;
   }
-  .cw-send:hover:not(:disabled) { opacity: .88; box-shadow: 0 2px 10px rgba(193,127,42,.4); }
-  .cw-send:disabled { opacity: .35; cursor: default; }
-  .cw-send svg { width: 15px; height: 15px; }
+  .cw-send:hover:not(:disabled) { opacity:.88; box-shadow:0 2px 10px rgba(193,127,42,.4); }
+  .cw-send:disabled { opacity:.35; cursor:default; }
+  .cw-send svg { width:15px; height:15px; }
 
-  /* hint */
   .cw-hint {
-    text-align: center;
-    font-size: 11px;
-    color: var(--t3);
-    margin-top: 8px;
-    max-width: 720px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  /* ── RESPONSIVE ──────────────────────────────────────── */
-  @media(max-width: 640px) {
-    .cw-input-wrap { padding: 8px 10px 12px; }
-    .cw-intro      { padding: 32px 16px 16px; gap: 20px; }
-    .cw-card       { flex: 1 1 140px; }
-    .cw-messages   { padding: 16px 0 4px; }
+    text-align:center; font-size:11px; color:var(--t3);
+    margin-top:6px; max-width:720px; margin-left:auto; margin-right:auto;
   }
 `;
 
-/* ═══════════════════════════════════════════════════════════
-   CHATWINDOW COMPONENT
-═══════════════════════════════════════════════════════════ */
 export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
-  const [input, setInput]           = useState("");
-  const [isThinking, setIsThinking] = useState(false);
-  const [showAttach, setShowAttach] = useState(false);
+  const [input, setInput]             = useState("");
+  const [isThinking, setIsThinking]   = useState(false);
+  const [showAttach, setShowAttach]   = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
 
-  const fileInputRef  = useRef(null);
+  const fileInputRef   = useRef(null);
   const messagesEndRef = useRef(null);
-  const textareaRef   = useRef(null);
-  const attachRef     = useRef(null);
+  const textareaRef    = useRef(null);
+  const attachRef      = useRef(null);
 
   const messages = useMemo(() => chat?.messages || [], [chat]);
   const showIntro = messages.length === 0;
 
-  // inject styles once
   useEffect(() => {
     if (!document.getElementById("eloria-cw")) {
       const tag = document.createElement("style");
@@ -361,12 +294,10 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
     }
   }, []);
 
-  // scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isThinking]);
 
-  // auto-resize textarea
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -374,7 +305,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
     ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
   }, [input]);
 
-  // close attach menu on outside click
   useEffect(() => {
     const h = e => { if (attachRef.current && !attachRef.current.contains(e.target)) setShowAttach(false); };
     document.addEventListener("mousedown", h);
@@ -383,14 +313,13 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
 
   if (!chat) {
     return (
-      <main className="cw-root" style={{ alignItems:"center", justifyContent:"center" }}>
-        <p style={{ color:"var(--t3)", fontSize:14 }}>Select or create a chat to get started.</p>
+      <main className="cw-root" style={{alignItems:"center",justifyContent:"center"}}>
+        <p style={{color:"var(--t3)",fontSize:14}}>Select or create a chat to get started.</p>
       </main>
     );
   }
 
-  /* file upload */
-  const handleFileUpload = (accept) => {
+  const handleFileUpload = accept => {
     if (!fileInputRef.current) return;
     fileInputRef.current.value = "";
     fileInputRef.current.setAttribute("accept", accept);
@@ -404,14 +333,13 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
     setPendingFile({ name: file.name, type: file.type, url: URL.createObjectURL(file) });
   };
 
-  /* generate title */
   const generateChatTitle = text => {
     const stop = ["how","to","the","a","an","and","or","for","with","of","in","on","is","are","can","i","you","me","my","what","why","when","make","fix","create","write","about"];
     return text.toLowerCase().replace(/[^a-z0-9\s]/g,"").split(" ")
-      .filter(w => w && !stop.includes(w)).slice(0,4).join(" ").replace(/\b\w/g,c=>c.toUpperCase()) || "New Chat";
+      .filter(w => w && !stop.includes(w)).slice(0,4).join(" ")
+      .replace(/\b\w/g,c=>c.toUpperCase()) || "New Chat";
   };
 
-  /* send */
   const sendMessage = async () => {
     if (!input.trim() && !pendingFile) return;
     if (isThinking) return;
@@ -443,19 +371,17 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
         body: JSON.stringify({ message: input, file: pendingFile }),
       });
       const data = await res.json();
-      const aiMsg = { id: Date.now() + 1, sender: "ai", text: data?.reply || "Eloria couldn't respond." };
-      setChats(prev => prev.map(c => c.id === chat.id ? { ...c, messages: [...newMessages, aiMsg] } : c));
+      const aiMsg = { id: Date.now()+1, sender:"ai", text: data?.reply||"Eloria couldn't respond." };
+      setChats(prev => prev.map(c => c.id===chat.id ? { ...c, messages:[...newMessages,aiMsg] } : c));
     } catch {
-      setChats(prev => prev.map(c => c.id === chat.id
-        ? { ...c, messages: [...newMessages, { id: Date.now()+2, sender:"ai", text:"Eloria couldn't respond." }] }
+      setChats(prev => prev.map(c => c.id===chat.id
+        ? { ...c, messages:[...newMessages,{id:Date.now()+2,sender:"ai",text:"Eloria couldn't respond."}] }
         : c));
     }
-
     setIsThinking(false);
   };
 
-  /* regenerate */
-  const regenerateMessage = async (messageId) => {
+  const regenerateMessage = async messageId => {
     const idx = messages.findIndex(m => m.id === messageId);
     if (idx === -1) return;
     const prev = messages.slice(0, idx);
@@ -469,18 +395,17 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
         body: JSON.stringify({ message: lastUser.text }),
       });
       const data = await res.json();
-      setChats(p => p.map(c => c.id === chat.id
-        ? { ...c, messages: [...prev, { id: Date.now(), sender:"ai", text: data?.reply || "No response" }] }
+      setChats(p => p.map(c => c.id===chat.id
+        ? { ...c, messages:[...prev,{id:Date.now(),sender:"ai",text:data?.reply||"No response"}] }
         : c));
     } catch { /* silent */ }
     setIsThinking(false);
   };
 
-  /* ── RENDER ── */
   return (
     <main className="cw-root">
 
-      {/* HEADER */}
+      {/* HEADER — flex-shrink:0 keeps it pinned, never disappears */}
       <header className="cw-header">
         <div className="cw-header-left">
           <button className="cw-hamburger" onClick={() => setSidebarOpen(true)}>
@@ -496,6 +421,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
             <sub>By Kairox</sub>
           </div>
         </div>
+        {/* upgrade always visible — just smaller on mobile */}
         <button className="cw-upgrade">Upgrade</button>
       </header>
 
@@ -504,16 +430,16 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
         {showIntro ? (
           <div className="cw-intro">
             <div className="cw-intro-logo"><img src={logo} alt="Eloria" /></div>
-            <div>
+            <div className="cw-intro-text">
               <div className="cw-intro-headline">What can I help with?</div>
               <div className="cw-intro-sub">Ask anything — Eloria is ready.</div>
             </div>
             <div className="cw-cards">
               {[
-                { icon:"", label:"Make me an assignment", q:"Make me an assignment" },
-                { icon:"", label:"Business idea for students", q:"Business idea for students" },
-                { icon:"", label:"Write a viral YouTube script", q:"Write viral YouTube script" },
-                { icon:"", label:"Explain a complex topic simply", q:"Explain quantum computing simply" },
+                {icon:"📝",label:"Make me an assignment",    q:"Make me an assignment"},
+                {icon:"💡",label:"Business idea for students",q:"Business idea for students"},
+                {icon:"🎬",label:"Write a viral YouTube script",q:"Write viral YouTube script"},
+                {icon:"🧠",label:"Explain a complex topic",   q:"Explain quantum computing simply"},
               ].map(c => (
                 <div key={c.q} className="cw-card" onClick={() => setInput(c.q)}>
                   <span className="cw-card-icon">{c.icon}</span>
@@ -536,9 +462,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
             ))}
             {isThinking && (
               <div className="cw-thinking">
-                <div className="cw-thinking-dots">
-                  <span/><span/><span/>
-                </div>
+                <div className="cw-thinking-dots"><span/><span/><span/></div>
                 <span className="cw-thinking-label">Eloria is thinking…</span>
               </div>
             )}
@@ -550,22 +474,18 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
       {/* INPUT */}
       <div className="cw-input-wrap">
         <div className="cw-input-box">
-
-          {/* file preview */}
           {pendingFile && (
             <div className="cw-file-preview">
               {pendingFile.type.startsWith("image")
-                ? <img src={pendingFile.url} alt="preview" />
+                ? <img src={pendingFile.url} alt="preview"/>
                 : <span className="cw-file-chip">📎 {pendingFile.name}</span>
               }
-              <button className="cw-file-remove" onClick={() => setPendingFile(null)}>✕</button>
+              <button className="cw-file-remove" onClick={()=>setPendingFile(null)}>✕</button>
             </div>
           )}
-
           <div className="cw-textarea-row">
-            {/* attach */}
             <div className="cw-attach" ref={attachRef}>
-              <button className="cw-attach-btn" onClick={() => setShowAttach(v => !v)} title="Attach">
+              <button className="cw-attach-btn" onClick={()=>setShowAttach(v=>!v)} title="Attach">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
                 </svg>
@@ -573,35 +493,27 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
               {showAttach && (
                 <div className="cw-attach-menu">
                   {[
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>, label:"Image", accept:"image/*" },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>, label:"Audio", accept:"audio/*" },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, label:"File", accept:"*" },
-                  ].map(item => (
-                    <div key={item.label} className="cw-attach-menu-item" onClick={() => handleFileUpload(item.accept)}>
+                    {icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,label:"Image",accept:"image/*"},
+                    {icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,label:"Audio",accept:"audio/*"},
+                    {icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,label:"File",accept:"*"},
+                  ].map(item=>(
+                    <div key={item.label} className="cw-attach-menu-item" onClick={()=>handleFileUpload(item.accept)}>
                       {item.icon}{item.label}
                     </div>
                   ))}
                 </div>
               )}
             </div>
-
-            {/* textarea */}
             <textarea
               ref={textareaRef}
               className="cw-textarea"
               rows={1}
               value={input}
               placeholder="Message Eloria…"
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+              onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}}
             />
-
-            {/* send */}
-            <button
-              className="cw-send"
-              onClick={sendMessage}
-              disabled={!input.trim() && !pendingFile}
-            >
+            <button className="cw-send" onClick={sendMessage} disabled={!input.trim()&&!pendingFile}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="19" x2="12" y2="5"/>
                 <polyline points="5 12 12 5 19 12"/>
@@ -612,8 +524,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
         <p className="cw-hint">Eloria can make mistakes. Verify important information.</p>
       </div>
 
-      {/* hidden file input */}
-      <input type="file" ref={fileInputRef} style={{ display:"none" }} onChange={onFileChange} />
+      <input type="file" ref={fileInputRef} style={{display:"none"}} onChange={onFileChange}/>
     </main>
   );
 }
