@@ -436,6 +436,71 @@ const SIDEBAR_STYLE = `
     to  {opacity:1;transform:translateX(0)}
   }
   .new-chat-anim { animation:chatSlide .2s ease; }
+
+  /* ── MOBILE NAV BUTTONS inside drawer ───────────────────── */
+  .sb-mobile-nav {
+    display: none;
+    flex-shrink: 0;
+    padding: 12px 10px 4px;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  @media(max-width: 640px) {
+    .sb-mobile-nav { display: flex; flex-direction: column; }
+  }
+
+  .sb-mobile-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    background: none;
+    border-radius: var(--r-md);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--t2);
+    cursor: pointer;
+    transition: background .13s, color .13s;
+    text-align: left;
+  }
+  .sb-mobile-nav-btn:hover { background: #f4f4f0; color: var(--t1); }
+  .sb-mobile-nav-btn.active { background: var(--accent-bg); color: var(--accent); }
+  .sb-mobile-nav-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .sb-mobile-new-chat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    background: var(--accent);
+    border-radius: var(--r-md);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    transition: opacity .13s;
+    margin-bottom: 4px;
+  }
+  .sb-mobile-new-chat:hover { opacity: .88; }
+  .sb-mobile-new-chat svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+  /* ── MOBILE ACCOUNT (bottom of drawer) ─────────────────── */
+  .sb-mobile-acct {
+    flex-shrink: 0;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    /* always visible on mobile, hidden on desktop since desktop uses strip avatar */
+    display: none;
+  }
+  @media(max-width: 640px) {
+    .sb-mobile-acct { display: flex; }
+  }
 `;
 
 export default function Sidebar({
@@ -486,7 +551,7 @@ export default function Sidebar({
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // on mobile, sidebarOpen (from hamburger) opens the chats panel
+  // on mobile, sidebarOpen (from hamburger) opens the drawer showing chats panel
   useEffect(() => {
     if (sidebarOpen) { setPanel("chats"); setSidebarOpen(false); }
   }, [sidebarOpen, setSidebarOpen]);
@@ -631,6 +696,43 @@ export default function Sidebar({
       <div className={`sb-panel${panel?" open":""}`}>
         <div className="panel-inner">
 
+          {/* ── MOBILE NAV: New Chat + section buttons (mobile only, always shown at top of drawer) ── */}
+          <div className="sb-mobile-nav">
+            <button className="sb-mobile-new-chat" onClick={addChat}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              New Chat
+            </button>
+            <button
+              className={`sb-mobile-nav-btn${panel==="chats"?" active":""}`}
+              onClick={() => togglePanel("chats")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+              </svg>
+              Chats
+            </button>
+            <button
+              className={`sb-mobile-nav-btn${panel==="projects"?" active":""}`}
+              onClick={() => togglePanel("projects")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+              </svg>
+              Projects
+            </button>
+            <button
+              className={`sb-mobile-nav-btn${panel==="code"?" active":""}`}
+              onClick={() => togglePanel("code")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+              </svg>
+              Eloria Code
+            </button>
+          </div>
+
           {/* CHATS */}
           {panel==="chats" && <>
             <div className="panel-hdr">
@@ -764,9 +866,9 @@ export default function Sidebar({
             </div>
           </>}
 
-          {/* MOBILE: account section at bottom of drawer */}
-          <div style={{flexShrink:0, padding:"12px", borderTop:"1px solid var(--border)", display:"flex", alignItems:"center", gap:"10px"}} className="sb-mobile-acct">
-            <div ref={acctRef} style={{position:"relative", width:"100%", display:"flex", alignItems:"center", gap:"10px"}}>
+          {/* ── MOBILE ACCOUNT — pinned to bottom of drawer ── */}
+          <div className="sb-mobile-acct" ref={acctRef}>
+            <div style={{position:"relative", width:"100%", display:"flex", alignItems:"center", gap:"10px"}}>
               <button className="sb-avatar" onClick={()=>setShowAcct(v=>!v)} style={{flexShrink:0}}>
                 {initials}
               </button>
@@ -774,8 +876,12 @@ export default function Sidebar({
                 <div style={{fontSize:"13px", fontWeight:600, color:"var(--t1)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{user?.username||"Account"}</div>
                 <div style={{fontSize:"11px", color:"var(--t3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{user?.email||""}</div>
               </div>
-              <button onClick={()=>{setShowAcct(false);setShowLogout(true);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--danger)",padding:"6px",borderRadius:"var(--r-sm)",display:"flex",alignItems:"center"}}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="16" height="16">
+              <button
+                onClick={()=>{setShowLogout(true);}}
+                style={{background:"none",border:"none",cursor:"pointer",color:"var(--danger)",padding:"6px",borderRadius:"var(--r-sm)",display:"flex",alignItems:"center"}}
+                title="Log out"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="18" height="18">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
                   <polyline points="16 17 21 12 16 7"/>
                   <line x1="21" y1="12" x2="9" y2="12"/>

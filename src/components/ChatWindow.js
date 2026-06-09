@@ -7,11 +7,10 @@ const CW_STYLE = `
   .cw-root {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
     min-height: 0;
     background: var(--bg-chat);
     overflow: hidden;
-    /* critical: this makes the column layout work on iOS safari too */
     position: relative;
   }
 
@@ -22,10 +21,12 @@ const CW_STYLE = `
     justify-content: space-between;
     padding: 0 16px;
     height: 56px;
-    min-height: 56px;        /* never shrink */
-    flex-shrink: 0;          /* never shrink */
+    min-height: 56px;
+    flex-shrink: 0;          /* NEVER shrink — always visible */
     border-bottom: 1px solid var(--border-soft);
     background: var(--bg-chat);
+    /* sit above messages on mobile so it's never obscured */
+    position: relative;
     z-index: 10;
     gap: 10px;
   }
@@ -92,6 +93,12 @@ const CW_STYLE = `
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: #e0e0da transparent;
+    /* leave room for input bar on mobile */
+  }
+  @media(max-width: 640px) {
+    .cw-body {
+      padding-bottom: 90px;  /* prevent last message hiding behind fixed input */
+    }
   }
   .cw-body::-webkit-scrollbar       { width: 5px; }
   .cw-body::-webkit-scrollbar-thumb { background: #ddddd8; border-radius: 3px; }
@@ -186,8 +193,21 @@ const CW_STYLE = `
     padding: 10px 16px 14px;
     background: var(--bg-chat);
   }
+
+  /* On mobile: fix input to bottom of viewport so it's always reachable */
   @media(max-width: 640px) {
-    .cw-input-wrap { padding: 8px 10px 12px; }
+    .cw-input-wrap {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 10px 16px;  /* extra bottom padding for home indicator */
+      background: var(--bg-chat);
+      border-top: 1px solid var(--border-soft);
+      z-index: 20;
+      /* safe area for notched iPhones */
+      padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    }
   }
 
   .cw-input-box {
@@ -404,7 +424,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
   return (
     <main className="cw-root">
 
-      {/* HEADER — flex-shrink:0 keeps it pinned, never disappears */}
+      {/* HEADER — flex-shrink:0, always on top, never disappears */}
       <header className="cw-header">
         <div className="cw-header-left">
           <button className="cw-hamburger" onClick={() => setSidebarOpen(true)}>
@@ -420,11 +440,10 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
             <sub>By Kairox</sub>
           </div>
         </div>
-        {/* upgrade always visible — just smaller on mobile */}
         <button className="cw-upgrade">Upgrade</button>
       </header>
 
-      {/* BODY */}
+      {/* BODY — scrollable, never overlaps header */}
       <div className="cw-body">
         {showIntro ? (
           <div className="cw-intro">
@@ -470,7 +489,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
         )}
       </div>
 
-      {/* INPUT */}
+      {/* INPUT — fixed to bottom on mobile, normal flow on desktop */}
       <div className="cw-input-wrap">
         <div className="cw-input-box">
           {pendingFile && (
