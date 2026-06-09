@@ -193,11 +193,17 @@ const SIDEBAR_STYLE = `
   .panel-inner {
     width: var(--panel-w);
     height: 100%;
-    display: flex; flex-direction: column;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
   @media(max-width: 640px) {
-    .panel-inner { width: min(300px, 85vw); }
+    .panel-inner {
+      width: min(300px, 85vw);
+      height: 100%;
+      display: flex;
+      flex-direction: column;  /* nav top, content middle, account bottom */
+    }
   }
 
   .panel-hdr {
@@ -491,16 +497,20 @@ const SIDEBAR_STYLE = `
   .sb-mobile-new-chat svg { width: 17px; height: 17px; flex-shrink: 0; }
 
   /* ── MOBILE ACCOUNT (bottom of drawer) ─────────────────── */
+  /* WITH: */
   .sb-mobile-acct {
     flex-shrink: 0;
     padding: 12px;
     border-top: 1px solid var(--border);
-    /* always visible on mobile, hidden on desktop since desktop uses strip avatar */
     display: none;
+    /* pushed to bottom by flex column + mt-auto */
+    margin-top: auto;
   }
   @media(max-width: 640px) {
-    .sb-mobile-acct { display: flex; }
-  }
+    .sb-mobile-acct {
+      display: flex;
+      margin-top: auto;   /* this is the key — pushes it to the very bottom */
+    }
 `;
 
 export default function Sidebar({
