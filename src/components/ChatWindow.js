@@ -315,7 +315,8 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
   const [pendingFile, setPendingFile] = useState(null);
 
   const fileInputRef   = useRef(null);
-  const messagesEndRef = useRef(null);
+const messagesEndRef = useRef(null);
+const bodyRef = useRef(null);
   const textareaRef    = useRef(null);
   const attachRef      = useRef(null);
 
@@ -332,8 +333,10 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isThinking]);
+  if (bodyRef.current) {
+    bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }
+}, [messages, isThinking]);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -462,7 +465,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen }) {
       </header>
 
       {/* BODY — scrollable, never overlaps header */}
-      <div className="cw-body">
+      <div className="cw-body" ref={bodyRef}>
         {showIntro ? (
           <div className="cw-intro">
             <div className="cw-intro-logo"><img src={logo} alt="Eloria" /></div>
