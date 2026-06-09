@@ -927,3 +927,37 @@ body {
     padding: 0 6px;
   }
 }
+/* =========================
+   REAL MOBILE DEVICE FIXES
+========================= */
+@media(max-width: 640px) {
+
+  /* Use dvh so browser chrome (address bar) is accounted for */
+  .app-shell {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-main {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* cw-root must be a locked flex column — never taller than viewport */
+  .cw-root {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* Sidebar drawer must also respect real viewport height */
+  .sb-panel {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .panel-inner {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+}

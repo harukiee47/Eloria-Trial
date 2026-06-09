@@ -498,19 +498,25 @@ const SIDEBAR_STYLE = `
 
   /* ── MOBILE ACCOUNT (bottom of drawer) ─────────────────── */
   /* WITH: */
+  /* WITH: */
   .sb-mobile-acct {
     flex-shrink: 0;
     padding: 12px;
     border-top: 1px solid var(--border);
     display: none;
-    /* pushed to bottom by flex column + mt-auto */
-    margin-top: auto;
   }
   @media(max-width: 640px) {
     .sb-mobile-acct {
       display: flex;
-      margin-top: auto;   /* this is the key — pushes it to the very bottom */
+      flex-shrink: 0;
+      margin-top: auto;
+      /* Ensure it's never pushed off screen on real devices */
+      position: sticky;
+      bottom: 0;
+      background: var(--bg-panel);
+      z-index: 10;
     }
+  }
 `;
 
 export default function Sidebar({
