@@ -30,6 +30,7 @@ const CW_STYLE = `
     z-index: 10;
     gap: 10px;
   }
+    
 
   .cw-header-left {
     display: flex;
@@ -54,6 +55,23 @@ const CW_STYLE = `
   .cw-hamburger svg { width: 18px; height: 18px; }
 
   @media(max-width: 640px) {
+  .cw-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--bg-chat);
+  }
+
+  .cw-root {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .cw-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
     .cw-hamburger { display: flex; }
     .cw-header    { padding: 0 12px; }
   }
