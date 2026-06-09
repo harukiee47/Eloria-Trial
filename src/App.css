@@ -884,22 +884,29 @@ body {
   margin-left: var(--strip-w, 64px);
 }
 
-/* REPLACE this: */
-/* WITH this: */
+/* WITH: */
 @media(max-width: 640px) {
-  .app-main {
-    margin-left: 0;
-    height: 100vh;
-    height: 100dvh;   /* dvh accounts for mobile browser chrome */
+  .app-shell {
+    height: 100dvh;
     overflow: hidden;
   }
 
-  .chat-main {
+  .app-main {
     margin-left: 0;
-    height: 100%;
-    min-height: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
+  /* cw-root is the direct child of app-main — force it to fill exactly */
+  .app-main > * {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
 }
 
 /* =========================
@@ -931,17 +938,6 @@ body {
    REAL MOBILE DEVICE FIXES
 ========================= */
 @media(max-width: 640px) {
-
-  /* Use dvh so browser chrome (address bar) is accounted for */
-  .app-shell {
-    height: 100dvh;
-    overflow: hidden;
-  }
-
-  .app-main {
-    height: 100dvh;
-    overflow: hidden;
-  }
 
   /* cw-root must be a locked flex column — never taller than viewport */
   .cw-root {
