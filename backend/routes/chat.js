@@ -290,6 +290,10 @@ router.post("/", verifyUser, checkMessageLimit, async (req, res) => {
   ],
 });
 
+stream.on("message", (msg) => {
+  console.log("FULL MESSAGE:", JSON.stringify(msg, null, 2));
+});
+
     stream.on("text", (text) => {
       res.write(`data: ${JSON.stringify({ text })}\n\n`);
     });

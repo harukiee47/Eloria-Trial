@@ -20,6 +20,10 @@ app.use(cors());
 app.use("/api/payments", paymentsRoutes);
 
 app.use(express.json({ limit: "5mb" }));
+app.use((req, res, next) => {
+  console.log("📨 REQUEST:", req.method, req.path);
+  next();
+});
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
 app.use("/api/chat", chatRoutes);

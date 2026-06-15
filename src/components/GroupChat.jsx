@@ -580,46 +580,53 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   };
 
   const callEloriaReply = async (question) => {
-    try {
-      const token = await auth.currentUser.getIdToken();
-      const res = await fetch("https://eloria-trial.onrender.com/api/group-chat/reply", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          groupId: group.id,
-          question,
-          history: messages.slice(-20),
-        }),
-      });
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const res = await fetch("https://eloria-trial.onrender.com/api/group-chat/reply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        groupId: group.id,
+        question,
+        history: messages.slice(-20),
+      }),
+    });
 
-      if (!res.ok) { setEloriaTyping(false); return; }
+    if (!res.ok) { setEloriaTyping(false); return; }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop();
-        for (const line of lines) {
-          if (!line.startsWith("data:")) continue;
-          try {
-            const parsed = JSON.parse(line.slice(5).trim());
-            if (parsed.done) setEloriaTyping(false);
-          } catch {}
-        }
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop(); // keep incomplete chunk
+
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        try {
+          const parsed = JSON.parse(line.slice(5).trim());
+          if (parsed.done) {
+            setEloriaTyping(false); // ✅ hide typing indicator
+          }
+          // parsed.text chunks are intentionally ignored here —
+          // the server saves the full reply to Firestore on "end",
+          // and subscribeToMessages will pick it up automatically.
+        } catch {}
       }
-    } catch (err) {
-      console.error("Eloria reply error:", err);
-      setEloriaTyping(false);
     }
-  };
+  } catch (err) {
+    console.error("Eloria reply error:", err);
+    setEloriaTyping(false);
+  }
+};
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {

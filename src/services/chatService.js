@@ -1,31 +1,6 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 /* =========================
-   AI MESSAGE API (your current code)
-========================= */
-export async function sendMessageToAMK(message) {
-  const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
-  });
-
-  let data;
-
-  try {
-    data = await res.json();
-  } catch (err) {
-    data = null;
-  }
-
-  return (
-    data?.reply ||
-    data?.message ||
-    "Eloria is unable to respond right now."
-  );
-}
-
-/* =========================
    CLOUD CHAT STORAGE
 ========================= */
 
