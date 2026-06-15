@@ -14,7 +14,7 @@ import SharedChatViewer from "./components/SharedChatViewer";
 import { loadShared } from "./services/shareService";
 import GroupChat from "./components/GroupChat";
 import GroupNotifications from "./components/GroupNotifications";
-import { subscribeToGroups, subscribeToInvites, createGroup, _GROUP_LIMITS } from "./services/groupService";
+import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
 
 
 
@@ -301,6 +301,8 @@ return (
   createGroup={createGroup}
   setShowPricing={setShowPricing}
   createNewProject={createNewProject}
+   codeProjects={codeProjects}
+  activeProjectId={activeProjectId}
     />
 
 <div className="app-main">

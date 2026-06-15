@@ -6,7 +6,6 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-const APP_URL = "https://eloria-ai.vercel.app"; // update when deployed
 
 // ── Plan limits ──────────────────────────────────────────────────────────────
 export const GROUP_LIMITS = {
