@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { auth } from "../services/firebase";
 import "./Pricing.css";
 
-const API_BASE = "https://eloria-trial.onrender.com"; 
 
 export default function Pricing({ onBack }) {
 
