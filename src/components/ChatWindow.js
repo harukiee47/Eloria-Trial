@@ -265,7 +265,7 @@ const CW_STYLE = `
   /* Text bubble */
   .cw-bubble {
     padding: 10px 15px;
-    font-size: 14px; line-height: 1.5;
+    font-size: 13px; line-height: 1.5;
     word-break: break-word;
     border-radius: 18px;
     font-family: var(--font);

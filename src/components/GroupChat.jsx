@@ -9,12 +9,15 @@ import {
 const GC_STYLE = `
   /* ── GROUP CHAT WRAPPER ─────────────────────────────────── */
   .gc-wrap {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background: var(--bg-chat);
-    font-family: var(--font);
-  }
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-chat);
+  font-family: var(--font);
+}
 
   /* ── TOUCH / MOBILE BASE TWEAKS ─────────────────────────── */
   .gc-header-back, .gc-icon-btn, .gc-send-btn, .gc-info-close,
@@ -65,7 +68,10 @@ const GC_STYLE = `
 
   /* ── MESSAGES ────────────────────────────────────────────── */
   .gc-messages {
-    flex: 1; overflow-y: auto; padding: 16px 16px 8px;
+    flex: 1;
+    min-height: 0;   /* ← critical: allows shrinking below content size */
+    overflow-y: auto;
+     padding: 16px 16px 8px;
     display: flex; flex-direction: column; gap: 2px;
     scrollbar-width: thin; scrollbar-color: #e0e0da transparent;
     -webkit-overflow-scrolling: touch;
