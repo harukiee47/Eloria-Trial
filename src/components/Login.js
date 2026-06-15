@@ -3,7 +3,7 @@ import { loginWithEmail, loginWithGoogle, signupWithEmail } from "../services/au
 import "./Login.css";
 
 export default function Login({ onLogin }) {
-  const [username, setUsername] = useState(""); // for signup
+  const [username, setUsername] = useState(""); 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignup, setIsSignup] = useState(false);
@@ -14,7 +14,7 @@ export default function Login({ onLogin }) {
     try {
       let user;
       if (isSignup) {
-        user = await signupWithEmail(email, password, username); // pass username
+        user = await signupWithEmail(email, password, username); 
       } else {
         user = await loginWithEmail(email, password);
       }

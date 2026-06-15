@@ -4,7 +4,7 @@ import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
 
-// ─── SUPPORTED ATTACHMENT TYPES ───────────────────────────────────────────────
+
 const ATTACH_TYPES = {
   image: {
     accept: "image/jpeg,image/png,image/gif,image/webp",
@@ -70,7 +70,7 @@ function docIcon(ext) {
   return map[ext] || { bg: "#f5f5f0", color: "#888", char: ext.slice(0,3) };
 }
 
-// ─── STYLES ──────────────────────────────────────────────────────────────────
+
 const CW_STYLE = `
   /* ── SHELL ───────────────────────────────────────────── */
   .cw-root {
@@ -647,7 +647,7 @@ const CW_STYLE = `
   .cw-selection-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
 `;
 
-// ─── PENDING FILE CHIP ────────────────────────────────────────────────────────
+
 function PendingChip({ file, onRemove }) {
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
@@ -668,7 +668,7 @@ function PendingChip({ file, onRemove }) {
   );
 }
 
-// ─── ATTACHMENT BUBBLE ────────────────────────────────────────────────────────
+
 function AttachBubble({ file, sender, onImageClick }) {
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
@@ -696,15 +696,15 @@ function AttachBubble({ file, sender, onImageClick }) {
   );
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+
 export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, userPlan }) {
-  const [input,        setInput]        = useState("");
-  const [isThinking,   setIsThinking]   = useState(false);
-  const [showAttach,   setShowAttach]   = useState(false);
-  const [pendingFiles, setPendingFiles] = useState([]);
-  const [lightboxSrc,  setLightboxSrc]  = useState(null);
+  const [input,          setInput]          = useState("");
+  const [isThinking,     setIsThinking]     = useState(false);
+  const [showAttach,     setShowAttach]     = useState(false);
+  const [pendingFiles,   setPendingFiles]   = useState([]);
+  const [lightboxSrc,    setLightboxSrc]    = useState(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
-  const [selectionBtn, setSelectionBtn] = useState(null);
+  const [selectionBtn,   setSelectionBtn]   = useState(null);
 
   const fileInputRef       = useRef(null);
   const fileAcceptRef      = useRef("");
@@ -753,50 +753,50 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   }, []);
 
   useEffect(() => {
-  const handleMouseUp = () => {
-    setTimeout(() => {
-      const selection = window.getSelection();
-      const text = selection?.toString().trim();
+    const handleMouseUp = () => {
+      setTimeout(() => {
+        const selection = window.getSelection();
+        const text = selection?.toString().trim();
 
-      if (!text || text.length < 2) {
+        if (!text || text.length < 2) {
+          setSelectionBtn(null);
+          return;
+        }
+
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const bubble = container.nodeType === 3
+          ? container.parentElement?.closest(".cw-bubble")
+          : container.closest?.(".cw-bubble");
+
+        const msgRow = bubble?.closest(".cw-msg-row");
+        if (!bubble || !msgRow?.classList.contains("ai")) {
+          setSelectionBtn(null);
+          return;
+        }
+
+        const rect = range.getBoundingClientRect();
+        setSelectionBtn({
+          x: rect.left + rect.width / 2,
+          y: rect.top - 8,
+          text,
+        });
+      }, 10);
+    };
+
+    const handleMouseDown = (e) => {
+      if (!e.target.closest(".cw-selection-btn")) {
         setSelectionBtn(null);
-        return;
       }
+    };
 
-      const range = selection.getRangeAt(0);
-      const container = range.commonAncestorContainer;
-      const bubble = container.nodeType === 3
-        ? container.parentElement?.closest(".cw-bubble")
-        : container.closest?.(".cw-bubble");
-
-      const msgRow = bubble?.closest(".cw-msg-row");
-      if (!bubble || !msgRow?.classList.contains("ai")) {
-        setSelectionBtn(null);
-        return;
-      }
-
-      const rect = range.getBoundingClientRect();
-      setSelectionBtn({
-        x: rect.left + rect.width / 2,
-        y: rect.top - 8,
-        text,
-      });
-    }, 10);
-  };
-
-  const handleMouseDown = (e) => {
-    if (!e.target.closest(".cw-selection-btn")) {
-      setSelectionBtn(null);
-    }
-  };
-
-  document.addEventListener("mouseup", handleMouseUp);
-  document.addEventListener("mousedown", handleMouseDown);
-  return () => {
-    document.removeEventListener("mouseup", handleMouseUp);
-    document.removeEventListener("mousedown", handleMouseDown);
-  };
-}, []);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => {
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mousedown", handleMouseDown);
+    };
+  }, []);
 
   if (!chat) {
     return (
@@ -859,16 +859,16 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   };
 
   const handleQuoteReply = () => {
-  if (!selectionBtn) return;
-  const quoted = selectionBtn.text
-    .split("\n")
-    .map(line => `> ${line}`)
-    .join("\n");
-  setInput(prev => prev ? `${quoted}\n\n${prev}` : `${quoted}\n\n`);
-  setSelectionBtn(null);
-  window.getSelection()?.removeAllRanges();
-  setTimeout(() => textareaRef.current?.focus(), 50);
-};
+    if (!selectionBtn) return;
+    const quoted = selectionBtn.text
+      .split("\n")
+      .map(line => `> ${line}`)
+      .join("\n");
+    setInput(prev => prev ? `${quoted}\n\n${prev}` : `${quoted}\n\n`);
+    setSelectionBtn(null);
+    window.getSelection()?.removeAllRanges();
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
 
   const generateChatTitle = text => {
     const stop = ["how","to","the","a","an","and","or","for","with","of","in","on","is","are","can","i","you","me","my","what","why","when","make","fix","create","write","about"];
@@ -968,10 +968,11 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
             if (json.error) throw new Error(json.error);
             if (json.text) {
               aiText += json.text;
+              const snapshot = aiText;
               setChats(prev =>
                 prev.map(c =>
                   c.id === chat.id
-                    ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, text: aiText } : m) }
+                    ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, text: snapshot } : m) }
                     : c
                 )
               );
@@ -1040,8 +1041,9 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
             if (json.done || json.error) break;
             if (json.text) {
               aiText += json.text;
+              const snapshot = aiText;
               setChats(p => p.map(c => c.id === chat.id
-                ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, text: aiText } : m) }
+                ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, text: snapshot } : m) }
                 : c
               ));
             }
@@ -1096,19 +1098,19 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       <input ref={fileInputRef} type="file" style={{ display:"none" }} onChange={onFileChange} />
 
       {selectionBtn && (
-  <button
-    className="cw-selection-btn"
-    style={{ left: selectionBtn.x, top: selectionBtn.y }}
-    onMouseDown={e => e.preventDefault()}
-    onClick={handleQuoteReply}
-  >
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="9 14 4 9 9 4"/>
-      <path d="M20 20v-7a4 4 0 00-4-4H4"/>
-    </svg>
-    Reply with quote
-  </button>
-)}
+        <button
+          className="cw-selection-btn"
+          style={{ left: selectionBtn.x, top: selectionBtn.y }}
+          onMouseDown={e => e.preventDefault()}
+          onClick={handleQuoteReply}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 14 4 9 9 4"/>
+            <path d="M20 20v-7a4 4 0 00-4-4H4"/>
+          </svg>
+          Reply with quote
+        </button>
+      )}
 
       {lightboxSrc && (
         <div className="cw-lightbox" onClick={() => setLightboxSrc(null)}>
@@ -1192,7 +1194,9 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
           <div className="cw-limit-modal" onClick={e => e.stopPropagation()}>
             <div className="cw-limit-modal-top">
               <button className="cw-limit-btn-close" onClick={() => setShowLimitModal(false)}>✕</button>
-              <div className="cw-limit-modal-icon">{userPlan === "pro" || userPlan === "admin" ? "" : "✦"}</div>
+              <div className="cw-limit-modal-icon">
+                {userPlan === "pro" || userPlan === "admin" ? "⏰" : "✦"}
+              </div>
               <div className="cw-limit-modal-title">
                 {userPlan === "pro" || userPlan === "admin" ? "You're all caught up for today" : "You've hit your daily limit"}
               </div>

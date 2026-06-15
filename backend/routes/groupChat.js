@@ -15,7 +15,7 @@ Rules:
 - Keep replies reasonably short unless a detailed answer is genuinely needed.
 - You are Eloria, built by the Eloria team. Do not claim to be any other AI.`;
 
-// POST /api/group-chat/reply
+
 router.post("/reply", verifyUser, async (req, res) => {
   const { groupId, question, history = [] } = req.body;
   const uid = req.user.uid;
@@ -24,7 +24,7 @@ router.post("/reply", verifyUser, async (req, res) => {
     return res.status(400).json({ error: "groupId and question are required." });
   }
 
-  // Verify user is a member of this group
+
   try {
     const groupDoc = await db.collection("groups").doc(groupId).get();
     if (!groupDoc.exists) return res.status(404).json({ error: "Group not found." });
@@ -38,7 +38,7 @@ router.post("/reply", verifyUser, async (req, res) => {
     return res.status(500).json({ error: "Failed to verify group membership." });
   }
 
-  // Build messages from history (last 20 messages for context)
+
   const recent = history.slice(-20);
   const apiMessages = recent.map(msg => ({
     role: msg.isEloria ? "assistant" : "user",
@@ -47,10 +47,10 @@ router.post("/reply", verifyUser, async (req, res) => {
       : `[${msg.senderName || "User"}]: ${msg.text}`,
   }));
 
-  // Add the current question
+
   apiMessages.push({ role: "user", content: `[${req.user.name || "User"}]: ${question}` });
 
-  // Stream the response
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -74,7 +74,7 @@ router.post("/reply", verifyUser, async (req, res) => {
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       res.end();
 
-      // Save Eloria's reply to Firestore
+
       try {
         await db.collection("groups").doc(groupId).collection("messages").add({
           text: fullText,

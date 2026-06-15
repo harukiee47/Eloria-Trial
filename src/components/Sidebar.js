@@ -935,7 +935,7 @@ export default function Sidebar({
   const [showAcct, setShowAcct]     = useState(false);
   const [showLogout, setShowLogout] = useState(false);
 
-  // chat projects
+
   const [projects, setProjects]       = useState(() => {
     try { return JSON.parse(localStorage.getItem("eloria_projects") || "[]"); } catch { return []; }
   });
@@ -945,7 +945,7 @@ export default function Sidebar({
   const [showNewProj, setShowNewProj] = useState(false);
   const [addChatProj, setAddChatProj] = useState(null);
 
-  // eloria code projects
+
   const [codeProjects, setCodeProjects]   = useState(() => {
     try { return JSON.parse(localStorage.getItem("eloria_code_projects") || "[]"); } catch { return []; }
   });
@@ -1046,7 +1046,7 @@ export default function Sidebar({
     ));
   };
 
-  // ── Eloria Code helpers ──
+
   const createCodeProject = () => {
     if (!codeForm.name.trim()) return;
     const proj = {

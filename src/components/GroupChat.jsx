@@ -453,19 +453,19 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   const [inviteFeedback, setInviteFeedback] = useState(null);
   const [inviting, setInviting]       = useState(false);
 
-  // Context menu state
-  const [ctxMenu, setCtxMenu] = useState(null); // { x, y, msg }
+
+  const [ctxMenu, setCtxMenu] = useState(null); 
   const ctxRef = useRef(null);
 
-  // Reply state
-  const [replyTo, setReplyTo] = useState(null); // { id, senderName, text }
+
+  const [replyTo, setReplyTo] = useState(null); 
 
   const bottomRef   = useRef(null);
   const textareaRef = useRef(null);
   const uid = user?.uid;
   const isCreator = group.creatorId === uid;
 
-  // Inject styles once
+
   useEffect(() => {
     if (!document.getElementById("gc-style")) {
       const tag = document.createElement("style");
@@ -475,7 +475,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     }
   }, []);
 
-  // Subscribe to messages
+
   useEffect(() => {
     const joinedAt = group.memberJoinedAt?.[uid]
       ? new Date(group.memberJoinedAt[uid])
@@ -484,17 +484,17 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     return () => unsub();
   }, [group.id, uid, group.memberJoinedAt]);
 
-  // Clear unread when viewing
+
   useEffect(() => {
     if (uid && group.id) clearUnread(group.id, uid);
   }, [group.id, uid, messages.length]);
 
-  // Auto-scroll
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, eloriaTyping]);
 
-  // Auto-resize textarea
+
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -502,7 +502,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
   }, [input]);
 
-  // Close context menu on outside click or Escape
+
   useEffect(() => {
     if (!ctxMenu) return;
     const close = (e) => {
@@ -517,22 +517,21 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     };
   }, [ctxMenu]);
 
-  // Cancel reply on Escape
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape" && replyTo) setReplyTo(null); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [replyTo]);
 
-  // Right-click handler
   const handleContextMenu = useCallback((e, msg) => {
     e.preventDefault();
-    // Don't show context menu on deleted messages
+
     if (msg.deleted) return;
     setCtxMenu({ x: e.clientX, y: e.clientY, msg });
   }, []);
 
-  // Reply action
+
   const handleReply = () => {
     if (!ctxMenu) return;
     const { msg } = ctxMenu;
@@ -545,7 +544,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     textareaRef.current?.focus();
   };
 
-  // Delete action (own messages only)
+
   const handleDeleteMsg = async () => {
     if (!ctxMenu) return;
     const { msg } = ctxMenu;
@@ -668,7 +667,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     catch (err) { alert(err.message); }
   };
 
-  // Group messages by day for dividers
+
   const grouped = [];
   let lastDay = null;
   messages.forEach((msg, i) => {
@@ -683,7 +682,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   const memberNames  = group.memberNames  || {};
   const memberEmails = group.memberEmails || [];
 
-  // Clamp context menu so it stays on screen
+
   const ctxStyle = ctxMenu ? (() => {
     const menuW = 160, menuH = 110;
     const x = Math.min(ctxMenu.x, window.innerWidth  - menuW - 8);

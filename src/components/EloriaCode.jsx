@@ -24,7 +24,6 @@ const SUPPORTED_EXTS = new Set([
 
 function isSupportedFile(name) {
   const lower = name.toLowerCase();
-  // files with no extension but known names
   const knownNames = ["dockerfile","makefile",".gitignore",".editorconfig",".prettierrc",".eslintrc",".babelrc",".env"];
   if (knownNames.some(n => lower === n || lower.endsWith("/" + n))) return true;
   const parts = lower.split(".");
@@ -374,9 +373,6 @@ const EC_STYLE = `
     .ec-send { width: 36px; height: 36px; }
   }
 
-
-
-
   /* ── LIMIT MODAL ─────────────────────────────────────── */
   .ec-limit-backdrop {
     position: fixed; inset: 0; z-index: 1000;
@@ -459,7 +455,7 @@ async function loadProjects(uid) {
 }
 async function saveProjects(uid, projects) {
   const clean = JSON.parse(JSON.stringify(projects));
-  await setDoc(doc(db, "users", uid), { codeProjects: clean }, { merge: true }); // ← was `projects`
+  await setDoc(doc(db, "users", uid), { codeProjects: clean }, { merge: true });
 }
 async function loadFileMessages(uid, projectId, fileId) {
   const snap = await getDoc(doc(db, "users", uid));
@@ -469,7 +465,7 @@ async function loadFileMessages(uid, projectId, fileId) {
 async function saveFileMessages(uid, projectId, fileId, messages) {
   const clean = JSON.parse(JSON.stringify(messages));
   await setDoc(doc(db, "users", uid), {
-    codeHistories: { [`${projectId}_${fileId}`]: clean } // ← was `messages`
+    codeHistories: { [`${projectId}_${fileId}`]: clean }
   }, { merge: true });
 }
 async function deleteFileMessages(uid, projectId, fileId) {
@@ -501,7 +497,6 @@ function AttachmentBubble({ attachment }) {
 
   return (
     <div className="ec-attach-bubble-solo">
-      {/* Header */}
       <div className="ec-attach-header" style={{ borderRadius: 0, background: "rgba(193,127,42,.13)", border: "none", borderBottom: "1px solid rgba(193,127,42,.18)" }}>
         <div className="ec-attach-header-icon">
           {isFolder ? "📁" : getFileIcon(attachment.files[0]?.name || "")}
@@ -522,7 +517,6 @@ function AttachmentBubble({ attachment }) {
         )}
       </div>
 
-      {/* File list */}
       <div className="ec-attach-files" style={{ borderRadius: 0, border: "none" }}>
         {attachment.files.map((f, i) => (
           <div key={i} className="ec-attach-file-row">
@@ -534,7 +528,6 @@ function AttachmentBubble({ attachment }) {
         ))}
       </div>
 
-      {/* User text if any */}
       {attachment.userText && (
         <div className="ec-attach-text">{attachment.userText}</div>
       )}
@@ -563,8 +556,6 @@ export default function EloriaCode() {
   const [addingFileTo, setAddingFileTo] = useState(null);
   const [newFileName,  setNewFileName]  = useState("");
 
-  // ── Attachment state ─────────────────────────────────────────────────────
-  // pendingAttachments: array of { id, type: "file"|"folder", name, files: [{name, size, content, relativePath}] }
   const [pendingAttachments, setPendingAttachments] = useState([]);
   const fileInputRef   = useRef(null);
   const folderInputRef = useRef(null);
@@ -579,8 +570,7 @@ export default function EloriaCode() {
   const newFileRef  = useRef(null);
   const abortControllerRef = useRef(null);
   const [userPlan, setUserPlan] = useState("free");
-const [showLimitModal, setShowLimitModal] = useState(false);
-const [limitType, setLimitType] = useState("code"); // "code"
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const activeProject = useMemo(
     () => projects.find(p => p.id === activeRef?.projectId) || null,
@@ -591,7 +581,6 @@ const [limitType, setLimitType] = useState("code"); // "code"
     [activeProject, activeRef]
   );
 
-  // Limit counters
   const folderCount = pendingAttachments.filter(a => a.type === "folder").length;
   const fileCount   = pendingAttachments.filter(a => a.type === "file").length;
   const canAddFolder = folderCount < 1;
@@ -613,17 +602,17 @@ const [limitType, setLimitType] = useState("code"); // "code"
       if (u) {
         setUid(u.uid);
         setUserName(u.displayName || "");
-        // Fetch user plan
-try {
-  const token = await u.getIdToken();
-  const res = await fetch("http://localhost:5001/api/membership/status", {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
-  setUserPlan(data.plan || "free");
-} catch (err) {
-  console.error("Failed to fetch plan:", err);
-}
+
+        try {
+          const token = await u.getIdToken();
+          const res = await fetch("http://localhost:5001/api/membership/status", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json();
+          setUserPlan(data.plan || "free");
+        } catch (err) {
+          console.error("Failed to fetch plan:", err);
+        }
         const p = await loadProjects(u.uid);
         setProjects(p);
         const exp = {};
@@ -662,7 +651,6 @@ try {
     }
   }, [messages, activeRef, uid]);
 
-  // ── File reading helper ──────────────────────────────────────────────────
   const readFileAsText = (file) => new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = e => resolve(e.target.result);
@@ -670,7 +658,6 @@ try {
     reader.readAsText(file);
   });
 
-  // ── Handle file upload ───────────────────────────────────────────────────
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
@@ -682,7 +669,6 @@ try {
       return;
     }
 
-    // max 2 files total already pending
     const slots = 2 - fileCount;
     const toAdd = supported.slice(0, slots);
 
@@ -702,7 +688,6 @@ try {
     setPendingAttachments(prev => [...prev, ...attachments]);
   };
 
-  // ── Handle folder upload ─────────────────────────────────────────────────
   const handleFolderSelect = async (e) => {
     const all = Array.from(e.target.files || []);
     e.target.value = "";
@@ -714,7 +699,6 @@ try {
       return;
     }
 
-    // Get folder name from first file's path
     const folderName = (supported[0].webkitRelativePath || supported[0].name).split("/")[0] || "folder";
 
     const attachFiles = await Promise.all(supported.map(async (f) => ({
@@ -736,7 +720,6 @@ try {
     setPendingAttachments(prev => prev.filter(a => a.id !== id));
   };
 
-  // ── Switch file ──────────────────────────────────────────────────────────
   const switchFile = async (projectId, fileId) => {
     if (uid && activeRef) {
       await saveFileMessages(uid, activeRef.projectId, activeRef.fileId, messages);
@@ -831,130 +814,119 @@ try {
     setRenamingFile(null);
   };
 
-// ── Send message ─────────────────────────────────────────────────────────
+  // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = async () => {
-    // Cancel any existing stream
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
-  const hasText = input.trim().length > 0;
-  const hasAttachments = pendingAttachments.length > 0;
-  if ((!hasText && !hasAttachments) || isThinking || !activeFile || !activeProject) return;
-  if (!auth.currentUser) return;
 
-  const token = await auth.currentUser.getIdToken();
-  setIsThinking(true);
+    const hasText = input.trim().length > 0;
+    const hasAttachments = pendingAttachments.length > 0;
+    if ((!hasText && !hasAttachments) || isThinking || !activeFile || !activeProject) return;
+    if (!auth.currentUser) return;
 
-  let attachmentContext = "";
-  if (hasAttachments) {
-    attachmentContext = pendingAttachments.map(att => {
-      const header = att.type === "folder"
-        ? `\n\n[FOLDER ATTACHED: "${att.name}" — ${att.files.length} files]\n`
-        : `\n\n[FILE ATTACHED: "${att.name}"]\n`;
-      const fileContents = att.files.map(f =>
-        `--- ${f.relativePath || f.name} ---\n${f.content}\n`
-      ).join("\n");
-      return header + fileContents;
-    }).join("\n");
-  }
+    const token = await auth.currentUser.getIdToken();
+    setIsThinking(true);
 
-  const userMsg = {
-    id: Date.now(),
-    sender: "user",
-    text: hasText ? input : "",
-    attachments: hasAttachments ? [...pendingAttachments] : undefined,
-  };
-
-  const newMessages = [...messages, userMsg];
-  setMessages(newMessages);
-  setInput("");
-  setPendingAttachments([]);
-
-  const fullUserText = [
-    attachmentContext,
-    hasText ? input : "User has attached files above. Analyze them and summarize what you see.",
-  ].filter(Boolean).join("\n\n");
-
-  // Build conversation history for backend
-  const apiMessages = newMessages
-    .filter(m => m.text || m.attachments)
-    .map(m => ({
-      role: m.sender === "user" ? "user" : "assistant",
-      content: m.sender === "user"
-        ? (m.attachments?.length
-            ? `${attachmentContext}\n\n${m.text || ""}`.trim()
-            : m.text)
-        : m.text,
-    }));
-
-  try {
-    const res = await fetch("http://localhost:5001/api/code", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  },
-  body: JSON.stringify({ messages: apiMessages }),
-  signal,
-});
-    if (res.status === 403) {
-      setIsThinking(false);
-      alert("Eloria Code requires a Pro plan. Upgrade from the main chat.");
-      return;
+    let attachmentContext = "";
+    if (hasAttachments) {
+      attachmentContext = pendingAttachments.map(att => {
+        const header = att.type === "folder"
+          ? `\n\n[FOLDER ATTACHED: "${att.name}" — ${att.files.length} files]\n`
+          : `\n\n[FILE ATTACHED: "${att.name}"]\n`;
+        const fileContents = att.files.map(f =>
+          `--- ${f.relativePath || f.name} ---\n${f.content}\n`
+        ).join("\n");
+        return header + fileContents;
+      }).join("\n");
     }
 
-    if (res.status === 429) {
-      setShowLimitModal(true);
-      setIsThinking(false);
-      return;
-    }
+    const userMsg = {
+      id: Date.now(),
+      sender: "user",
+      text: hasText ? input : "",
+      attachments: hasAttachments ? [...pendingAttachments] : undefined,
+    };
 
-    if (!res.ok) throw new Error(`Server error: ${res.status}`);
-    console.log("Stream starting, status:", res.status);
-console.log("API messages sent:", apiMessages);
-console.log("API messages detail:", JSON.stringify(apiMessages, null, 2));
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput("");
+    setPendingAttachments([]);
 
-    // Stream the response
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let aiText = "";
-    const aiMsgId = Date.now() + 1;
+    // Build conversation history for backend
+    const apiMessages = newMessages
+      .filter(m => m.text || m.attachments)
+      .map(m => ({
+        role: m.sender === "user" ? "user" : "assistant",
+        content: m.sender === "user"
+          ? (m.attachments?.length
+              ? `${attachmentContext}\n\n${m.text || ""}`.trim()
+              : m.text)
+          : m.text,
+      }));
 
-    setMessages(prev => [...prev, { id: aiMsgId, sender: "ai", text: "" }]);
-    setIsThinking(false);
+    try {
+      const res = await fetch("http://localhost:5001/api/code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ messages: apiMessages }),
+        signal,
+      });
 
-    while (true) {
-  if (signal.aborted) break;
-  const { done, value } = await reader.read();
-  if (done) break;
-      const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.startsWith("data: "));
-      for (const line of lines) {
-        console.log("Raw chunk:", decoder.decode(value, { stream: true }));
-        try {
-          const json = JSON.parse(line.slice(6));
-          if (json.done || json.error) break;
-          if (json.text) {
-            aiText += json.text;
-            setMessages(prev =>
-              prev.map(m => m.id === aiMsgId ? { ...m, text: aiText } : m)
-            );
-          }
-        } catch {}
+      if (res.status === 403) {
+        setIsThinking(false);
+        alert("Eloria Code requires a Pro plan. Upgrade from the main chat.");
+        return;
       }
-    }
- } catch (err) {
-  if (err.name === "AbortError") {
-    // User stopped — don't show error
-  } else {
-    setIsThinking(false);
-    setMessages(prev => [...prev, {
-      id: Date.now() + 2, sender: "ai",
-      text: "Eloria Code couldn't respond. Check your connection.",
-    }]);
-  }
-  setIsThinking(false);
-}
 
+      if (res.status === 429) {
+        setShowLimitModal(true);
+        setIsThinking(false);
+        return;
+      }
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let aiText = "";
+      const aiMsgId = Date.now() + 1;
+
+      setMessages(prev => [...prev, { id: aiMsgId, sender: "ai", text: "" }]);
+      setIsThinking(false);
+
+      while (true) {
+        if (signal.aborted) break;
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.startsWith("data: "));
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.done || json.error) break;
+            if (json.text) {
+              aiText += json.text;
+              const snapshot = aiText;
+              setMessages(prev =>
+                prev.map(m => m.id === aiMsgId ? { ...m, text: snapshot } : m)
+              );
+            }
+          } catch {}
+        }
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        setIsThinking(false);
+        setMessages(prev => [...prev, {
+          id: Date.now() + 2, sender: "ai",
+          text: "Eloria Code couldn't respond. Check your connection.",
+        }]);
+      }
+      setIsThinking(false);
+    }
   };
 
   if (!authReady) return null;
@@ -964,12 +936,11 @@ console.log("API messages detail:", JSON.stringify(apiMessages, null, 2));
     </div>
   );
 
-const stopMessage = () => {
-  if (abortControllerRef.current) abortControllerRef.current.abort();
-  setIsThinking(false);
-};
+  const stopMessage = () => {
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    setIsThinking(false);
+  };
 
-  // Limit hint text
   const limitHint = (() => {
     const parts = [];
     if (folderCount >= 1) parts.push("1 folder max");
@@ -995,7 +966,7 @@ const stopMessage = () => {
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 28,
         }}>
-          
+          💻
         </div>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#e8e8e2", marginBottom: 10, letterSpacing: "-.01em" }}>
@@ -1013,7 +984,7 @@ const stopMessage = () => {
           fontFamily: "'SF Mono', 'Fira Code', monospace",
           color: "#c17f2a", letterSpacing: ".03em",
         }}>
-          // use a desktop browser
+          {"// use a desktop browser"}
         </div>
       </div>
     );
@@ -1022,7 +993,6 @@ const stopMessage = () => {
   return (
     <div className="ec-root">
 
-      {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
         type="file"
@@ -1034,7 +1004,7 @@ const stopMessage = () => {
       <input
         ref={folderInputRef}
         type="file"
-        // @ts-ignore
+        // eslint-disable-next-line react/no-unknown-property
         webkitdirectory="true"
         directory="true"
         multiple
@@ -1062,8 +1032,8 @@ const stopMessage = () => {
         <div className="ec-sidebar-scroll">
           {projects.length === 0 && (
             <div style={{ padding: "20px 14px", textAlign: "center", fontSize: 11, fontFamily: "var(--ide-mono)", color: "var(--ide-t3)", lineHeight: 1.8 }}>
-              // no projects yet<br/>
-              // create one below
+              {"// no projects yet"}<br/>
+              {"// create one below"}
             </div>
           )}
           {projects.map(proj => (
@@ -1072,7 +1042,7 @@ const stopMessage = () => {
                 <svg className={`ec-proj-chevron${expandedIds[proj.id] ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 18 15 12 9 6"/>
                 </svg>
-                <span className="ec-proj-icon"></span>
+                <span className="ec-proj-icon">📁</span>
                 <span className="ec-proj-name">{proj.name}</span>
                 <div className="ec-proj-actions" onClick={e => e.stopPropagation()}>
                   <button className="ec-proj-act-btn" title="New file"
@@ -1181,8 +1151,8 @@ const stopMessage = () => {
           {!activeProject && (
             <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
               <div style={{ fontSize:11, fontFamily:"var(--ide-mono)", color:"var(--ide-t3)", lineHeight:1.8, textAlign:"center" }}>
-                // no project selected<br/>
-                // create one to get started
+                {"// no project selected"}<br/>
+                {"// create one to get started"}
               </div>
               <button className="ec-new-proj-btn" style={{ width:"auto", padding:"7px 18px" }} onClick={() => setShowProjModal(true)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{width:12,height:12}}>
@@ -1213,13 +1183,11 @@ const stopMessage = () => {
                 <div key={msg.id} className={`ec-msg-wrap ${msg.sender}`}>
                   {msg.sender === "ai" && <div className="ec-ai-avatar"><img src={logo} alt="Eloria" /></div>}
 
-                  {/* Render attachment bubble for user messages with attachments */}
                   {msg.sender === "user" && msg.attachments?.length > 0 ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", maxWidth: "80%" }}>
                       {msg.attachments.map(att => (
                         <AttachmentBubble key={att.id} attachment={{ ...att, userText: msg.attachments.length === 1 ? msg.text : undefined }} />
                       ))}
-                      {/* If multiple attachments + text, show text separately */}
                       {msg.attachments.length > 1 && msg.text && (
                         <div className="ec-bubble" style={{ background: "rgba(193,127,42,.18)", border: "1px solid rgba(193,127,42,.25)", borderBottomRightRadius: 3 }}>
                           {msg.text}
@@ -1227,13 +1195,13 @@ const stopMessage = () => {
                       )}
                     </div>
                   ) : (
-  <div className="ec-bubble">
-    {msg.sender === "ai"
-      ? <MarkdownMessage content={msg.text} />
-      : msg.text
-    }
-  </div>
-)}
+                    <div className="ec-bubble">
+                      {msg.sender === "ai"
+                        ? <MarkdownMessage content={msg.text} />
+                        : msg.text
+                      }
+                    </div>
+                  )}
                 </div>
               ))}
               {isThinking && (
@@ -1320,26 +1288,26 @@ const stopMessage = () => {
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
               />
               <button
-  className="ec-send"
-  onClick={isThinking ? stopMessage : sendMessage}
-  disabled={(!isThinking && (!input.trim() && pendingAttachments.length === 0)) || !activeFile}
-  title={isThinking ? "Stop" : "Send"}
-  style={isThinking ? { background: "#e05252" } : {}}
->
-  {isThinking ? (
-    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-      <rect x="4" y="4" width="16" height="16" rx="2"/>
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="19" x2="12" y2="5"/>
-      <polyline points="5 12 12 5 19 12"/>
-    </svg>
-  )}
-</button>
+                className="ec-send"
+                onClick={isThinking ? stopMessage : sendMessage}
+                disabled={(!isThinking && (!input.trim() && pendingAttachments.length === 0)) || !activeFile}
+                title={isThinking ? "Stop" : "Send"}
+                style={isThinking ? { background: "#e05252" } : {}}
+              >
+                {isThinking ? (
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
-          <p className="ec-hint">// verify all generated code before production use · max 1 folder or 2 files per message</p>
+          <p className="ec-hint">{"// verify all generated code before production use · max 1 folder or 2 files per message"}</p>
         </div>
 
         <div className="ec-statusbar">
@@ -1355,58 +1323,56 @@ const stopMessage = () => {
         </div>
       </main>
 
-
-{/* LIMIT MODAL */}
-{showLimitModal && (
-  <div className="ec-limit-backdrop" onClick={() => setShowLimitModal(false)}>
-    <div className="ec-limit-box" onClick={e => e.stopPropagation()}>
-      <div className="ec-limit-top">
-        <button className="ec-limit-close" onClick={() => setShowLimitModal(false)}>✕</button>
-        <div className="ec-limit-icon"></div>
-        <div className="ec-limit-title">
-          {userPlan === "pro" || userPlan === "admin"
-            ? "// daily limit reached"
-            : "// upgrade required"
-          }
+      {/* LIMIT MODAL */}
+      {showLimitModal && (
+        <div className="ec-limit-backdrop" onClick={() => setShowLimitModal(false)}>
+          <div className="ec-limit-box" onClick={e => e.stopPropagation()}>
+            <div className="ec-limit-top">
+              <button className="ec-limit-close" onClick={() => setShowLimitModal(false)}>✕</button>
+              <div className="ec-limit-icon">⏰</div>
+              <div className="ec-limit-title">
+                {userPlan === "pro" || userPlan === "admin"
+                  ? "// daily limit reached"
+                  : "// upgrade required"
+                }
+              </div>
+              <div className="ec-limit-sub">
+                {userPlan === "pro" || userPlan === "admin"
+                  ? "resets at midnight · pro plan"
+                  : "eloria code · pro only"
+                }
+              </div>
+            </div>
+            <div className="ec-limit-body">
+              <div className="ec-limit-desc">
+                {userPlan === "pro" || userPlan === "admin"
+                  ? "You've used all your Eloria Code requests for today. Come back tomorrow — your limits reset at midnight."
+                  : "You've used all your free Eloria Code requests. Upgrade to Pro for 25 requests per day."
+                }
+              </div>
+              <div className="ec-limit-actions">
+                <button className="ec-limit-cancel" onClick={() => setShowLimitModal(false)}>
+                  {userPlan === "pro" || userPlan === "admin" ? "got it" : "later"}
+                </button>
+                {userPlan !== "pro" && userPlan !== "admin" && (
+                  <button className="ec-limit-upgrade" onClick={() => {
+                    setShowLimitModal(false);
+                    window.close();
+                  }}>
+                    upgrade → pro
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="ec-limit-sub">
-          {userPlan === "pro" || userPlan === "admin"
-            ? "resets at midnight · pro plan"
-            : "eloria code · pro only"
-          }
-        </div>
-      </div>
-      <div className="ec-limit-body">
-        <div className="ec-limit-desc">
-          {userPlan === "pro" || userPlan === "admin"
-            ? "You've used all your Eloria Code requests for today. Come back tomorrow — your limits reset at midnight."
-            : "You've used all your free Eloria Code requests. Upgrade to Pro for 25 requests per day."
-          }
-        </div>
-        <div className="ec-limit-actions">
-          <button className="ec-limit-cancel" onClick={() => setShowLimitModal(false)}>
-            {userPlan === "pro" || userPlan === "admin" ? "got it" : "later"}
-          </button>
-          {userPlan !== "pro" && userPlan !== "admin" && (
-            <button className="ec-limit-upgrade" onClick={() => {
-              setShowLimitModal(false);
-              window.close(); // since EloriaCode opens in new tab
-            }}>
-              upgrade → pro
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
+      )}
 
       {showProjModal && (
         <div className="ec-modal-backdrop" onClick={() => setShowProjModal(false)}>
           <div className="ec-modal" onClick={e => e.stopPropagation()}>
             <div className="ec-modal-title">
-              <div className="ec-modal-title-icon"></div>
+              <div className="ec-modal-title-icon">📁</div>
               new_project
             </div>
             <div className="ec-modal-field">
@@ -1414,7 +1380,7 @@ const stopMessage = () => {
               <input className="ec-modal-input" placeholder="e.g. MyApp, Portfolio, API server" value={newProjName} autoFocus onChange={e => setNewProjName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") createProject(); }} />
             </div>
             <div className="ec-modal-field">
-              <label className="ec-modal-label">description // optional</label>
+              <label className="ec-modal-label">{"description // optional"}</label>
               <input className="ec-modal-input" placeholder="What are you building?" value={newProjDesc} onChange={e => setNewProjDesc(e.target.value)} onKeyDown={e => { if (e.key === "Enter") createProject(); }} />
             </div>
             <div className="ec-modal-actions">

@@ -182,25 +182,23 @@ You are heping people learn, build, create, improve, and succeed through accurat
 
 `;
 
-// ─── Convert frontend messages to Anthropic multimodal format ─────────────────
-// Frontend message shape:
-//   { role, content (text), files: [{ kind, previewUrl (base64), textContent, name }] }
+
 function buildAnthropicMessages(messages) {
   return messages.map((msg) => {
-    // Already-formatted messages (from history) — pass through
+
     if (!msg.files || msg.files.length === 0) {
       return { role: msg.role, content: msg.content };
     }
 
-    // Build multimodal content array
+
     const contentParts = [];
 
     for (const file of msg.files) {
       if (file.kind === "image" && file.previewUrl) {
-        // previewUrl is a base64 data URL: "data:image/png;base64,XXXX"
+
         const matches = file.previewUrl.match(/^data:(.+);base64,(.+)$/);
         if (matches) {
-          const mediaType = matches[1]; // e.g. "image/png"
+          const mediaType = matches[1]; 
           const base64Data = matches[2];
           contentParts.push({
             type: "image",
@@ -213,14 +211,14 @@ function buildAnthropicMessages(messages) {
         }
       } else if (file.kind === "document") {
         if (file.base64) {
-          // Parse the data URL
+
           const matches = file.base64.match(/^data:(.+);base64,(.+)$/);
           if (matches) {
             const mediaType = matches[1];
             const base64Data = matches[2];
 
             if (mediaType === "application/pdf") {
-              // Send PDF natively — Anthropic can read PDFs directly
+
               contentParts.push({
                 type: "document",
                 source: {
@@ -230,7 +228,7 @@ function buildAnthropicMessages(messages) {
                 },
               });
             } else {
-              // DOCX/TXT/other — tell the model what was attached
+
               contentParts.push({
                 type: "text",
                 text: `[Document attached: ${file.name} (${mediaType}) — binary format, cannot extract text directly. Let the user know you received it but need a plain text or PDF version to read the contents.]`,
@@ -238,7 +236,7 @@ function buildAnthropicMessages(messages) {
             }
           }
         } else if (file.textContent) {
-          // Plain text fallback
+
           contentParts.push({
             type: "text",
             text: `[Document: ${file.name}]\n\n${file.textContent}`,
@@ -247,11 +245,11 @@ function buildAnthropicMessages(messages) {
       }
     }
 
-    // Add the user's text message after files
+
     if (msg.content && msg.content.trim()) {
       contentParts.push({ type: "text", text: msg.content });
     } else if (contentParts.length > 0) {
-      // No text but has files — add a default prompt
+
       contentParts.push({ type: "text", text: "Please analyze the above." });
     }
 

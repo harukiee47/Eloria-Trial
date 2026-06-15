@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { auth } from "../services/firebase"; // adjust path to your firebase init file
+import { auth } from "../services/firebase";
 import "./Pricing.css";
 
-const API_BASE = "http://localhost:5001"; // change to your deployed backend URL
+const API_BASE = "http://localhost:5001"; 
 
 export default function Pricing({ onBack }) {
 
