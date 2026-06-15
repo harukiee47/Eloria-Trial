@@ -5,7 +5,6 @@ import {
   inviteToGroup, kickMember, leaveGroup, deleteGroup, renameGroup,
   deleteGroupMessage,
 } from "../services/groupService";
-import { API_BASE } from "./config";
 
 const GC_STYLE = `
   /* ── GROUP CHAT WRAPPER ─────────────────────────────────── */
