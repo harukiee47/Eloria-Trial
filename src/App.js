@@ -14,7 +14,9 @@ import SharedChatViewer from "./components/SharedChatViewer";
 import { loadShared } from "./services/shareService";
 import GroupChat from "./components/GroupChat";
 import GroupNotifications from "./components/GroupNotifications";
-import { subscribeToGroups, subscribeToInvites, createGroup, GROUP_LIMITS } from "./services/groupService";
+import { subscribeToGroups, subscribeToInvites, createGroup, _GROUP_LIMITS } from "./services/groupService";
+
+
 
 if (window.location.pathname === "/code") {
   const root = document.getElementById("root");
@@ -343,11 +345,6 @@ return (
         isLoggedIn={!!user}
       />
     )}
-
-    <EloriaCode
-  projects={codeProjects}
-  activeProjectId={activeProjectId}
-/>
 
     </div>
 
