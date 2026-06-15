@@ -6,6 +6,7 @@ import logo from "../assets/logo.png";
 import EloriaCodeWelcome from "./EloriaCodeWelcome";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
+import { API_BASE } from "./config";
 
 // ─── SUPPORTED CODE EXTENSIONS ────────────────────────────────────────────────
 const SUPPORTED_EXTS = new Set([
@@ -605,7 +606,7 @@ export default function EloriaCode() {
 
         try {
           const token = await u.getIdToken();
-          const res = await fetch("https://localhost:5001/api/membership/status", {
+          const res = await fetch(`${API_BASE}/api/membership/status`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const data = await res.json();
@@ -866,7 +867,7 @@ export default function EloriaCode() {
       }));
 
     try {
-      const res = await fetch("https://localhost:5001/api/code", {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

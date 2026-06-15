@@ -1,10 +1,11 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
+import { API_BASE } from "./config";
 /* =========================
    AI MESSAGE API (your current code)
 ========================= */
 export async function sendMessageToAMK(message) {
-  const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
+  const res = await fetch(`${API_BASE}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
