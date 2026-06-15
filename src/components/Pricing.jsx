@@ -166,7 +166,7 @@ useEffect(() => {
         Already Pro? Manage your subscription from the link in your purchase
         email.
         <br />
-        Questions — <a href="#">contact support</a>
+        Questions — <button onClick={() => {}} style={{ background:"none", border:"none", cursor:"pointer", padding:0 }}>contact support</button>
       </footer>
     </div>
   );

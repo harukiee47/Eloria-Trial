@@ -1322,7 +1322,7 @@ const stopMessage = () => {
               <button
   className="ec-send"
   onClick={isThinking ? stopMessage : sendMessage}
-  disabled={!isThinking && (!input.trim() && pendingAttachments.length === 0) || !activeFile}
+  disabled={(!isThinking && (!input.trim() && pendingAttachments.length === 0)) || !activeFile}
   title={isThinking ? "Stop" : "Send"}
   style={isThinking ? { background: "#e05252" } : {}}
 >

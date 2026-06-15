@@ -482,7 +482,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
       : null;
     const unsub = subscribeToMessages(group.id, joinedAt, setMessages);
     return () => unsub();
-  }, [group.id, uid]);
+  }, [group.id, uid, group.memberJoinedAt]);
 
   // Clear unread when viewing
   useEffect(() => {
