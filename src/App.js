@@ -15,7 +15,7 @@ import { loadShared } from "./services/shareService";
 import GroupChat from "./components/GroupChat";
 import GroupNotifications from "./components/GroupNotifications";
 import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
-import { API_BASE } from "./config";
+import { API_BASE } from "../config";
 
 
 if (window.location.pathname === "/code") {
