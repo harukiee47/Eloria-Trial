@@ -107,7 +107,7 @@ useEffect(() => {
 useEffect(() => {
   if (!user?.email) return;
   const { subscribeToInvites } = require("./services/groupService");
-
+  // Already imported above; subscribe for badge count
   const unsub = subscribeToInvites(user.email, (invites) => {
     setPendingInviteCount(invites.length);
   });
@@ -187,7 +187,7 @@ useEffect(() => {
   console.log("SIDEBAR STATE:", sidebarOpen);
 }, [sidebarOpen]);
 
-
+  // AUTH CHECK
   useEffect(() => {
 const unsubscribe = checkAuth((u) => {
   setUser(u);
@@ -205,11 +205,11 @@ const unsubscribe = checkAuth((u) => {
   return unsubscribe;
 }, []);
 
-
+  // SAVE DATA
 useEffect(() => {
   if (!user) return;
 
-
+  // only save if chats are actually loaded
   if (chats === null || chats === undefined) return;
 
   saveChats(user.uid, chats);
@@ -228,7 +228,7 @@ const activeChat = React.useMemo(() => {
 }, [chats, activeChatId]);
 
 
-
+  // LOGIN SCREEN
   if (stage === "login") {
     return (
       <Login
@@ -255,7 +255,8 @@ const activeChat = React.useMemo(() => {
 
   
 
-
+  // CHAT SCREEN
+ 
 if (showPricing) {
   return <Pricing onBack={() => setShowPricing(false)} />;
 }
@@ -285,7 +286,7 @@ return (
   setUser(null);
   setChats([]);
   setActiveChatId(null);
-  setMode("chat"); 
+  setMode("chat"); // ✅ FIXED HERE
   setStage("login");
 }}
         groups={groups}
