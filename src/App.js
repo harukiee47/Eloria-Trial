@@ -16,8 +16,6 @@ import GroupChat from "./components/GroupChat";
 import GroupNotifications from "./components/GroupNotifications";
 import { subscribeToGroups, subscribeToInvites, createGroup, GROUP_LIMITS } from "./services/groupService";
 
-const hasProjects = codeProjects.length > 0;
-
 if (window.location.pathname === "/code") {
   const root = document.getElementById("root");
   import("react-dom/client").then(({ createRoot }) => {

@@ -6,7 +6,6 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-const hasProjects = codeProjects.length > 0;
 const APP_URL = "https://eloria-ai.vercel.app"; // update when deployed
 
 // ── Plan limits ──────────────────────────────────────────────────────────────
