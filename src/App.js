@@ -28,7 +28,6 @@ if (window.location.pathname === "/code") {
 export default function App() {
   const [stage, setStage] = useState("splash");
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -192,7 +191,6 @@ useEffect(() => {
   useEffect(() => {
 const unsubscribe = checkAuth((u) => {
   setUser(u);
-  setLoading(false);
 
   if (!u) {
     setStage("login");
