@@ -17,6 +17,7 @@ import GroupNotifications from "./components/GroupNotifications";
 import { subscribeToGroups, subscribeToInvites, createGroup, GROUP_LIMITS } from "./services/groupService";
 
 
+
 if (window.location.pathname === "/code") {
   const root = document.getElementById("root");
   import("react-dom/client").then(({ createRoot }) => {
@@ -106,11 +107,11 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.email) return;
-  const { subscribeToInvites } = require("./services/groupService");
-  // Already imported above; subscribe for badge count
+
   const unsub = subscribeToInvites(user.email, (invites) => {
     setPendingInviteCount(invites.length);
   });
+
   return () => unsub();
 }, [user]);
 
@@ -299,6 +300,7 @@ return (
   setMode={setMode}
   createGroup={createGroup}
   setShowPricing={setShowPricing}
+  createNewProject={createNewProject}
     />
 
 <div className="app-main">
@@ -343,6 +345,11 @@ return (
         isLoggedIn={!!user}
       />
     )}
+
+    <EloriaCode
+  projects={codeProjects}
+  activeProjectId={activeProjectId}
+/>
 
     </div>
 

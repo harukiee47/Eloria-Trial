@@ -2,11 +2,11 @@ import {
   collection, doc, addDoc, getDoc, getDocs,
   updateDoc, deleteDoc, onSnapshot, arrayUnion,
   arrayRemove, query, orderBy, serverTimestamp,
-  where, writeBatch, limit
+  where, writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-const APP_URL = "https://eloria-ai.vercel.app"; // update when deployed
+const _APP_URL = "https://eloria-ai.vercel.app"; // update when deployed
 
 // ── Plan limits ──────────────────────────────────────────────────────────────
 export const GROUP_LIMITS = {
