@@ -5,7 +5,7 @@ import {
   inviteToGroup, kickMember, leaveGroup, deleteGroup, renameGroup,
   deleteGroupMessage,
 } from "../services/groupService";
-import { API_BASE } from "../apiConfig";
+import { API_BASE } from "./config";
 
 const GC_STYLE = `
   /* ── GROUP CHAT WRAPPER ─────────────────────────────────── */
@@ -583,7 +583,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   const callEloriaReply = async (question) => {
     try {
       const token = await auth.currentUser.getIdToken();
-      const res = await fetch(`${API_BASE}/api/group-chat/reply`, {
+      const res = await fetch("https://eloria-trial.onrender.com/api/group-chat/reply", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

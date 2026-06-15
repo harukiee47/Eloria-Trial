@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { auth } from "../services/firebase";
 import "./Pricing.css";
-import { API_BASE } from "../apiConfig";
 
-const API_BASE = "fetch(`${API_BASE}"; 
+const API_BASE = "https://eloria-trial.onrender.com"; 
 
 export default function Pricing({ onBack }) {
 
@@ -34,7 +33,7 @@ useEffect(() => {
     try {
       const idToken = await user.getIdToken();
 
-      const res = await fetch(`${API_BASE}/api/payments/checkout`, {
+      const res = await fetch("https://eloria-trial.onrender.com/api/payments/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

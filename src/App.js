@@ -15,7 +15,7 @@ import { loadShared } from "./services/shareService";
 import GroupChat from "./components/GroupChat";
 import GroupNotifications from "./components/GroupNotifications";
 import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
-import { API_BASE } from "../apiConfig";
+
 
 
 if (window.location.pathname === "/code") {
@@ -85,7 +85,7 @@ useEffect(() => {
   const fetchPlan = async () => {
     try {
       const token = await auth.currentUser.getIdToken();
-      const res = await fetch(`${API_BASE}/api/membership/status`, {
+      const res = await fetch("https://eloria-trial.onrender.com/api/membership/status", {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -191,6 +191,7 @@ useEffect(() => {
   useEffect(() => {
 const unsubscribe = checkAuth((u) => {
   setUser(u);
+
 
   if (!u) {
     setStage("login");

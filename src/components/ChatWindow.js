@@ -3,7 +3,7 @@ import logo from "../assets/logo.png";
 import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
-import { API_BASE } from "../apiConfig";
+import { API_BASE } from "./config";
 
 const ATTACH_TYPES = {
   image: {
@@ -931,7 +931,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     }));
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ messages: apiMessages }),
@@ -1011,7 +1011,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       .map(m => ({ role: m.sender === "user" ? "user" : "assistant", content: m.text }));
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ messages: apiMessages }),

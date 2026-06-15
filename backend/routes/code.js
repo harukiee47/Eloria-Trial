@@ -51,17 +51,11 @@ router.post("/", verifyUser, requirePro, checkCodeLimit, async (req, res) => {
     res.flushHeaders();
 
     const stream = anthropic.messages.stream({
-  model: MODELS.CODE,
-  max_tokens: 8192,
-  system: ELORIA_CODE_SYSTEM_PROMPT,
-  messages,
-  tools: [
-    {
-      type: "web_search_20250305",
-      name: "web_search",
-    }
-  ],
-});
+      model: MODELS.CODE,
+      max_tokens: 8192,
+      system: ELORIA_CODE_SYSTEM_PROMPT,
+      messages,
+    });
 
     stream.on("text", (text) => {
       res.write(`data: ${JSON.stringify({ text })}\n\n`);
