@@ -43,7 +43,14 @@ export async function loadChats(uid) {
 export async function saveChats(uid, chats) {
   const ref = doc(db, "users", uid);
 
+  const snap = await getDoc(ref);
+
+  const prev = snap.exists() ? snap.data() : {};
+
   await setDoc(ref, {
+    ...prev,
     chats
   });
+
+  await setDoc(ref, { chats }, { merge: true });
 }

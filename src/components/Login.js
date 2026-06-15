@@ -1,7 +1,6 @@
 import React, { useState } from "react"; 
 import { loginWithEmail, loginWithGoogle, signupWithEmail } from "../services/auth";
 import "./Login.css";
-import loginBg from "../assets/login.png"; // background image
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState(""); // for signup
@@ -46,7 +45,6 @@ export default function Login({ onLogin }) {
   return (
     <div
       className="login-root"
-      style={{ backgroundImage: `url(${loginBg})` }}
     >
       <div className="login-overlay" />
 

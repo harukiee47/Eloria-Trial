@@ -2,14 +2,27 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import "./mobile.css";
 
-import SplashScreen from "./components/SplashScreen";
+import EloriaCode from "./components/EloriaCode";
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import { loadChats, saveChats } from "./services/chatService";
+import { checkAuth, logout } from "./services/auth";
+import Pricing from "./components/Pricing";
+import { auth } from "./services/firebase";
+import SharedChatViewer from "./components/SharedChatViewer";
+import { loadShared } from "./services/shareService";
+import GroupChat from "./components/GroupChat";
+import GroupNotifications from "./components/GroupNotifications";
+import { subscribeToGroups, subscribeToInvites, createGroup, GROUP_LIMITS } from "./services/groupService";
 
-
-import { checkAuth } from "./services/auth";
+// ✅ Route to EloriaCode if on /code path
+if (window.location.pathname === "/code") {
+  const root = document.getElementById("root");
+  import("react-dom/client").then(({ createRoot }) => {
+    createRoot(root).render(<EloriaCode />);
+  });
+}
 
 export default function App() {
   const [stage, setStage] = useState("splash");
@@ -20,6 +33,17 @@ export default function App() {
 
   const [chats, setChats] = useState([]);
 const [activeChatId, setActiveChatId] = useState(null);
+const [codeProjects, setCodeProjects] = useState([]);
+const [activeProjectId, setActiveProjectId] = useState(null);
+
+const [showPricing, setShowPricing] = useState(false);
+const [userPlan, setUserPlan] = useState("free");
+const [sharedData, setSharedData] = useState(null);
+const [groups, setGroups] = useState([]);
+const [activeGroupId, setActiveGroupId] = useState(null);
+const [showGroupNotifs, setShowGroupNotifs] = useState(false);
+const [pendingInviteCount, setPendingInviteCount] = useState(0);
+const [mode, setMode] = useState("chat");
 
 useEffect(() => {
   if (!activeChatId && chats.length > 0) {
@@ -31,27 +55,104 @@ useEffect(() => {
   if (!user) return;
 
   const fetchChats = async () => {
-    const data = await loadChats(user.uid);
+  if (!user?.uid) return;
 
-    if (data && data.length > 0) {
-      setChats(data);
-      setActiveChatId(data[0].id);
-    } else {
-      const firstChat = {
-        id: Date.now(),
-        title: "New Chat",
-        messages: []
-      };
+  const data = await loadChats(user.uid);
 
-      setChats([firstChat]);
-      setActiveChatId(firstChat.id);
+  if (Array.isArray(data) && data.length > 0) {
+    setChats(data);
+    setActiveChatId(data[0].id);
+  } else {
+    const firstChat = {
+      id: Date.now(),
+      title: "New Chat",
+      messages: []
+    };
 
-      await saveChats(user.uid, [firstChat]);
-    }
-  };
+    setChats([firstChat]);
+    setActiveChatId(firstChat.id);
+
+    await saveChats(user.uid, [firstChat]);
+  }
+};
 
   fetchChats();
 }, [user]);
+
+useEffect(() => {
+  if (!user) return;
+
+  const fetchPlan = async () => {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch("http://localhost:5001/api/membership/status", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setUserPlan(data.plan || "free");
+    } catch (err) {
+      console.error("Failed to fetch plan:", err);
+    }
+  };
+
+  fetchPlan();
+}, [user]);
+
+useEffect(() => {
+  if (!user) return;
+  const unsub = subscribeToGroups(user.uid, setGroups);
+  return () => unsub();
+}, [user]);
+
+useEffect(() => {
+  if (!user?.email) return;
+  const { subscribeToInvites } = require("./services/groupService");
+  // Already imported above; subscribe for badge count
+  const unsub = subscribeToInvites(user.email, (invites) => {
+    setPendingInviteCount(invites.length);
+  });
+  return () => unsub();
+}, [user]);
+
+async function handleSaveShared(data) {
+  if (!user) return;
+
+  if (data.type === "chat") {
+    const newChat = {
+      id: Date.now(),
+      title: `${data.title} (shared)`,
+      messages: data.messages || [],
+    };
+    const updated = [...chats, newChat];
+    setChats(updated);
+    setActiveChatId(newChat.id);
+    await saveChats(user.uid, updated);
+  } else if (data.type === "project") {
+    const newChats = (data.projectChats || []).map((c, i) => ({
+      id: Date.now() + i + 1,
+      title: `${c.title || "Chat"} (from ${data.title})`,
+      messages: c.messages || [],
+    }));
+    const updated = [...chats, ...newChats];
+    setChats(updated);
+    if (newChats.length > 0) setActiveChatId(newChats[0].id);
+    await saveChats(user.uid, updated);
+  }
+
+  window.history.replaceState({}, "", window.location.pathname);
+}
+
+const createNewProject = () => {
+  const project = {
+    id: Date.now(),
+    name: "New Project",
+    files: []
+  };
+
+  setCodeProjects(prev => [...prev, project]);
+  setActiveProjectId(project.id);
+  setMode("codeWorkspace");
+};
 
 useEffect(() => {
   console.log("USER:", user);
@@ -69,6 +170,18 @@ useEffect(() => {
 }
 }, []);
 
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const shareId = params.get("share");
+  if (!shareId) return;
+
+  loadShared(shareId)
+    .then(data => {
+      if (data) setSharedData(data);
+      else alert("This share link is invalid or has expired.");
+    })
+    .catch(() => alert("Failed to load shared content."));
+}, []);
 
 useEffect(() => {
   console.log("SIDEBAR STATE:", sidebarOpen);
@@ -76,10 +189,18 @@ useEffect(() => {
 
   // AUTH CHECK
   useEffect(() => {
-  const unsubscribe = checkAuth((u) => {
-    setUser(u);
-    setLoading(false);
-  });
+const unsubscribe = checkAuth((u) => {
+  setUser(u);
+  setLoading(false);
+
+  if (!u) {
+    setStage("login");
+    setChats([]);
+    setActiveChatId(null);
+  } else {
+    setStage("chat");
+  }
+});
 
   return unsubscribe;
 }, []);
@@ -87,7 +208,9 @@ useEffect(() => {
   // SAVE DATA
 useEffect(() => {
   if (!user) return;
-  if (!chats.length) return;
+
+  // only save if chats are actually loaded
+  if (chats === null || chats === undefined) return;
 
   saveChats(user.uid, chats);
 }, [chats, user]);
@@ -105,21 +228,6 @@ const activeChat = React.useMemo(() => {
 }, [chats, activeChatId]);
 
 
-  // LOADING SCREEN
- if (loading && stage !== "splash") {
-  return <div className="loading">Loading...</div>;
-}
-  // SPLASH SCREEN
-  if (stage === "splash") {
-    return (
-      <SplashScreen
-        onFinish={() => {
-          setStage(user ? "chat" : "login");
-        }}
-      />
-    );
-  }
-
   // LOGIN SCREEN
   if (stage === "login") {
     return (
@@ -132,10 +240,10 @@ const activeChat = React.useMemo(() => {
     if (prev.length > 0) return prev;
 
     const firstChat = {
-      id: Date.now(),
-      title: "New Chat",
-      messages: []
-    };
+  id: Date.now(),
+  title: "New Chat",
+  messages: []
+};
 
     setActiveChatId(firstChat.id);
     return [firstChat];
@@ -145,10 +253,14 @@ const activeChat = React.useMemo(() => {
     );
   }
 
-
   
+
   // CHAT SCREEN
  
+if (showPricing) {
+  return <Pricing onBack={() => setShowPricing(false)} />;
+}
+
 return (
   <div className="app-shell">
 
@@ -159,6 +271,8 @@ return (
       />
     )}
 
+    
+
     <Sidebar
       user={user}
       chats={chats}
@@ -167,20 +281,69 @@ return (
       setActiveChatId={setActiveChatId}
       sidebarOpen={sidebarOpen}
       setSidebarOpen={setSidebarOpen}
-      onLogout={() => {
-        setUser(null);
-        setActiveChatId(null);
-        setStage("login");
-      }}
+      onLogout={async () => {
+  await logout();
+  setUser(null);
+  setChats([]);
+  setActiveChatId(null);
+  setMode("chat"); // ✅ FIXED HERE
+  setStage("login");
+}}
+        groups={groups}
+  activeGroupId={activeGroupId}
+  setActiveGroupId={setActiveGroupId}
+  pendingInviteCount={pendingInviteCount}
+  setShowGroupNotifs={setShowGroupNotifs}
+  userPlan={userPlan}
+  mode={mode}
+  setMode={setMode}
+  createGroup={createGroup}
+  setShowPricing={setShowPricing}
     />
 
-    <div className="app-main">
-      <ChatWindow
-        user={user}
-        chat={activeChat}
-        setChats={setChats}
-        setSidebarOpen={setSidebarOpen}
+<div className="app-main">
+  {mode === "group" && activeGroupId ? (
+    <GroupChat
+      group={groups.find(g => g.id === activeGroupId)}
+      user={user}
+      userPlan={userPlan}
+      onBack={() => { setMode("chat"); setActiveGroupId(null); }}
+    />
+  ) : (
+    <ChatWindow
+      user={user}
+      chat={activeChat}
+      setChats={setChats}
+      setSidebarOpen={setSidebarOpen}
+      setShowPricing={setShowPricing}
+      userPlan={userPlan}
+    />
+  )}
+
+  {showGroupNotifs && (
+  <GroupNotifications
+    user={user}
+    onAccepted={(groupId) => {
+      setActiveGroupId(groupId);
+      setMode("group");
+      setShowGroupNotifs(false);
+    }}
+    onClose={() => setShowGroupNotifs(false)}
+  />
+)}
+
+{sharedData && (
+      <SharedChatViewer
+        sharedData={sharedData}
+        onDismiss={() => {
+          setSharedData(null);
+          window.history.replaceState({}, "", window.location.pathname);
+        }}
+        onSave={handleSaveShared}
+        isLoggedIn={!!user}
       />
+    )}
+
     </div>
 
   </div>

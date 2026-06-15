@@ -1,90 +1,31 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
-import OpenAI from "openai";
 
+import chatRoutes from "./routes/chat.js";
+import codeRoutes from "./routes/code.js";
+import membershipRoutes from "./routes/membership.js";
+import paymentsRoutes from "./routes/payments.js";
+import groupChatRoutes from "./routes/groupChat.js";
 const app = express();
 
 app.use(cors());
-app.use(express.json());
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+/**
+ * Payments routes are mounted BEFORE the global express.json() because
+ * the /webhook endpoint needs the raw request body for Lemon Squeezy
+ * signature verification. The /checkout endpoint inside payments.js
+ * applies express.json() itself for that single route.
+ */
+app.use("/api/payments", paymentsRoutes);
 
-/* =========================
-   SYSTEM PROMPT
-========================= */
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
-const ELORIA_SYSTEM_PROMPT = `
-You are Eloria AI.
-Created by Kairox and founded by Muhammad Shehroz.
-Be helpful, natural, and intelligent.
-`;
-
-/* =========================
-   CHAT ROUTE
-========================= */
-
-app.post("/api/chat", async (req, res) => {
-  try {
-    const { message, file } = req.body;
-
-    if (!message || !message.trim()) {
-      return res.status(400).json({
-        reply: "Please enter a message.",
-      });
-    }
-
-    console.log("User:", message);
-
-    /* BUILD PROMPT INSIDE ROUTE */
-    let enhancedPrompt = message;
-
-    if (file) {
-      if (file.type === "image") {
-        enhancedPrompt = `User uploaded an image. Describe it. Message: ${message}`;
-      } else if (file.type === "audio") {
-        enhancedPrompt = `User uploaded audio. Transcribe it. Message: ${message}`;
-      } else {
-        enhancedPrompt = `User uploaded a file. Summarize it. Message: ${message}`;
-      }
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: ELORIA_SYSTEM_PROMPT,
-        },
-        {
-          role: "user",
-          content: enhancedPrompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 700,
-    });
-
-    const reply =
-      completion?.choices?.[0]?.message?.content?.trim() ||
-      "Eloria could not generate a response.";
-
-    return res.json({ reply });
-
-  } catch (err) {
-    console.error("AI ERROR:", err);
-
-    return res.status(500).json({
-      reply: "Eloria couldn't respond at the moment.",
-    });
-  }
-});
-
-/* =========================
-   START SERVER
-========================= */
+app.use("/api/chat", chatRoutes);
+app.use("/api/code", codeRoutes);
+app.use("/api/membership", membershipRoutes);
+app.use("/api/group-chat", groupChatRoutes);
 
 const PORT = process.env.PORT || 5001;
 

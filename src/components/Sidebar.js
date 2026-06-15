@@ -1,33 +1,34 @@
 import React, { useState, useEffect, useRef } from "react";
 import logo from "../assets/logo.png";
+import { shareChat, shareProject } from "../services/shareService";
 
 const GLOBAL_STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --font: 'DM Sans', system-ui, sans-serif;
-    --bg-app:      #f9f9f7;
-    --bg-strip:    #f2f1ee;
-    --bg-panel:    #ffffff;
-    --bg-chat:     #ffffff;
-    --border:      #e5e4e0;
-    --border-soft: #eeede9;
-    --t1: #1c1c1a;
-    --t2: #5a5a57;
-    --t3: #9a9a97;
-    --accent:      #c17f2a;
-    --accent-bg:   #fdf3e3;
-    --accent-deep: #a8691e;
-    --danger:      #d64242;
-    --danger-bg:   #fff1f1;
-    --strip-w:     64px;
-    --panel-w:     264px;
-    --r-sm: 6px;
-    --r-md: 10px;
-    --r-lg: 16px;
-    --shadow-panel: 2px 0 20px rgba(0,0,0,0.07);
-    --shadow-pop:   0 8px 32px rgba(0,0,0,0.13);
-  }
+:root {
+  --font: 'DM Sans', system-ui, sans-serif;
+  --bg-app:      #f5f0ea;
+  --bg-strip:    #ede8e1;
+  --bg-panel:    #fdfaf6;
+  --bg-chat:     #FBF6F0;
+  --border:      #cdd0c9;
+  --border-soft: #dde0d9;
+  --t1: #0D3A35;
+  --t2: #3a5a55;
+  --t3: #7a8a84;
+  --accent:      #276152;
+  --accent-bg:   #eaf2ef;
+  --accent-deep: #1a4a3d;
+  --danger:      #c04040;
+  --danger-bg:   #fdf0f0;
+  --strip-w:     64px;
+  --panel-w:     264px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --shadow-panel: 2px 0 20px rgba(13,58,53,0.08);
+  --shadow-pop:   0 8px 32px rgba(13,58,53,0.14);
+}
   html, body, #root {
     height: 100%;
     font-family: var(--font);
@@ -49,7 +50,6 @@ const GLOBAL_STYLE = `
     overflow: hidden;
     transition: margin-left 0.22s cubic-bezier(.4,0,.2,1);
   }
-  /* on mobile the strip is hidden; app-main takes full width */
   @media(max-width: 640px) {
     .app-main { margin-left: 0; }
   }
@@ -72,7 +72,6 @@ const SIDEBAR_STYLE = `
     z-index: 300;
     user-select: none;
   }
-  /* hide strip on mobile — sidebar becomes a full drawer */
   @media(max-width: 640px) {
     .sb-strip { display: none; }
   }
@@ -115,7 +114,6 @@ const SIDEBAR_STYLE = `
   }
   .sb-avatar:hover { box-shadow: 0 0 0 3px rgba(193,127,42,.22); }
 
-  /* popup: on desktop anchors bottom-left of strip; on mobile top-left of drawer */
   .acct-popup {
     position: fixed;
     bottom: 16px;
@@ -133,7 +131,6 @@ const SIDEBAR_STYLE = `
     from { opacity:0; transform:translateY(6px); }
     to   { opacity:1; transform:translateY(0); }
   }
-  /* on mobile the strip is gone, popup sits inside the drawer */
   @media(max-width: 640px) {
     .acct-popup {
       position: absolute;
@@ -162,7 +159,7 @@ const SIDEBAR_STYLE = `
   .acct-logout:hover { background: var(--danger-bg); }
   .acct-logout svg { width:15px; height:15px; flex-shrink:0; }
 
-  /* ── SLIDE PANEL (desktop) ──────────────────────────────── */
+  /* ── SLIDE PANEL ──────────────────────────────────────── */
   .sb-panel {
     position: fixed;
     top: 0;
@@ -179,7 +176,6 @@ const SIDEBAR_STYLE = `
   }
   .sb-panel.open { width: var(--panel-w); }
 
-  /* on mobile panel becomes a full-screen drawer from left:0 */
   @media(max-width: 640px) {
     .sb-panel {
       left: 0;
@@ -202,7 +198,7 @@ const SIDEBAR_STYLE = `
       width: min(300px, 85vw);
       height: 100%;
       display: flex;
-      flex-direction: column;  /* nav top, content middle, account bottom */
+      flex-direction: column;
     }
   }
 
@@ -385,20 +381,164 @@ const SIDEBAR_STYLE = `
   }
   .picker-item:hover { background:#f0f0ec; }
 
-  /* ── CODE PLACEHOLDER ───────────────────────────────────── */
-  .code-ph {
-    flex:1; display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    gap:12px; padding:32px 24px; text-align:center; color:var(--t3);
+  /* ── ELORIA CODE PANEL ──────────────────────────────────── */
+  .code-panel-new {
+    margin: 0 12px 10px;
+    padding: 8px 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--r-md);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: calc(100% - 24px);
+    transition: opacity .13s;
+    flex-shrink: 0;
   }
-  .code-ph svg { width:42px; height:42px; color:#ccc8be; }
-  .code-ph h3  { margin:0; font-size:15px; font-weight:600; color:var(--t2); }
-  .code-ph p   { margin:0; font-size:13px; line-height:1.6; }
-  .code-badge  {
-    display:inline-block; background:var(--accent-bg); color:var(--accent);
-    font-size:10px; font-weight:600; padding:2px 8px; border-radius:20px;
-    letter-spacing:.05em; text-transform:uppercase;
+  .code-panel-new:hover { opacity: .87; }
+  .code-panel-new svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .code-proj-form {
+    margin: 0 12px 10px;
+    background: #fafaf8;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 10px;
+    flex-shrink: 0;
   }
+  .code-proj-form input,
+  .code-proj-form textarea {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid var(--accent);
+    border-radius: var(--r-sm);
+    font-family: var(--font);
+    color: var(--t1);
+    outline: none;
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .code-proj-form textarea {
+    resize: none;
+    min-height: 60px;
+    line-height: 1.5;
+  }
+  .code-proj-form input::placeholder,
+  .code-proj-form textarea::placeholder { color: var(--t3); }
+
+  .code-proj-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--r-sm);
+    margin-bottom: 1px;
+    cursor: pointer;
+    transition: background .12s;
+    position: relative;
+  }
+  .code-proj-item:hover { background: #f4f4f0; }
+
+  .code-proj-icon {
+    width: 28px; height: 28px;
+    background: #e8e4da;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .code-proj-icon svg { width: 13px; height: 13px; color: var(--t2); }
+
+  .code-proj-info { flex: 1; min-width: 0; }
+  .code-proj-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--t1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .code-proj-desc {
+    font-size: 11px;
+    color: var(--t3);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .code-proj-open {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    padding: 3px 7px;
+    border-radius: var(--r-sm);
+    opacity: 0;
+    transition: opacity .12s, background .12s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+  }
+  .code-proj-item:hover .code-proj-open { opacity: 1; }
+  .code-proj-open:hover { background: var(--accent-bg); }
+  .code-proj-open svg { width: 11px; height: 11px; }
+
+  .code-proj-del {
+    background: none;
+    border: none;
+    color: var(--t3);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 3px 5px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity .12s, color .12s;
+    flex-shrink: 0;
+  }
+  .code-proj-item:hover .code-proj-del { opacity: 1; }
+  .code-proj-del:hover { color: var(--danger); }
+
+  .code-panel-empty {
+    font-size: 12px;
+    color: var(--t3);
+    text-align: center;
+    padding: 28px 16px;
+    line-height: 1.7;
+  }
+  .code-panel-empty strong { color: var(--t2); font-weight: 500; display: block; margin-bottom: 4px; }
+
+  .code-open-all {
+    margin: 8px 12px 0;
+    padding: 7px 12px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    color: var(--t2);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: calc(100% - 24px);
+    transition: background .12s, border-color .12s;
+    flex-shrink: 0;
+  }
+  .code-open-all:hover { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .code-open-all svg { width: 13px; height: 13px; }
 
   /* ── OVERLAY ────────────────────────────────────────────── */
   .sb-overlay {
@@ -443,7 +583,7 @@ const SIDEBAR_STYLE = `
   }
   .new-chat-anim { animation:chatSlide .2s ease; }
 
-  /* ── MOBILE NAV BUTTONS inside drawer ───────────────────── */
+  /* ── MOBILE NAV ─────────────────────────────────────────── */
   .sb-mobile-nav {
     display: none;
     flex-shrink: 0;
@@ -496,9 +636,7 @@ const SIDEBAR_STYLE = `
   .sb-mobile-new-chat:hover { opacity: .88; }
   .sb-mobile-new-chat svg { width: 17px; height: 17px; flex-shrink: 0; }
 
-  /* ── MOBILE ACCOUNT (bottom of drawer) ─────────────────── */
-  /* WITH: */
-  /* WITH: */
+  /* ── MOBILE ACCOUNT ─────────────────────────────────────── */
   .sb-mobile-acct {
     flex-shrink: 0;
     padding: 12px;
@@ -510,12 +648,275 @@ const SIDEBAR_STYLE = `
       display: flex;
       flex-shrink: 0;
       margin-top: auto;
-      /* Ensure it's never pushed off screen on real devices */
       position: sticky;
       bottom: 0;
       background: var(--bg-panel);
       z-index: 10;
     }
+  }
+
+  /* ── CODE LOCK MODAL ────────────────────────────────────── */
+  .sb-lock-backdrop {
+    position: fixed; inset: 0; z-index: 600;
+    background: rgba(0,0,0,.28);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn .15s ease;
+  }
+  .sb-lock-modal {
+    background: var(--bg-panel);
+    border-radius: var(--r-lg);
+    width: 300px; margin: 0 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(13,58,53,.18);
+    animation: slideUp .17s ease;
+  }
+  .sb-lock-top {
+    background: linear-gradient(135deg, #0d3a35, #1a5a52);
+    padding: 24px 20px 20px;
+    text-align: center;
+    position: relative;
+  }
+  .sb-lock-close {
+    position: absolute; top: 10px; right: 10px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(255,255,255,.1); border: none;
+    color: rgba(255,255,255,.7); cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s;
+  }
+  .sb-lock-close:hover { background: rgba(255,255,255,.2); color: #fff; }
+  .sb-lock-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: rgba(255,255,255,.1);
+    border: 1.5px solid rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin: 0 auto 12px;
+  }
+  .sb-lock-title {
+    font-size: 16px; font-weight: 700;
+    color: #fff; margin-bottom: 5px;
+  }
+  .sb-lock-sub {
+    font-size: 12px; color: rgba(255,255,255,.6); line-height: 1.5;
+  }
+  .sb-lock-body { padding: 18px 20px 20px; }
+  .sb-lock-desc {
+    font-size: 13px; color: var(--t2);
+    line-height: 1.65; margin-bottom: 16px;
+    text-align: center;
+  }
+  .sb-lock-actions { display: flex; gap: 8px; }
+  .sb-lock-cancel {
+    flex: 1; padding: 10px;
+    background: none; border: 1px solid var(--border);
+    border-radius: var(--r-md); font-size: 13px;
+    color: var(--t2); cursor: pointer;
+    font-family: var(--font); transition: background .12s;
+  }
+  .sb-lock-cancel:hover { background: #f4f4f0; }
+  .sb-lock-upgrade {
+    flex: 2; padding: 10px;
+    background: linear-gradient(135deg, #0d3a35, #1a5a52);
+    border: none; border-radius: var(--r-md);
+    font-size: 13px; font-weight: 600;
+    color: #fff; cursor: pointer;
+    font-family: var(--font); transition: opacity .12s;
+  }
+  .sb-lock-upgrade:hover { opacity: .88; }
+
+  /* ── SHARE TOAST ─────────────────────────────────────── */
+  .sb-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--t1);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 18px;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    z-index: 9999;
+    white-space: nowrap;
+    animation: toastIn .18s ease;
+    font-family: var(--font);
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* ── GROUPS PANEL (distinct from Projects) ───────────────── */
+
+  /* Solid filled button — not dashed like Projects */
+  .grp-new-btn {
+    margin: 0 12px 12px;
+    padding: 8px 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--r-md);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: calc(100% - 24px);
+    transition: opacity .13s;
+    flex-shrink: 0;
+  }
+  .grp-new-btn:hover { opacity: .87; }
+  .grp-new-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .grp-new-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* Inline creation form — same structure, slightly tinted */
+  .grp-form {
+    margin: 0 12px 12px;
+    background: #f2f7f5;
+    border: 1px solid #c5dcd6;
+    border-radius: var(--r-md);
+    padding: 10px;
+    flex-shrink: 0;
+  }
+  .grp-form input {
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 13px;
+    border: 1.5px solid var(--accent);
+    border-radius: var(--r-sm);
+    font-family: var(--font);
+    color: var(--t1);
+    outline: none;
+    background: #fff;
+    margin-bottom: 8px;
+  }
+
+  /* Section label above the list */
+  .grp-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--t3);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    padding: 2px 4px 6px;
+    margin: 0 4px;
+  }
+
+  /* Group row — wider, two-line, rounded-square avatar */
+  .grp-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px 7px 8px;
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: background .12s;
+    margin-bottom: 2px;
+    position: relative;
+    border-left: 3px solid transparent;
+  }
+  .grp-row:hover { background: #f0f5f3; }
+  .grp-row.active {
+    background: var(--accent-bg);
+    border-left-color: var(--accent);
+  }
+
+  /* Rounded-square avatar — distinct from Projects' folder icon
+     and Chats' circular avatars */
+  .grp-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent) 0%, #1a5a42 100%);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: -.01em;
+    box-shadow: 0 2px 6px rgba(39,97,82,.22);
+  }
+  .grp-row.active .grp-avatar {
+    box-shadow: 0 2px 8px rgba(39,97,82,.35);
+  }
+
+  .grp-info { flex: 1; min-width: 0; }
+  .grp-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--t1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .grp-preview {
+    font-size: 11px;
+    color: var(--t3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+  .grp-row.active .grp-name { color: var(--accent-deep); }
+
+  .grp-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Unread badge — pill shape */
+  .grp-badge {
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+  }
+
+  /* Notification dot on the strip icon */
+  .sb-btn .notif-dot {
+    position: absolute; top: 7px; right: 7px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #e05050; border: 1.5px solid var(--bg-strip);
+  }
+
+  /* Empty state inside groups list */
+  .grp-empty {
+    text-align: center;
+    padding: 32px 16px 24px;
+    color: var(--t3);
+  }
+  .grp-empty-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .grp-empty-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--t2);
+    margin-bottom: 5px;
+  }
+  .grp-empty p {
+    font-size: 12px;
+    line-height: 1.6;
   }
 `;
 
@@ -523,23 +924,41 @@ export default function Sidebar({
   user, chats, setChats,
   activeChatId, setActiveChatId,
   onLogout, sidebarOpen, setSidebarOpen,
+  userPlan, setShowPricing,
+  groups = [], activeGroupId, setActiveGroupId,
+  pendingInviteCount = 0, setShowGroupNotifs,
+  mode, setMode, createGroup,
 }) {
-  const [panel, setPanel]             = useState(null);
-  const [search, setSearch]           = useState("");
-  const [openMenuId, setOpenMenuId]   = useState(null);
-  const [showAcct, setShowAcct]       = useState(false);
-  const [showLogout, setShowLogout]   = useState(false);
+  const [panel, setPanel]           = useState(null);
+  const [search, setSearch]         = useState("");
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [showAcct, setShowAcct]     = useState(false);
+  const [showLogout, setShowLogout] = useState(false);
 
-  const [projects, setProjects]           = useState(() => {
+  // chat projects
+  const [projects, setProjects]       = useState(() => {
     try { return JSON.parse(localStorage.getItem("eloria_projects") || "[]"); } catch { return []; }
   });
-  const [openProjId, setOpenProjId]       = useState(null);
-  const [projMenuId, setProjMenuId]       = useState(null);
-  const [newProjName, setNewProjName]     = useState("");
-  const [showNewProj, setShowNewProj]     = useState(false);
-  const [addChatProj, setAddChatProj]     = useState(null);
+  const [openProjId, setOpenProjId]   = useState(null);
+  const [projMenuId, setProjMenuId]   = useState(null);
+  const [newProjName, setNewProjName] = useState("");
+  const [showNewProj, setShowNewProj] = useState(false);
+  const [addChatProj, setAddChatProj] = useState(null);
 
-  const acctRef = useRef(null);
+  // eloria code projects
+  const [codeProjects, setCodeProjects]   = useState(() => {
+    try { return JSON.parse(localStorage.getItem("eloria_code_projects") || "[]"); } catch { return []; }
+  });
+  const [showCodeForm, setShowCodeForm]   = useState(false);
+  const [codeForm, setCodeForm]           = useState({ name: "", description: "" });
+
+  const desktopAcctRef = useRef(null);
+  const mobileAcctRef  = useRef(null);
+  const [showCodeLockModal, setShowCodeLockModal] = useState(false);
+  const [shareToast, setShareToast] = useState("");
+  const [showGroupForm, setShowGroupForm] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   useEffect(() => {
     if (!document.getElementById("eloria-global")) {
@@ -555,23 +974,28 @@ export default function Sidebar({
   }, [projects]);
 
   useEffect(() => {
+    localStorage.setItem("eloria_code_projects", JSON.stringify(codeProjects));
+  }, [codeProjects]);
+
+  useEffect(() => {
     if (chats.some(c => c.animate))
       setChats(chats.map(c => c.animate ? { ...c, animate: false } : c));
   }, [chats, setChats]);
 
   useEffect(() => {
     const h = e => {
-      if (acctRef.current && !acctRef.current.contains(e.target)) setShowAcct(false);
+      if (desktopAcctRef.current && !desktopAcctRef.current.contains(e.target))
+        setShowAcct(false);
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // on mobile, sidebarOpen (from hamburger) opens the drawer showing chats panel
   useEffect(() => {
     if (sidebarOpen) { setPanel("chats"); setSidebarOpen(false); }
   }, [sidebarOpen, setSidebarOpen]);
 
+  /* ── helpers ── */
   const addChat = () => {
     const nc = { id: Date.now(), title: "New Chat", messages: [], animate: true };
     setChats(p => [...p, nc]);
@@ -622,6 +1046,73 @@ export default function Sidebar({
     ));
   };
 
+  // ── Eloria Code helpers ──
+  const createCodeProject = () => {
+    if (!codeForm.name.trim()) return;
+    const proj = {
+      id: Date.now(),
+      name: codeForm.name.trim(),
+      description: codeForm.description.trim(),
+      createdAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    };
+    setCodeProjects(p => [...p, proj]);
+    setCodeForm({ name: "", description: "" });
+    setShowCodeForm(false);
+    openCodeWorkspace(proj.id);
+  };
+
+  const deleteCodeProject = (e, id) => {
+    e.stopPropagation();
+    setCodeProjects(p => p.filter(pr => pr.id !== id));
+  };
+
+  const handleShareChat = async (chat) => {
+    setOpenMenuId(null);
+    try {
+      const url = await shareChat(chat, user);
+      await navigator.clipboard.writeText(url);
+      setShareToast("Link copied to clipboard!");
+      setTimeout(() => setShareToast(""), 3000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create share link.");
+    }
+  };
+
+  const handleShareProject = async (proj) => {
+    setProjMenuId(null);
+    try {
+      const url = await shareProject(proj, chats, user);
+      await navigator.clipboard.writeText(url);
+      setShareToast("Link copied to clipboard!");
+      setTimeout(() => setShareToast(""), 3000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create share link.");
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || creatingGroup) return;
+    setCreatingGroup(true);
+    try {
+      const groupId = await createGroup(user, groupName.trim(), userPlan);
+      setGroupName("");
+      setShowGroupForm(false);
+      setActiveGroupId(groupId);
+      setMode("group");
+      setPanel(null);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const openCodeWorkspace = (projectId) => {
+    window.open(`/code?project=${projectId}`, "_blank");
+  };
+
   const togglePanel = name => {
     setPanel(p => p===name ? null : name);
     setSearch(""); setOpenMenuId(null); setProjMenuId(null);
@@ -635,11 +1126,29 @@ export default function Sidebar({
   };
 
   const filtered = chats.filter(c => c.title?.toLowerCase().includes(search.toLowerCase()));
-  const initials = user?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
+  const initials  = user?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
 
   const CloseX = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  );
+
+  const IconPlus = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  );
+
+  const IconArrow = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+    </svg>
+  );
+
+  const IconFolder = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
     </svg>
   );
 
@@ -672,16 +1181,43 @@ export default function Sidebar({
           <span>Projects</span>
         </button>
 
-        <button className={`sb-btn${panel==="code"?" active":""}`} title="Eloria Code" onClick={()=>togglePanel("code")}>
+        <button
+          className={`sb-btn${panel === "groups" ? " active" : ""}`}
+          title="Groups"
+          onClick={() => togglePanel("groups")}
+          style={{ position: "relative" }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+            <path d="M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+          <span>Groups</span>
+          {pendingInviteCount > 0 && <span className="notif-dot" />}
+        </button>
+
+        <button
+          className={`sb-btn${panel==="code" ? " active" : ""}`}
+          title={userPlan === "pro" || userPlan === "admin" ? "Eloria Code" : "Eloria Code — Pro only"}
+          onClick={() => {
+            if (userPlan !== "pro" && userPlan !== "admin") {
+              setShowCodeLockModal(true);
+            } else {
+              togglePanel("code");
+            }
+          }}
+          style={userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}}
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
           </svg>
-          <span>Code</span>
+          <span>{userPlan !== "pro" && userPlan !== "admin" ? "Code " : "Code"}</span>
         </button>
 
         <div className="sb-spacer" />
 
-        <div className="sb-avatar-wrap" ref={acctRef}>
+        <div className="sb-avatar-wrap" ref={desktopAcctRef}>
           <button className="sb-avatar" onClick={()=>setShowAcct(v=>!v)} title="Account">
             {initials}
           </button>
@@ -695,7 +1231,11 @@ export default function Sidebar({
                 </div>
               </div>
               <div className="acct-div" />
-              <button className="acct-logout" onClick={()=>{setShowAcct(false);setShowLogout(true);}}>
+              <button className="acct-logout" onClick={(e)=>{
+                e.stopPropagation();
+                setShowAcct(false);
+                setTimeout(() => setShowLogout(true), 0);
+              }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
                   <polyline points="16 17 21 12 16 7"/>
@@ -712,7 +1252,7 @@ export default function Sidebar({
       <div className={`sb-panel${panel?" open":""}`}>
         <div className="panel-inner">
 
-          {/* ── MOBILE NAV: New Chat + section buttons (mobile only, always shown at top of drawer) ── */}
+          {/* ── MOBILE NAV ── */}
           <div className="sb-mobile-nav">
             <button className="sb-mobile-new-chat" onClick={addChat}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -720,36 +1260,60 @@ export default function Sidebar({
               </svg>
               New Chat
             </button>
-            <button
-              className={`sb-mobile-nav-btn${panel==="chats"?" active":""}`}
-              onClick={() => togglePanel("chats")}
-            >
+            <button className={`sb-mobile-nav-btn${panel==="chats"?" active":""}`} onClick={() => togglePanel("chats")}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
               </svg>
               Chats
             </button>
-            <button
-              className={`sb-mobile-nav-btn${panel==="projects"?" active":""}`}
-              onClick={() => togglePanel("projects")}
-            >
+            <button className={`sb-mobile-nav-btn${panel==="projects"?" active":""}`} onClick={() => togglePanel("projects")}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
               </svg>
               Projects
             </button>
+
             <button
-              className={`sb-mobile-nav-btn${panel==="code"?" active":""}`}
-              onClick={() => togglePanel("code")}
+              className={`sb-mobile-nav-btn${panel === "groups" ? " active" : ""}`}
+              onClick={() => togglePanel("groups")}
+              style={{ position: "relative" }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                <path d="M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+              Groups
+              {pendingInviteCount > 0 && (
+                <span style={{
+                  marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 9,
+                  background: "#e05050", color: "#fff", fontSize: 10, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px"
+                }}>{pendingInviteCount}</span>
+              )}
+            </button>
+
+            <button
+              className={`sb-mobile-nav-btn${panel==="code" ? " active" : ""}`}
+              onClick={() => {
+                if (userPlan !== "pro" && userPlan !== "admin") {
+                  setPanel(null);
+                  setShowCodeLockModal(true);
+                } else {
+                  togglePanel("code");
+                }
+              }}
+              style={userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
               </svg>
-              Eloria Code
+              Eloria Code {userPlan !== "pro" && userPlan !== "admin" ? "" : ""}
             </button>
           </div>
 
-          {/* CHATS */}
+          {/* ── CHATS PANEL ── */}
           {panel==="chats" && <>
             <div className="panel-hdr">
               <span className="panel-title">Chats</span>
@@ -778,6 +1342,7 @@ export default function Sidebar({
                   {openMenuId===chat.id && (
                     <div className="row-dropdown">
                       <button onClick={()=>{setChats(p=>p.map(c=>c.id===chat.id?{...c,renameOpen:true}:c));setOpenMenuId(null);}}>Rename</button>
+                      <button onClick={() => handleShareChat(chat)}>Share</button>
                       <button className="del" onClick={()=>deleteChat(chat.id)}>Delete</button>
                     </div>
                   )}
@@ -786,7 +1351,7 @@ export default function Sidebar({
             </div>
           </>}
 
-          {/* PROJECTS */}
+          {/* ── PROJECTS PANEL ── */}
           {panel==="projects" && <>
             <div className="panel-hdr">
               <span className="panel-title">Projects</span>
@@ -831,6 +1396,7 @@ export default function Sidebar({
                       <div className="row-dropdown">
                         <button onClick={()=>{setProjects(p=>p.map(pr=>pr.id===proj.id?{...pr,renameOpen:true}:pr));setProjMenuId(null);}}>Rename</button>
                         <button onClick={()=>{setAddChatProj(proj.id);setProjMenuId(null);}}>Add Chat</button>
+                        <button onClick={() => handleShareProject(proj)}>Share</button>
                         <button className="del" onClick={()=>deleteProject(proj.id)}>Delete</button>
                       </div>
                     )}
@@ -866,24 +1432,192 @@ export default function Sidebar({
             </div>
           </>}
 
-          {/* CODE */}
+          {/* ── GROUPS PANEL ── */}
+          {panel === "groups" && <>
+            <div className="panel-hdr">
+              <span className="panel-title">Groups</span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {pendingInviteCount > 0 && (
+                  <button
+                    onClick={() => { setPanel(null); setShowGroupNotifs(true); }}
+                    style={{
+                      background: "#e05050", border: "none", borderRadius: 8,
+                      color: "#fff", fontSize: 12, fontWeight: 600, padding: "4px 10px",
+                      cursor: "pointer", fontFamily: "var(--font)"
+                    }}
+                  >
+                    {pendingInviteCount} invite{pendingInviteCount > 1 ? "s" : ""}
+                  </button>
+                )}
+                <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
+              </div>
+            </div>
+
+            {/* Solid filled "New Group" button — distinct from dashed Projects btn */}
+            <button
+              className="grp-new-btn"
+              onClick={() => setShowGroupForm(v => !v)}
+              disabled={creatingGroup}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              New Group
+            </button>
+
+            {showGroupForm && (
+              <div className="grp-form">
+                <input
+                  autoFocus
+                  placeholder="Group name…"
+                  value={groupName}
+                  onChange={e => setGroupName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") handleCreateGroup();
+                    if (e.key === "Escape") { setShowGroupForm(false); setGroupName(""); }
+                  }}
+                />
+                <div className="npf-actions">
+                  <button
+                    className="btn-create"
+                    onClick={handleCreateGroup}
+                    disabled={!groupName.trim() || creatingGroup}
+                    style={{ opacity: groupName.trim() && !creatingGroup ? 1 : .45 }}
+                  >
+                    {creatingGroup ? "Creating…" : "Create"}
+                  </button>
+                  <button className="btn-cancel" onClick={() => { setShowGroupForm(false); setGroupName(""); }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="panel-list">
+              {groups.length === 0 ? (
+                <div className="grp-empty">
+                  <span className="grp-empty-icon">💬</span>
+                  <div className="grp-empty-title">No groups yet</div>
+                  <p>Create one above or wait for an invite from someone.</p>
+                </div>
+              ) : (
+                <>
+                  {groups.length > 0 && (
+                    <div className="grp-section-label">
+                      {groups.length} group{groups.length !== 1 ? "s" : ""}
+                    </div>
+                  )}
+                  {groups
+                    .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0))
+                    .map(group => {
+                      const unread = group.unreadCounts?.[user?.uid] || 0;
+                      return (
+                        <div
+                          key={group.id}
+                          className={`grp-row${activeGroupId === group.id ? " active" : ""}`}
+                          onClick={() => {
+                            setActiveGroupId(group.id);
+                            setMode("group");
+                            setPanel(null);
+                          }}
+                        >
+                          {/* Rounded-square avatar — visually distinct from circular chat avatars */}
+                          <div className="grp-avatar">
+                            {group.name?.[0]?.toUpperCase() || "G"}
+                          </div>
+                          <div className="grp-info">
+                            <div className="grp-name">{group.name}</div>
+                            <div className="grp-preview">
+                              {group.lastMessage
+                                ? `${group.lastMessage.senderName?.split(" ")[0]}: ${group.lastMessage.text?.slice(0, 28)}…`
+                                : `${group.members?.length || 1} member${group.members?.length !== 1 ? "s" : ""}`}
+                            </div>
+                          </div>
+                          {unread > 0 && (
+                            <div className="grp-meta">
+                              <div className="grp-badge">{unread > 99 ? "99+" : unread}</div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </>
+              )}
+            </div>
+          </>}
+
+          {/* ── ELORIA CODE PANEL ── */}
           {panel==="code" && <>
             <div className="panel-hdr">
               <span className="panel-title">Eloria Code</span>
               <button className="panel-x" onClick={()=>setPanel(null)}><CloseX/></button>
             </div>
-            <div className="code-ph">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-              </svg>
-              <span className="code-badge">Coming soon</span>
-              <h3>Eloria Code</h3>
-              <p>Your AI-powered coding environment is on its way.</p>
+            <button className="code-panel-new" onClick={()=>setShowCodeForm(v=>!v)}>
+              <IconPlus /> New project
+            </button>
+            {showCodeForm && (
+              <div className="code-proj-form">
+                <input
+                  autoFocus
+                  placeholder="Project name…"
+                  value={codeForm.name}
+                  onChange={e => setCodeForm(f => ({ ...f, name: e.target.value }))}
+                  onKeyDown={e => { if (e.key === "Escape") { setShowCodeForm(false); setCodeForm({ name: "", description: "" }); } }}
+                />
+                <textarea
+                  placeholder="Description (optional)…"
+                  value={codeForm.description}
+                  onChange={e => setCodeForm(f => ({ ...f, description: e.target.value }))}
+                />
+                <div className="npf-actions">
+                  <button
+                    className="btn-create"
+                    disabled={!codeForm.name.trim()}
+                    onClick={createCodeProject}
+                    style={{ opacity: codeForm.name.trim() ? 1 : 0.45, cursor: codeForm.name.trim() ? "pointer" : "not-allowed" }}
+                  >
+                    Create &amp; open
+                  </button>
+                  <button className="btn-cancel" onClick={() => { setShowCodeForm(false); setCodeForm({ name: "", description: "" }); }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="panel-list">
+              {codeProjects.length === 0
+                ? <div className="code-panel-empty">
+                    <strong>No code projects yet</strong>
+                    Create a project to open the Eloria Code workspace in a new tab.
+                  </div>
+                : <>
+                    {codeProjects.map(proj => (
+                      <div key={proj.id} className="code-proj-item" onClick={() => openCodeWorkspace(proj.id)}>
+                        <div className="code-proj-icon"><IconFolder /></div>
+                        <div className="code-proj-info">
+                          <div className="code-proj-name">{proj.name}</div>
+                          <div className="code-proj-desc">{proj.description || proj.createdAt}</div>
+                        </div>
+                        <button className="code-proj-open" onClick={e => { e.stopPropagation(); openCodeWorkspace(proj.id); }} title="Open workspace">
+                          Open <IconArrow />
+                        </button>
+                        <button className="code-proj-del" onClick={e => deleteCodeProject(e, proj.id)} title="Delete">✕</button>
+                      </div>
+                    ))}
+                    <button className="code-open-all" onClick={() => window.open("/code", "_blank")}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:13,height:13}}>
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                      Open Eloria Code workspace
+                    </button>
+                  </>
+              }
             </div>
           </>}
 
-          {/* ── MOBILE ACCOUNT — pinned to bottom of drawer ── */}
-          <div className="sb-mobile-acct" ref={acctRef}>
+          {/* ── MOBILE ACCOUNT ── */}
+          <div className="sb-mobile-acct" ref={mobileAcctRef}>
             <div style={{position:"relative", width:"100%", display:"flex", alignItems:"center", gap:"10px"}}>
               <button className="sb-avatar" onClick={()=>setShowAcct(v=>!v)} style={{flexShrink:0}}>
                 {initials}
@@ -893,7 +1627,7 @@ export default function Sidebar({
                 <div style={{fontSize:"11px", color:"var(--t3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{user?.email||""}</div>
               </div>
               <button
-                onClick={()=>{setShowLogout(true);}}
+                onClick={()=>{ setShowLogout(true); }}
                 style={{background:"none",border:"none",cursor:"pointer",color:"var(--danger)",padding:"6px",borderRadius:"var(--r-sm)",display:"flex",alignItems:"center"}}
                 title="Log out"
               >
@@ -913,7 +1647,11 @@ export default function Sidebar({
                     </div>
                   </div>
                   <div className="acct-div" />
-                  <button className="acct-logout" onClick={()=>{setShowAcct(false);setShowLogout(true);}}>
+                  <button className="acct-logout" onClick={(e)=>{
+                    e.stopPropagation();
+                    setShowAcct(false);
+                    setTimeout(() => setShowLogout(true), 0);
+                  }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                       <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
                       <polyline points="16 17 21 12 16 7"/>
@@ -928,6 +1666,41 @@ export default function Sidebar({
 
         </div>
       </div>
+
+      {/* CODE LOCK MODAL */}
+      {showCodeLockModal && (
+        <div className="sb-lock-backdrop" onClick={() => setShowCodeLockModal(false)}>
+          <div className="sb-lock-modal" onClick={e => e.stopPropagation()}>
+            <div className="sb-lock-top">
+              <button className="sb-lock-close" onClick={() => setShowCodeLockModal(false)}>✕</button>
+              <div className="sb-lock-icon"></div>
+              <div className="sb-lock-title">Eloria Code</div>
+              <div className="sb-lock-sub">Available on the Pro plan</div>
+            </div>
+            <div className="sb-lock-body">
+              <div className="sb-lock-desc">
+                Eloria Code is a specialist AI workspace tuned for software development. Upgrade to Pro to unlock it.
+              </div>
+              <div className="sb-lock-actions">
+                <button className="sb-lock-cancel" onClick={() => setShowCodeLockModal(false)}>
+                  Later
+                </button>
+                <button className="sb-lock-upgrade" onClick={() => {
+                  setShowCodeLockModal(false);
+                  setPanel(null);
+                  setShowPricing(true);
+                }}>
+                  Upgrade to Pro →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {shareToast && (
+        <div className="sb-toast">{shareToast}</div>
+      )}
 
       {/* LOGOUT MODAL */}
       {showLogout && (

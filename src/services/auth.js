@@ -11,13 +11,20 @@ import {
 // Listen to auth state changes
 export const checkAuth = (setUser) => {
   const unsubscribe = onAuthStateChanged(auth, (user) => {
+
+    console.log("AUTH CHANGED:", user);
+
     if (user) {
-      setUser({ uid: user.uid, email: user.email });
+      setUser({
+        uid: user.uid,
+        email: user.email
+      });
     } else {
       setUser(null);
     }
   });
-  return unsubscribe; // cleanup function
+
+  return unsubscribe;
 };
 
 // Email + Password Login

@@ -1,0 +1,31 @@
+export const PLANS = {
+  free: {
+    messages: 50,
+    codeRequests: 10,
+    imageRequests: 4,
+    eloriaCodeAccess: false,
+  },
+
+  pro: {
+    messages: 100,
+    codeRequests: 25,
+    imageRequests: 12,
+    eloriaCodeAccess: true,
+  },
+
+  admin: {
+    messages: Infinity,
+    codeRequests: Infinity,
+    imageRequests: Infinity,
+    eloriaCodeAccess: true,
+  },
+};
+
+/**
+ * Returns the limits object for a given user (based on role/plan).
+ */
+export function getLimitsForUser(user) {
+  if (user.role === "admin") return PLANS.admin;
+  if (user.plan === "pro") return PLANS.pro;
+  return PLANS.free;
+}
