@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { auth } from "../services/firebase";
 import "./Pricing.css";
+import { API_BASE } from "../config";
 
 const API_BASE = "fetch(`${API_BASE}"; 
 
