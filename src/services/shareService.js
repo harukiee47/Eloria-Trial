@@ -1,7 +1,7 @@
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
-const APP_URL = "https://eloria-ai.vercel.app"; // replace with your real domain
+const APP_URL = "https://eloria-trial.vercel.app/"; // replace with your real domain
 
 /**
  * Share a chat — saves it to sharedChats/{shareId} in Firestore.
