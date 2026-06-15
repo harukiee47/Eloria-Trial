@@ -3,7 +3,7 @@ import logo from "../assets/logo.png";
 import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
-import { API_BASE } from "../config";
+import { API_BASE } from "../apiConfig";
 
 const ATTACH_TYPES = {
   image: {

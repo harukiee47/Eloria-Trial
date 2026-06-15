@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { API_BASE } from "../config";
+import { API_BASE } from "../apiConfig";
 /* =========================
    AI MESSAGE API (your current code)
 ========================= */

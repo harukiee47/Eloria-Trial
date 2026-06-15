@@ -6,7 +6,7 @@ import logo from "../assets/logo.png";
 import EloriaCodeWelcome from "./EloriaCodeWelcome";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
-import { API_BASE } from "../config";
+import { API_BASE } from "../apiConfig";
 
 // ─── SUPPORTED CODE EXTENSIONS ────────────────────────────────────────────────
 const SUPPORTED_EXTS = new Set([
