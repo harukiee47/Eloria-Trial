@@ -16,6 +16,13 @@ const GC_STYLE = `
     font-family: var(--font);
   }
 
+  /* ── TOUCH / MOBILE BASE TWEAKS ─────────────────────────── */
+  .gc-header-back, .gc-icon-btn, .gc-send-btn, .gc-info-close,
+  .gc-reply-bar-close, .gc-rename-save, .gc-invite-btn,
+  .gc-kick-btn, .gc-danger-btn, .gc-ctx-item {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   /* ── HEADER ─────────────────────────────────────────────── */
   .gc-header {
     display: flex;
@@ -61,6 +68,7 @@ const GC_STYLE = `
     flex: 1; overflow-y: auto; padding: 16px 16px 8px;
     display: flex; flex-direction: column; gap: 2px;
     scrollbar-width: thin; scrollbar-color: #e0e0da transparent;
+    -webkit-overflow-scrolling: touch;
   }
   .gc-messages::-webkit-scrollbar { width: 4px; }
   .gc-messages::-webkit-scrollbar-thumb { background: #ddddd8; border-radius: 2px; }
@@ -99,6 +107,10 @@ const GC_STYLE = `
     margin-bottom: 2px; position: relative;
   }
   .gc-msg-row.self { flex-direction: row-reverse; }
+  .gc-msg-row.pressing .gc-bubble {
+    opacity: .6;
+    transform: scale(.985);
+  }
 
   .gc-msg-avatar {
     width: 28px; height: 28px; border-radius: 50%;
@@ -155,6 +167,9 @@ const GC_STYLE = `
     padding: 9px 13px; border-radius: 16px;
     font-size: 13.5px; line-height: 1.55; color: var(--t1);
     word-break: break-word; cursor: default;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity .12s, transform .12s;
   }
   .gc-bubble.other {
     background: #fff;
@@ -209,6 +224,9 @@ const GC_STYLE = `
   .gc-typing-label { font-size: 12px; color: var(--t3); font-style: italic; }
 
   /* ── CONTEXT MENU ────────────────────────────────────────── */
+  .gc-ctx-backdrop {
+    display: none;
+  }
   .gc-ctx-menu {
     position: fixed;
     background: var(--bg-panel);
@@ -223,6 +241,10 @@ const GC_STYLE = `
   @keyframes ctxIn {
     from { opacity: 0; transform: scale(.95); }
     to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes ctxSheetIn {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0); }
   }
   .gc-ctx-item {
     display: flex;
@@ -245,6 +267,11 @@ const GC_STYLE = `
   .gc-ctx-item.danger:hover { background: var(--danger-bg); }
   .gc-ctx-item svg { width: 14px; height: 14px; flex-shrink: 0; }
   .gc-ctx-divider { height: 1px; background: var(--border-soft); margin: 3px 6px; }
+
+  /* ── BOTTOM-SHEET DRAG HANDLE (mobile only) ─────────────── */
+  .gc-sheet-handle {
+    display: none;
+  }
 
   /* ── REPLY PREVIEW BAR (above input) ────────────────────── */
   .gc-reply-bar {
@@ -424,6 +451,132 @@ const GC_STYLE = `
 
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes slideUpSheet { from{transform:translateY(100%)} to{transform:translateY(0)} }
+
+  /* ══════════════════════════════════════════════════════════
+     MOBILE OPTIMIZATIONS
+     ══════════════════════════════════════════════════════════ */
+  @media (max-width: 640px) {
+    /* Header — tighter spacing, larger tap targets */
+    .gc-header {
+      padding: 10px 12px;
+      gap: 8px;
+    }
+    .gc-header-back,
+    .gc-icon-btn {
+      padding: 9px;
+      min-width: 40px;
+      min-height: 40px;
+      touch-action: manipulation;
+    }
+    .gc-header-back svg,
+    .gc-icon-btn svg {
+      width: 19px; height: 19px;
+    }
+    .gc-header-avatar {
+      width: 32px; height: 32px; font-size: 12px;
+    }
+    .gc-header-name { font-size: 14px; }
+    .gc-header-members { font-size: 10.5px; }
+
+    /* Messages — more room for bubbles, larger text */
+    .gc-messages { padding: 12px 10px 6px; }
+    .gc-msg-content { max-width: 84%; }
+    .gc-msg-avatar { width: 26px; height: 26px; font-size: 10.5px; }
+    .gc-bubble {
+      font-size: 14.5px;
+      padding: 9px 12px;
+    }
+
+    .gc-reply-bar { padding: 8px 10px; }
+
+    /* Input bar — respect safe-area + avoid iOS auto-zoom */
+    .gc-input-bar {
+      padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+    .gc-eloria-note { font-size: 10.5px; margin-bottom: 6px; }
+    .gc-textarea {
+      font-size: 16px;
+      padding: 10px 12px;
+      border-radius: 18px;
+    }
+    .gc-send-btn {
+      width: 44px; height: 44px;
+      border-radius: 14px;
+      touch-action: manipulation;
+    }
+
+    /* Long-press dismiss backdrop */
+    .gc-ctx-backdrop {
+      display: block;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.25);
+      z-index: 799;
+      animation: fadeIn .12s ease;
+    }
+
+    /* Context menu → bottom action sheet */
+    .gc-ctx-menu {
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      top: auto !important;
+      width: 100%;
+      min-width: 0;
+      border-radius: 16px 16px 0 0;
+      padding: 6px;
+      padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -8px 28px rgba(13,58,53,.16);
+      animation: ctxSheetIn .16s ease;
+    }
+    .gc-ctx-item {
+      padding: 14px 14px;
+      font-size: 15px;
+    }
+
+    /* Bottom-sheet drag handles */
+    .gc-sheet-handle {
+      display: block;
+      width: 36px; height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      margin: 8px auto 4px;
+    }
+
+    /* Info panel → bottom sheet */
+    .gc-info-backdrop { align-items: flex-end; }
+    .gc-info-panel {
+      width: 100%;
+      max-width: 100%;
+      margin: 0;
+      max-height: 88vh;
+      border-radius: 18px 18px 0 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      animation: slideUpSheet .2s ease;
+    }
+    .gc-info-hdr { padding: 8px 16px 12px; }
+    .gc-info-close {
+      width: 34px; height: 34px;
+      touch-action: manipulation;
+    }
+    .gc-member-row { padding: 9px 0; }
+    .gc-member-av { width: 32px; height: 32px; }
+    .gc-kick-btn {
+      padding: 6px 10px;
+      font-size: 12.5px;
+      touch-action: manipulation;
+    }
+    .gc-invite-input, .gc-invite-btn,
+    .gc-rename-input, .gc-rename-save {
+      font-size: 14px;
+      padding: 9px 12px;
+    }
+    .gc-danger-btn {
+      padding: 12px;
+      font-size: 14px;
+      touch-action: manipulation;
+    }
+  }
 `;
 
 function formatTime(ts) {
@@ -459,6 +612,11 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
 
 
   const [replyTo, setReplyTo] = useState(null); 
+
+  // ── mobile long-press (tap-and-hold) support ────────────────
+  const [pressedMsgId, setPressedMsgId] = useState(null);
+  const longPressTimer = useRef(null);
+  const longPressPos   = useRef(null);
 
   const bottomRef   = useRef(null);
   const textareaRef = useRef(null);
@@ -532,6 +690,44 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   }, []);
 
 
+  // ── Long-press handlers (tap-and-hold to open the action sheet
+  //    on touch devices, where right-click isn't available) ──────
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    longPressPos.current = null;
+    setPressedMsgId(null);
+  }, []);
+
+  const handleTouchStart = useCallback((e, msg) => {
+    if (msg.deleted) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    longPressPos.current = { x: touch.clientX, y: touch.clientY };
+    setPressedMsgId(msg.id || null);
+    longPressTimer.current = setTimeout(() => {
+      setCtxMenu({ x: touch.clientX, y: touch.clientY, msg });
+      setPressedMsgId(null);
+      longPressTimer.current = null;
+    }, 480);
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!longPressPos.current) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const dx = Math.abs(touch.clientX - longPressPos.current.x);
+    const dy = Math.abs(touch.clientY - longPressPos.current.y);
+    if (dx > 10 || dy > 10) clearLongPress();
+  }, [clearLongPress]);
+
+  const handleTouchEnd = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
+
   const handleReply = () => {
     if (!ctxMenu) return;
     const { msg } = ctxMenu;
@@ -542,6 +738,18 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     });
     setCtxMenu(null);
     textareaRef.current?.focus();
+  };
+
+
+  const handleCopyMsg = async () => {
+    if (!ctxMenu) return;
+    const { msg } = ctxMenu;
+    setCtxMenu(null);
+    try {
+      await navigator.clipboard.writeText(msg.text || "");
+    } catch (err) {
+      console.error("Copy error:", err);
+    }
   };
 
 
@@ -628,8 +836,16 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   }
 };
 
+  // On touch devices, the on-screen keyboard's Enter/Return key is the
+  // only easy way to add a newline (no convenient Shift key), so don't
+  // hijack it for sending — let people use the Send button instead.
+  const isCoarsePointer =
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(pointer: coarse)").matches;
+
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isCoarsePointer) {
       e.preventDefault();
       handleSend();
     }
@@ -750,8 +966,12 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
             return (
               <div
                 key={item.key}
-                className={`gc-msg-row${isSelf ? " self" : ""}`}
+                className={`gc-msg-row${isSelf ? " self" : ""}${pressedMsgId && pressedMsgId === msg.id ? " pressing" : ""}`}
                 onContextMenu={(e) => handleContextMenu(e, msg)}
+                onTouchStart={(e) => handleTouchStart(e, msg)}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
               >
                 {!isSelf && (
                   <div className={`gc-msg-avatar${isEloria ? " eloria-av" : ""}`}>
@@ -859,38 +1079,53 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
 
       {/* ── CONTEXT MENU ── */}
       {ctxMenu && (
-        <div className="gc-ctx-menu" style={ctxStyle} ref={ctxRef}>
-          {/* Reply — available on any non-deleted message */}
-          <button className="gc-ctx-item" onClick={handleReply}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 17 4 12 9 7"/>
-              <path d="M20 18v-2a4 4 0 00-4-4H4"/>
-            </svg>
-            Reply
-          </button>
+        <>
+          <div className="gc-ctx-backdrop" onClick={() => setCtxMenu(null)} />
+          <div className="gc-ctx-menu" style={ctxStyle} ref={ctxRef}>
+            <div className="gc-sheet-handle" />
 
-          {/* Delete — only own messages, only if not already deleted */}
-          {ctxMenu.msg.senderId === uid && !ctxMenu.msg.deleted && (
-            <>
-              <div className="gc-ctx-divider" />
-              <button className="gc-ctx-item danger" onClick={handleDeleteMsg}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-                  <path d="M10 11v6M14 11v6"/>
-                  <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-                </svg>
-                Delete message
-              </button>
-            </>
-          )}
-        </div>
+            {/* Reply — available on any non-deleted message */}
+            <button className="gc-ctx-item" onClick={handleReply}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 17 4 12 9 7"/>
+                <path d="M20 18v-2a4 4 0 00-4-4H4"/>
+              </svg>
+              Reply
+            </button>
+
+            {/* Copy — available on any non-deleted message */}
+            <button className="gc-ctx-item" onClick={handleCopyMsg}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+              Copy
+            </button>
+
+            {/* Delete — only own messages, only if not already deleted */}
+            {ctxMenu.msg.senderId === uid && !ctxMenu.msg.deleted && (
+              <>
+                <div className="gc-ctx-divider" />
+                <button className="gc-ctx-item danger" onClick={handleDeleteMsg}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                    <path d="M10 11v6M14 11v6"/>
+                    <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                  </svg>
+                  Delete message
+                </button>
+              </>
+            )}
+          </div>
+        </>
       )}
 
       {/* Info / Settings panel */}
       {showInfo && (
         <div className="gc-info-backdrop" onClick={() => setShowInfo(false)}>
           <div className="gc-info-panel" onClick={e => e.stopPropagation()}>
+            <div className="gc-sheet-handle" />
             <div className="gc-info-hdr">
               <h3>Group Info</h3>
               <button className="gc-info-close" onClick={() => setShowInfo(false)}>✕</button>
