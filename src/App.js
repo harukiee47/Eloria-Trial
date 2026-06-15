@@ -85,7 +85,7 @@ useEffect(() => {
   const fetchPlan = async () => {
     try {
       const token = await auth.currentUser.getIdToken();
-      const res = await fetch("http://localhost:5001/api/membership/status", {
+      const res = await fetch("https://localhost:5001/api/membership/status", {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();

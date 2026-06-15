@@ -605,7 +605,7 @@ export default function EloriaCode() {
 
         try {
           const token = await u.getIdToken();
-          const res = await fetch("http://localhost:5001/api/membership/status", {
+          const res = await fetch("https://localhost:5001/api/membership/status", {
             headers: { Authorization: `Bearer ${token}` }
           });
           const data = await res.json();
@@ -866,7 +866,7 @@ export default function EloriaCode() {
       }));
 
     try {
-      const res = await fetch("http://localhost:5001/api/code", {
+      const res = await fetch("https://localhost:5001/api/code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

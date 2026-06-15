@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { auth } from "../services/firebase";
 import "./Pricing.css";
 
-const API_BASE = "http://localhost:5001"; 
+const API_BASE = "https://localhost:5001"; 
 
 export default function Pricing({ onBack }) {
 

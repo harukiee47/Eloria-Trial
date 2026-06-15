@@ -582,7 +582,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   const callEloriaReply = async (question) => {
     try {
       const token = await auth.currentUser.getIdToken();
-      const res = await fetch("http://localhost:5001/api/group-chat/reply", {
+      const res = await fetch("https://localhost:5001/api/group-chat/reply", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
