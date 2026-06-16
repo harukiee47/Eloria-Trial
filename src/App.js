@@ -367,11 +367,13 @@ setActiveDM={setActiveDM}
             onBack={() => { setMode("chat"); setActiveGroupId(null); }}
           />
         ) : mode === "dm" && activeDM ? (
-          <DMWindow
-            user={user}
-            friend={activeDM}
-            onBack={() => { setMode("chat"); setActiveDM(null); }}
-          />
+  <DMWindow
+    user={user}
+    friend={activeDM}
+    friends={friendsData.friends || []}
+    onSelectFriend={(f) => setActiveDM(f)}
+    onBack={() => { setMode("chat"); setActiveDM(null); }}
+  />
         ) : (
           <ChatWindow
             user={user}

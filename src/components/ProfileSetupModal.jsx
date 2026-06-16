@@ -98,7 +98,7 @@ export default function ProfileSetupModal({ user, onComplete }) {
           <label className="psm-label">Display name</label>
           <input
             className="psm-input"
-            placeholder="e.g. John Smith"
+            placeholder="e.g. Ahmed"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             maxLength={40}
@@ -110,7 +110,7 @@ export default function ProfileSetupModal({ user, onComplete }) {
           <label className="psm-label">Username</label>
           <input
             className={`psm-input${formatError ? " error" : ""}`}
-            placeholder="e.g. john_smith.99"
+            placeholder="e.g. ahmed_ali.99"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             maxLength={24}
