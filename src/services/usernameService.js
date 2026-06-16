@@ -1,6 +1,6 @@
 // src/services/usernameService.js
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, runTransaction } from "firebase/firestore";
+import { doc, getDoc, runTransaction } from "firebase/firestore";
 
 // Allowed: letters, numbers, and . , _ ! @
 const USERNAME_REGEX = /^[A-Za-z0-9.,_!@]+$/;

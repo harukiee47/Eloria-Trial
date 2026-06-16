@@ -71,7 +71,6 @@ export default function App() {
   const [sharedData, setSharedData]     = useState(null);
   const [groups, setGroups]             = useState([]);
   const [activeGroupId, setActiveGroupId] = useState(null);
-  const [showGroupNotifs, setShowGroupNotifs] = useState(false);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
   const [mode, setMode]                 = useState("chat");
   const [showNotifPanel, setShowNotifPanel] = useState(false);
