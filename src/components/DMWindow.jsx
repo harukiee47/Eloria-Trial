@@ -9,6 +9,7 @@ const DM_STYLE = `
     display: flex; width: 100%; height: 100vh; overflow: hidden;
     background: var(--bg-app);
   }
+
   /* ── DM LEFT SIDEBAR ── */
   .dm-sidebar {
     width: 240px; flex-shrink: 0;
@@ -27,38 +28,50 @@ const DM_STYLE = `
     .dm-sidebar .dm-friend-row { justify-content: center; padding: 8px 0; }
     .dm-sidebar .dm-my-profile { justify-content: center; padding: 12px 0; }
     .dm-back-btn span { display: none; }
-    .dm-back-btn { justify-content: center; padding: 8px 0; width: 100%; }
+    .dm-back-btn { justify-content: center; padding: 10px 0; width: 100%; }
   }
+
+  /* Back button — flush to sidebar edges */
   .dm-back-btn {
     display: flex; align-items: center; gap: 8px;
-    margin: 12px 10px 4px; padding: 8px 10px; border-radius: 10px;
+    margin: 0; padding: 12px 14px;
     border: none; background: none; cursor: pointer;
     color: var(--t2); font-size: 13px; font-weight: 500;
     font-family: var(--font); transition: background 0.12s;
-    width: calc(100% - 20px);
+    width: 100%; box-sizing: border-box;
   }
   .dm-back-btn:hover { background: var(--bg-panel); color: var(--t1); }
+
   .dm-my-profile {
     display: flex; align-items: center; gap: 10px;
-    padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
-  .dm-my-name { font-size: 13px; font-weight: 700; color: var(--t1);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dm-my-name {
+    font-size: 13px; font-weight: 700; color: var(--t1);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .dm-my-username { font-size: 11px; color: var(--t3); }
+
   .dm-section-label {
-    padding: 12px 14px 6px; font-size: 10px; font-weight: 700;
+    padding: 10px 14px 6px; font-size: 10px; font-weight: 700;
     color: var(--t3); text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0;
   }
-  .dm-friends-list { flex: 1; overflow-y: auto; padding: 0 6px 12px; }
+
+  /* Friends list — no side padding so rows go edge-to-edge */
+  .dm-friends-list { flex: 1; overflow-y: auto; padding: 0 0 12px; }
+
   .dm-friend-row {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px; border-radius: 10px; cursor: pointer;
-    margin-bottom: 2px; transition: background 0.12s;
+    padding: 8px 14px; cursor: pointer;
+    margin-bottom: 1px; transition: background 0.12s;
   }
   .dm-friend-row:hover { background: var(--bg-panel); }
   .dm-friend-row.active { background: var(--accent-bg); }
-  .dm-friend-name { font-size: 13px; font-weight: 600; color: var(--t1);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .dm-friend-name {
+    font-size: 13px; font-weight: 600; color: var(--t1);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .dm-friend-status { font-size: 11px; color: var(--t3); margin-top: 1px; }
   .dm-no-friends { font-size: 12px; color: var(--t3); padding: 16px 14px; line-height: 1.6; }
 
@@ -74,7 +87,7 @@ const DM_STYLE = `
   }
   .dm-messages {
     flex: 1; overflow-y: auto; padding: 20px 18px;
-    display: flex; flex-direction: column; gap: 4px;
+    display: flex; flex-direction: column; gap: 2px;
   }
   .dm-start-notice {
     text-align: center; margin-bottom: 28px; padding: 0 16px;
@@ -93,18 +106,18 @@ const DM_STYLE = `
     font-size: 13.5px; font-family: var(--font);
     background: var(--bg-app); color: var(--t1);
     resize: none; min-height: 42px; max-height: 120px;
-    line-height: 1.4; overflow-y: auto;
+    line-height: 1.45; overflow-y: auto;
     transition: border-color 0.13s;
+    display: block;
   }
   .dm-input:focus { border-color: var(--accent); }
- .dm-send-btn {
-  width: 42px; height: 42px; border-radius: 50%; border: none;
-  background: var(--accent); color: #fff;
-  cursor: pointer; transition: opacity 0.13s;
-  flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-}
-.dm-send-btn:disabled { opacity: 0.4; cursor: default; }
+  .dm-send-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: none;
+    background: var(--accent); color: #fff;
+    cursor: pointer; transition: opacity 0.13s;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
   .dm-send-btn:disabled { opacity: 0.4; cursor: default; }
   .dm-attach-btn {
     width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border);
@@ -113,22 +126,36 @@ const DM_STYLE = `
     color: var(--t2); transition: background 0.12s, color 0.12s;
   }
   .dm-attach-btn:hover { background: var(--accent-bg); color: var(--accent); }
+  .dm-attach-btn:disabled { opacity: 0.4; cursor: default; }
 
   /* ── MESSAGE BUBBLES ── */
   .dm-msg-row {
-    display: flex; align-items: flex-end; gap: 8px; margin-bottom: 2px;
+    display: flex; align-items: flex-end; gap: 8px;
+    /* No margin-bottom — gap on .dm-messages handles spacing */
   }
   .dm-msg-row.mine { flex-direction: row-reverse; }
+
+  /* Group consecutive messages from same sender closer together */
+  .dm-msg-row + .dm-msg-row { margin-top: 2px; }
+  .dm-msg-row.new-group { margin-top: 10px; }
+
   .dm-msg-avatar {
     width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, var(--accent), #e8a84a);
     color: #fff; font-size: 11px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
-    margin-bottom: 2px;
+    align-self: flex-end;
   }
+  .dm-msg-avatar.hidden { visibility: hidden; }
+
   .dm-bubble {
-    max-width: 65%; padding: 9px 13px; border-radius: 18px;
-    font-size: 13.5px; line-height: 1.5; word-break: break-word;
+    max-width: 65%;
+    padding: 8px 13px;
+    border-radius: 18px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    word-break: break-word;
+    white-space: pre-wrap;   /* preserve newlines, wrap long words */
   }
   .dm-bubble.theirs {
     background: var(--bg-panel); color: var(--t1);
@@ -140,7 +167,7 @@ const DM_STYLE = `
     border-bottom-right-radius: 4px;
   }
 
-  /* ── FILE UPLOAD ── */
+  /* ── FILE UPLOAD PROGRESS ── */
   .dm-upload-bar {
     display: flex; align-items: center; gap: 10px;
     padding: 8px 12px; background: var(--accent-bg);
@@ -155,6 +182,8 @@ const DM_STYLE = `
     height: 100%; background: var(--accent);
     transition: width 0.2s;
   }
+
+  /* ── FILE BUBBLE ── */
   .dm-file-bubble {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 12px;
@@ -207,6 +236,7 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
   const bottomRef = useRef(null);
   const unsubRef = useRef(() => {});
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   // Inject styles once
   useEffect(() => {
@@ -244,11 +274,23 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Auto-resize textarea
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    }
+  };
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || !dmId || sending) return;
     setSending(true);
     setInput("");
+    // Reset textarea height
+    if (textareaRef.current) textareaRef.current.style.height = "42px";
     try {
       await sendDM(dmId, user.uid, text);
     } catch (e) {
@@ -290,9 +332,9 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
     );
   };
 
-  const Avatar = ({ name, size = 28 }) => (
-    <div className="dm-msg-avatar" style={{ width: size, height: size, fontSize: size * 0.38 }}>
-      {name?.[0]?.toUpperCase() || "?"}
+  const Avatar = ({ name, hidden = false }) => (
+    <div className={`dm-msg-avatar${hidden ? " hidden" : ""}`}>
+      {hidden ? null : name?.[0]?.toUpperCase() || "?"}
     </div>
   );
 
@@ -383,8 +425,6 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
 
         {/* Messages */}
         <div className="dm-messages">
-
-          {/* Beginning notice — only when no messages */}
           {showBeginning && (
             <div className="dm-start-notice">
               <div style={{
@@ -404,33 +444,44 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
             </div>
           )}
 
-          {messages.map((m) => {
+          {messages.map((m, i) => {
             const isMe = m.senderId === user.uid;
             const senderName = isMe
               ? (user.displayName || user.username)
               : (friend?.username || "?");
 
+            // Group consecutive messages from same sender — hide avatar on non-last in group
+            const nextMsg = messages[i + 1];
+            const isLastInGroup = !nextMsg || nextMsg.senderId !== m.senderId;
+            const prevMsg = messages[i - 1];
+            const isFirstInGroup = !prevMsg || prevMsg.senderId !== m.senderId;
+
             return (
-              <div key={m.id} className={`dm-msg-row${isMe ? " mine" : ""}`}>
-                <Avatar name={senderName} />
+              <div
+                key={m.id}
+                className={`dm-msg-row${isMe ? " mine" : ""}${isFirstInGroup ? " new-group" : ""}`}
+              >
+                {/* Avatar only on last bubble in a group */}
+                <Avatar name={senderName} hidden={!isLastInGroup} />
+
                 <div>
-                  {/* Image message */}
                   {m.fileType === "image" ? (
                     <div className={`dm-bubble ${isMe ? "mine" : "theirs"}`} style={{ padding: 4 }}>
                       <img
                         src={m.fileUrl}
                         alt={m.fileName || "image"}
-                        style={{ maxWidth: "100%", maxHeight: 240, borderRadius: 12,
-                          display: "block", cursor: "pointer" }}
+                        style={{
+                          maxWidth: "100%", maxHeight: 240, borderRadius: 12,
+                          display: "block", cursor: "pointer",
+                        }}
                         onClick={() => window.open(m.fileUrl, "_blank")}
                       />
                     </div>
                   ) : m.fileType === "file" ? (
-                    /* File message */
                     <div className={`dm-file-bubble ${isMe ? "mine" : "theirs"}`}>
                       <div className="dm-file-icon">{fileIcon(m.fileMimeType)}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className={`dm-file-name`} style={{ color: isMe ? "#fff" : "var(--t1)" }}>
+                        <div className="dm-file-name" style={{ color: isMe ? "#fff" : "var(--t1)" }}>
                           {m.fileName}
                         </div>
                         <div className="dm-file-size">{formatBytes(m.fileSize)}</div>
@@ -442,7 +493,6 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
                       </div>
                     </div>
                   ) : (
-                    /* Text message */
                     <div className={`dm-bubble ${isMe ? "mine" : "theirs"}`}>
                       {m.text}
                     </div>
@@ -470,31 +520,49 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
         {/* Input */}
         <div className="dm-input-area">
           <div className="dm-input-row">
-            <input type="file" ref={fileInputRef} style={{ display: "none" }}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
               onChange={handleFileUpload}
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.rar" />
-            <button className="dm-attach-btn" onClick={() => fileInputRef.current?.click()}
-              title="Attach file" disabled={!dmId}>
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.rar"
+            />
+            <button
+              className="dm-attach-btn"
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach file"
+              disabled={!dmId}
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66L9.41 16.41a2 2 0 01-2.83-2.83l8.49-8.48"/>
               </svg>
             </button>
-            <input
+            <textarea
+              ref={textareaRef}
               className="dm-input"
               value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+              onChange={handleInputChange}
+              onKeyDown={e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder={`Message @${friend?.username}…`}
+              rows={1}
             />
-            <button className="dm-send-btn" onClick={handleSend}
-  disabled={!input.trim() || sending || !dmId}>
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-    strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-    <line x1="22" y1="2" x2="11" y2="13"/>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-  </svg>
-</button>
+            <button
+              className="dm-send-btn"
+              onClick={handleSend}
+              disabled={!input.trim() || sending || !dmId}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
