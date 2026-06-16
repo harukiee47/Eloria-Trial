@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   acceptFriendRequest, declineFriendRequest,
   sendFriendRequest, markNotificationRead,
   subscribeToUsers, formatLastSeen,
 } from "../services/userService";
-import { acceptInvite, declineInvite } from "../services/groupService";
+import { acceptInvite } from "../services/groupService";
 
 const PANEL_STYLE = `
   /* ── BELL BUTTON (strip) ──────────────────────────────── */
@@ -429,9 +429,6 @@ export default function NotificationsPanel({
     return () => unsub();
   }, [myProfile?.pendingFriendRequests]);
 
-  const totalNotifCount =
-    notifications.length +
-    groupInvites.length;
 
   const friendRequestNotifs = notifications.filter(n => n.type === "friend_request");
   const mentionNotifs       = notifications.filter(n => n.type === "mention");

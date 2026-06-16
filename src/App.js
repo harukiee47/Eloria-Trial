@@ -16,7 +16,7 @@ import GroupChat from "./components/GroupChat";
 import GroupNotifications from "./components/GroupNotifications";
 import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
 import { subscribeToMyProfile, subscribeToNotifications, setOnlineStatus } from "./services/userService";
-import NotificationsPanel, { BellButton, FloatingBadge } from "./components/NotificationsPanel";
+import NotificationsPanel, { FloatingBadge } from "./components/NotificationsPanel";
 
 if (window.location.pathname === "/code") {
   const root = document.getElementById("root");
