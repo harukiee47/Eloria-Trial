@@ -19,7 +19,7 @@ export async function createGroup(user, groupName, userPlan) {
   const limits = GROUP_LIMITS[userPlan] || GROUP_LIMITS.free;
 
   const existing = await getDocs(
-    query(collection(db, "groups"), where("creatorId", "==", user.uid))
+    query(collection(db, "groups"), where("members", "array-contains", user.uid))
   );
   if (existing.size >= limits.maxGroups) {
     throw new Error(
@@ -28,6 +28,7 @@ export async function createGroup(user, groupName, userPlan) {
   }
 
   const groupRef = await addDoc(collection(db, "groups"), {
+    memberUsernames: { [user.uid]: user.username || user.displayName || user.email.split("@")[0] },
     name: groupName.trim() || "New Group",
     creatorId: user.uid,
     members: [user.uid],
@@ -205,6 +206,7 @@ export async function acceptInvite(inviteId, user) {
   const joinedAtISO = new Date().toISOString();
 
   batch.update(doc(db, "groups", invite.groupId), {
+    [`memberUsernames.${user.uid}`]: user.username || user.displayName || user.email.split("@")[0],
     members: arrayUnion(user.uid),
     memberEmails: arrayUnion(user.email),
     [`memberNames.${user.uid}`]: user.displayName || user.email,

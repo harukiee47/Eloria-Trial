@@ -15,6 +15,8 @@ import { loadShared } from "./services/shareService";
 import GroupChat from "./components/GroupChat";
 import GroupNotifications from "./components/GroupNotifications";
 import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
+import { subscribeToMyProfile, subscribeToNotifications, setOnlineStatus } from "./services/userService";
+import NotificationsPanel, { BellButton, FloatingBadge } from "./components/NotificationsPanel";
 
 if (window.location.pathname === "/code") {
   const root = document.getElementById("root");
@@ -70,9 +72,37 @@ export default function App() {
   const [showGroupNotifs, setShowGroupNotifs] = useState(false);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
   const [mode, setMode]                 = useState("chat");
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+const [myProfile, setMyProfile]           = useState(null);
+const [notifications, setNotifications]   = useState([]);
+const totalBadgeCount = pendingInviteCount + notifications.length;
+const [groupInvites, setGroupInvites] = useState([]);
 
   // ── Group creation limit modal ───────────────────────────────
   const [groupLimitModal, setGroupLimitModal] = useState(null); // { message }
+
+  useEffect(() => {
+  if (!user?.uid) return;
+  const unsub = subscribeToMyProfile(user.uid, setMyProfile);
+  return () => unsub();
+}, [user]);
+
+useEffect(() => {
+  if (!user?.uid) return;
+  const unsub = subscribeToNotifications(user.uid, user.email, setNotifications);
+  return () => unsub();
+}, [user]);
+
+useEffect(() => {
+  if (!user?.uid) return;
+  setOnlineStatus(user.uid, true).catch(console.error);
+  const handleUnload = () => setOnlineStatus(user.uid, false).catch(() => {});
+  window.addEventListener("beforeunload", handleUnload);
+  return () => {
+    window.removeEventListener("beforeunload", handleUnload);
+    setOnlineStatus(user.uid, false).catch(() => {});
+  };
+}, [user]);
 
   // Inject limit modal CSS once
   useEffect(() => {
@@ -153,9 +183,11 @@ export default function App() {
 
   useEffect(() => {
     if (!user?.email) return;
-    const unsub = subscribeToInvites(user.email, (invites) => {
-      setPendingInviteCount(invites.length);
-    });
+
+const unsub = subscribeToInvites(user.email, (invites) => {
+  setPendingInviteCount(invites.length);
+  setGroupInvites(invites);  // ← add this
+});
     return () => unsub();
   }, [user]);
 
@@ -275,7 +307,7 @@ export default function App() {
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
         onLogout={async () => {
-          await logout();
+          await logout(user?.uid);
           setUser(null);
           setChats([]);
           setActiveChatId(null);
@@ -295,6 +327,9 @@ export default function App() {
         createNewProject={createNewProject}
         codeProjects={codeProjects}
         activeProjectId={activeProjectId}
+        showNotifPanel={showNotifPanel}
+setShowNotifPanel={setShowNotifPanel}
+totalBadgeCount={totalBadgeCount}
       />
 
       <div className="app-main">
@@ -342,6 +377,26 @@ export default function App() {
         )}
       </div>
 
+      {showNotifPanel && (
+  <NotificationsPanel
+    user={user}
+    myProfile={myProfile}
+    notifications={notifications}
+    groupInvites={groupInvites}
+    onClose={() => setShowNotifPanel(false)}
+    onGroupAccepted={(groupId) => {
+      setActiveGroupId(groupId);
+      setMode("group");
+      setShowNotifPanel(false);
+    }}
+  />
+)}
+
+<FloatingBadge
+  count={totalBadgeCount}
+  onClick={() => setShowNotifPanel(v => !v)}
+/>
+
       {/* ── Group creation limit modal ── */}
       {groupLimitModal && (
         <div className="app-limit-backdrop" onClick={() => setGroupLimitModal(null)}>
@@ -354,5 +409,6 @@ export default function App() {
         </div>
       )}
     </div>
+    
   );
 }

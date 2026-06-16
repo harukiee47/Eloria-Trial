@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import logo from "../assets/logo.png";
 import { shareChat, shareProject } from "../services/shareService";
+import { BellButton } from "./NotificationsPanel";
 
 const GLOBAL_STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
@@ -927,7 +928,7 @@ export default function Sidebar({
   userPlan, setShowPricing,
   groups = [], activeGroupId, setActiveGroupId,
   pendingInviteCount = 0, setShowGroupNotifs,
-  mode, setMode, createGroup,
+  mode, setMode, createGroup, showNotifPanel, setShowNotifPanel, totalBadgeCount,
 }) {
   const [panel, setPanel]           = useState(null);
   const [search, setSearch]         = useState("");
@@ -1103,7 +1104,11 @@ export default function Sidebar({
       setMode("group");
       setPanel(null);
     } catch (err) {
-      alert(err.message);
+      // Do NOT alert here — App.jsx's handleCreateGroup catches
+      // the error and shows the styled limit modal instead.
+      // Just close the form so the user sees the popup cleanly.
+      setShowGroupForm(false);
+      setGroupName("");
     } finally {
       setCreatingGroup(false);
     }
@@ -1214,6 +1219,12 @@ export default function Sidebar({
           </svg>
           <span>{userPlan !== "pro" && userPlan !== "admin" ? "Code " : "Code"}</span>
         </button>
+
+<BellButton
+  count={totalBadgeCount}
+  active={showNotifPanel}
+  onClick={() => setShowNotifPanel(v => !v)}
+/>
 
         <div className="sb-spacer" />
 

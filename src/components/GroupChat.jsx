@@ -5,6 +5,7 @@ import {
   inviteToGroup, kickMember, leaveGroup, deleteGroup, renameGroup,
   deleteGroupMessage,
 } from "../services/groupService";
+import { writeMentionNotification } from "../services/userService";
 
 const GC_STYLE = `
   /* ── GROUP CHAT WRAPPER ─────────────────────────────────── */
@@ -646,9 +647,9 @@ function formatDay(ts) {
 // Render message text with @email mentions highlighted
 function renderTextWithMentions(text) {
   if (!text) return text;
-  const parts = text.split(/(@[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,})/g);
+  const parts = text.split(/(@[\w.]+)/g);
   return parts.map((part, i) =>
-    /^@[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(part)
+    /^@[\w.]+$/.test(part)
       ? <span key={i} className="gc-mention">{part}</span>
       : part
   );
@@ -692,6 +693,16 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   // All member emails for @mention
   const memberEmails = group.memberEmails || [];
   const memberNames  = group.memberNames  || {};
+
+  const memberUsernames = group.memberUsernames || {};
+
+const mentionableMembers = (group.members || [])
+  .filter(uid => uid !== user.uid)
+  .map(uid => ({
+    uid,
+    username: memberUsernames[uid] || memberNames[uid] || "Unknown",
+    email: memberEmails[group.members?.indexOf(uid)] || "",
+  }));
 
   useEffect(() => {
     if (!document.getElementById("gc-style")) {
@@ -747,44 +758,38 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
 
   // ── @mention: update dropdown when input changes ─────────────
   const handleInputChange = (e) => {
-    const val = e.target.value;
-    setInput(val);
+  const val = e.target.value;
+  setInput(val);
 
-    // Find @ that isn't preceded by a word character (fresh @)
-    const cursorPos = e.target.selectionStart;
-    const textToCursor = val.slice(0, cursorPos);
-    const mentionMatch = textToCursor.match(/@([\w.@-]*)$/);
+  const cursorPos    = e.target.selectionStart;
+  const textToCursor = val.slice(0, cursorPos);
+  const mentionMatch = textToCursor.match(/@([\w.]*)$/);
 
-    if (mentionMatch) {
-      const query = mentionMatch[1].toLowerCase();
-      // Only show if query doesn't already look like a full email (no second @)
-      if (!query.includes("@")) {
-            const filtered = memberEmails.filter(email => {
-          if (!email || email === user.email) return false;
-          return email.toLowerCase().includes(query);
-        });
-        setMentionResults(filtered);
-        setMentionActive(-1);
-        return;
-      }
-    }
-    setMentionResults([]);
-  };
-
-  const insertMention = (email) => {
-    const cursorPos = textareaRef.current?.selectionStart ?? input.length;
-    const textToCursor = input.slice(0, cursorPos);
-    // Replace the @query part with @email
-    const replaced = textToCursor.replace(/@[\w.@-]*$/, `@${email} `);
-    const newVal = replaced + input.slice(cursorPos);
-    setInput(newVal);
-    setMentionResults([]);
+  if (mentionMatch) {
+    const q = mentionMatch[1].toLowerCase();
+    const filtered = mentionableMembers.filter(m =>
+      m.username.toLowerCase().includes(q)
+    );
+    setMentionResults(filtered.map(m => m.username));
     setMentionActive(-1);
-    setTimeout(() => {
-      const ta = textareaRef.current;
-      if (ta) { ta.focus(); ta.selectionStart = ta.selectionEnd = replaced.length; }
-    }, 0);
-  };
+    return;
+  }
+  setMentionResults([]);
+};
+
+  const insertMention = (username) => {
+  const cursorPos    = textareaRef.current?.selectionStart ?? input.length;
+  const textToCursor = input.slice(0, cursorPos);
+  const replaced     = textToCursor.replace(/@[\w.]*$/, `@${username} `);
+  const newVal       = replaced + input.slice(cursorPos);
+  setInput(newVal);
+  setMentionResults([]);
+  setMentionActive(-1);
+  setTimeout(() => {
+    const ta = textareaRef.current;
+    if (ta) { ta.focus(); ta.selectionStart = ta.selectionEnd = replaced.length; }
+  }, 0);
+};
 
   const handleContextMenu = useCallback((e, msg) => {
     e.preventDefault();
@@ -847,26 +852,47 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   };
 
   const handleSend = async () => {
-    const text = input.trim();
-    if (!text || sending) return;
-    setInput("");
-    setMentionResults([]);
-    const currentReply = replyTo;
-    setReplyTo(null);
-    setSending(true);
-    try {
-      await sendGroupMessage(group.id, user, text, currentReply || null);
-      if (text.toLowerCase().includes("@eloria")) {
-        const question = text.replace(/@eloria/gi, "").trim();
-        setEloriaTyping(true);
-        await callEloriaReply(question);
+  const text = input.trim();
+  if (!text || sending) return;
+  setInput("");
+  setMentionResults([]);
+  const currentReply = replyTo;
+  setReplyTo(null);
+  setSending(true);
+  try {
+    await sendGroupMessage(group.id, user, text, currentReply || null);
+
+    // Detect @username mentions and notify those users
+    const mentionMatches = text.match(/@([\w.]+)/g) || [];
+    for (const mention of mentionMatches) {
+      const username = mention.slice(1); // strip the @
+      if (username.toLowerCase() === "eloria") continue;
+      const member = mentionableMembers.find(
+        m => m.username.toLowerCase() === username.toLowerCase()
+      );
+      if (member) {
+        writeMentionNotification(
+          group.id,
+          group.name,
+          user.uid,
+          user.username || user.email,
+          member.uid,
+          text
+        ).catch(console.error);
       }
-    } catch (err) {
-      console.error("Send error:", err);
-    } finally {
-      setSending(false);
     }
-  };
+
+    if (text.toLowerCase().includes("@eloria")) {
+      const question = text.replace(/@eloria/gi, "").trim();
+      setEloriaTyping(true);
+      await callEloriaReply(question);
+    }
+  } catch (err) {
+    console.error("Send error:", err);
+  } finally {
+    setSending(false);
+  }
+};
 
   const callEloriaReply = async (question) => {
     try {
@@ -1121,23 +1147,27 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
       <div className="gc-input-bar">
         {/* @mention dropdown */}
         {mentionResults.length > 0 && (
-          <div className="gc-mention-dropdown">
-            {mentionResults.map((email, i) => (
-              <div
-                key={email}
-                className={`gc-mention-item${i === mentionActive ? " active" : ""}`}
-                onMouseDown={(e) => { e.preventDefault(); insertMention(email); }}
-              >
-                <div className="gc-mention-av">{email[0].toUpperCase()}</div>
-                <div>
-                  <div>{email}</div>
-                </div>
-              </div>
-            ))}
+  <div className="gc-mention-dropdown">
+    {mentionResults.map((username, i) => {
+      const member = mentionableMembers.find(m => m.username === username);
+      return (
+        <div
+          key={username}
+          className={`gc-mention-item${i === mentionActive ? " active" : ""}`}
+          onMouseDown={(e) => { e.preventDefault(); insertMention(username); }}
+        >
+          <div className="gc-mention-av">{username[0].toUpperCase()}</div>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>@{username}</div>
+            {member?.email && <div className="gc-mention-email">{member.email}</div>}
           </div>
-        )}
+        </div>
+      );
+    })}
+  </div>
+)}
         <div className="gc-eloria-note">
-          Type <code>@eloria</code> to get an AI reply · Type <code>@email</code> to mention someone
+          Type <code>@eloria</code> to get an AI reply · Type <code>@username</code> to mention someone
         </div>
         <div className="gc-input-row">
           <textarea
