@@ -212,7 +212,16 @@ useEffect(() => {
   // only save if chats are actually loaded
   if (chats === null || chats === undefined) return;
 
-  saveChats(user.uid, chats);
+  // Debounced: the AI reply streams in token by token, which used to
+  // trigger a Firestore write on every single chunk. Overlapping writes
+  // race each other and an earlier (less complete) write can land after
+  // a later one, overwriting newer messages with stale ones. Waiting for
+  // updates to settle collapses a burst of changes into a single write.
+  const timeout = setTimeout(() => {
+    saveChats(user.uid, chats);
+  }, 600);
+
+  return () => clearTimeout(timeout);
 }, [chats, user]);
 
   useEffect(() => {

@@ -21,23 +21,31 @@ export async function getUserUsage(uid) {
   const ref = db.collection("users").doc(uid);
   const snap = await ref.get();
 
-  if (!snap.exists) {
-    const data = {
-      plan: "free",
-      role: "user",
-      usage: freshUsage(),
-    };
+  // Start from existing data (if any) so we never clobber fields written
+  // by another code path (e.g. the frontend creating the doc first with
+  // just `chats`).
+  const data = snap.exists ? snap.data() : {};
+  const patch = {};
 
-    await ref.set(data);
-    return data;
+  // Backfill defaults whenever they're missing, regardless of whether the
+  // doc already existed. This makes user-doc creation order-independent:
+  // it no longer matters whether the frontend or backend touches the doc
+  // first, role/plan always end up set.
+  if (!data.plan) {
+    data.plan = "free";
+    patch.plan = data.plan;
   }
-
-  const data = snap.data();
-
+  if (!data.role) {
+    data.role = "user";
+    patch.role = data.role;
+  }
   if (!data.usage || data.usage.date !== todayString()) {
     data.usage = freshUsage();
+    patch.usage = data.usage;
+  }
 
-    await ref.set({ usage: data.usage }, { merge: true });
+  if (Object.keys(patch).length > 0) {
+    await ref.set(patch, { merge: true });
   }
 
   return data;

@@ -18,14 +18,9 @@ export async function loadChats(uid) {
 export async function saveChats(uid, chats) {
   const ref = doc(db, "users", uid);
 
-  const snap = await getDoc(ref);
-
-  const prev = snap.exists() ? snap.data() : {};
-
-  await setDoc(ref, {
-    ...prev,
-    chats
-  });
-
+  // Single merge write: only touches the `chats` field, never reads-then-
+  // overwrites the whole doc. This means it can never wipe out role/plan/
+  // usage (or anything else), and removes the redundant double write that
+  // used to fire on every call.
   await setDoc(ref, { chats }, { merge: true });
 }
