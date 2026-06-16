@@ -11,9 +11,8 @@ const GC_STYLE = `
   .gc-wrap {
   display: flex;
   flex-direction: column;
-  position: fixed;
-  inset: 0;
-  height: 100dvh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: var(--bg-chat);
   font-family: var(--font);
@@ -611,6 +610,10 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFeedback, setInviteFeedback] = useState(null);
   const [inviting, setInviting]       = useState(false);
+  const [limitModal, setLimitModal]   = useState(null); // { title, message }
+  // mention dropdown
+  const [mentionQuery, setMentionQuery] = useState(null); // string after "@"
+  const [mentionCursor, setMentionCursor] = useState(0);
 
 
   const [ctxMenu, setCtxMenu] = useState(null); 
@@ -770,10 +773,68 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     }
   };
 
+  // ── @mention detection ─────────────────────────────────────
+  const memberEmailList = group.memberEmails || [];
+  const memberNamesMap  = group.memberNames  || {};
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setInput(val);
+
+    // detect "@" followed by partial email/name
+    const cursor = e.target.selectionStart;
+    const textBefore = val.slice(0, cursor);
+    const match = textBefore.match(/@([^\s@]*)$/);
+    if (match) {
+      setMentionQuery(match[1].toLowerCase());
+      setMentionCursor(0);
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const mentionSuggestions = mentionQuery !== null
+    ? Object.entries(memberNamesMap)
+        .filter(([uid, name]) => {
+          if (uid === user?.uid) return false;
+          const email = memberEmailList.find(e => e) || "";
+          return (
+            name.toLowerCase().includes(mentionQuery) ||
+            email.toLowerCase().includes(mentionQuery)
+          );
+        })
+        .slice(0, 5)
+    : [];
+
+  // Build suggestions with email from group data
+  const memberRows = (group.members || []).map(uid => ({
+    uid,
+    name: memberNamesMap[uid] || "Unknown",
+    email: group.memberEmailMap?.[uid] || "",
+  })).filter(m => m.uid !== user?.uid);
+
+  const emailSuggestions = mentionQuery !== null
+    ? memberRows.filter(m =>
+        m.name.toLowerCase().includes(mentionQuery) ||
+        m.email.toLowerCase().includes(mentionQuery)
+      ).slice(0, 5)
+    : [];
+
+  const insertMention = (email, name) => {
+    const cursor = textareaRef.current?.selectionStart || input.length;
+    const textBefore = input.slice(0, cursor);
+    const textAfter  = input.slice(cursor);
+    const replaced = textBefore.replace(/@([^\s@]*)$/, `@${email} `);
+    setInput(replaced + textAfter);
+    setMentionQuery(null);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || sending) return;
     setInput("");
+    setMentionQuery(null);
     const currentReply = replyTo;
     setReplyTo(null);
     setSending(true);
@@ -866,7 +927,12 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
       setInviteFeedback({ msg: `Invite sent to ${inviteEmail.trim()}!`, ok: true });
       setInviteEmail("");
     } catch (err) {
-      setInviteFeedback({ msg: err.message, ok: false });
+      // Show group-full errors as a proper modal instead of browser alert
+      if (err.message && err.message.toLowerCase().includes("full")) {
+        setLimitModal({ title: "Group Member Limit Reached", message: err.message });
+      } else {
+        setInviteFeedback({ msg: err.message, ok: false });
+      }
     } finally {
       setInviting(false);
     }
@@ -1064,9 +1130,9 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
           <textarea
             ref={textareaRef}
             className="gc-textarea"
-            placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Message the group…"}
+            placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Message the group… (type @ to mention)"}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             rows={1}
           />
