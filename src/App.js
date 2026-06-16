@@ -13,10 +13,12 @@ import { auth } from "./services/firebase";
 import SharedChatViewer from "./components/SharedChatViewer";
 import { loadShared } from "./services/shareService";
 import GroupChat from "./components/GroupChat";
-import GroupNotifications from "./components/GroupNotifications";
 import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
 import { subscribeToMyProfile, subscribeToNotifications, setOnlineStatus } from "./services/userService";
 import NotificationsPanel, { FloatingBadge } from "./components/NotificationsPanel";
+import { subscribeToFriendsData } from "./services/friendService";
+import DMWindow from "./components/DMWindow";
+import ProfileSetupModal from "./components/ProfileSetupModal";
 
 if (window.location.pathname === "/code") {
   const root = document.getElementById("root");
@@ -77,6 +79,8 @@ const [myProfile, setMyProfile]           = useState(null);
 const [notifications, setNotifications]   = useState([]);
 const totalBadgeCount = pendingInviteCount + notifications.length;
 const [groupInvites, setGroupInvites] = useState([]);
+const [friendsData, setFriendsData] = useState({ friends: [], received: [], sent: [] });
+const [activeDM, setActiveDM] = useState(null);
 
   // ── Group creation limit modal ───────────────────────────────
   const [groupLimitModal, setGroupLimitModal] = useState(null); // { message }
@@ -84,6 +88,12 @@ const [groupInvites, setGroupInvites] = useState([]);
   useEffect(() => {
   if (!user?.uid) return;
   const unsub = subscribeToMyProfile(user.uid, setMyProfile);
+  return () => unsub();
+}, [user]);
+
+useEffect(() => {
+  if (!user?.uid) return;
+  const unsub = subscribeToFriendsData(user.uid, setFriendsData);
   return () => unsub();
 }, [user]);
 
@@ -249,6 +259,8 @@ const unsub = subscribeToInvites(user.email, (invites) => {
         setStage("login");
         setChats([]);
         setActiveChatId(null);
+      } else if (!u.usernameSet) {
+        setStage("profileSetup");
       } else {
         setStage("chat");
       }
@@ -288,6 +300,18 @@ const unsub = subscribeToInvites(user.email, (invites) => {
     );
   }
 
+  if (stage === "profileSetup") {
+    return (
+      <ProfileSetupModal
+        user={user}
+        onComplete={({ displayName, username }) => {
+          setUser(prev => ({ ...prev, displayName, username, usernameSet: true }));
+          setStage("chat");
+        }}
+      />
+    );
+  }
+
   if (showPricing) {
     return <Pricing onBack={() => setShowPricing(false)} />;
   }
@@ -318,7 +342,6 @@ const unsub = subscribeToInvites(user.email, (invites) => {
         activeGroupId={activeGroupId}
         setActiveGroupId={setActiveGroupId}
         pendingInviteCount={pendingInviteCount}
-        setShowGroupNotifs={setShowGroupNotifs}
         userPlan={userPlan}
         mode={mode}
         setMode={setMode}
@@ -330,6 +353,9 @@ const unsub = subscribeToInvites(user.email, (invites) => {
         showNotifPanel={showNotifPanel}
 setShowNotifPanel={setShowNotifPanel}
 totalBadgeCount={totalBadgeCount}
+friendsData={friendsData}
+activeDM={activeDM}
+setActiveDM={setActiveDM}
       />
 
       <div className="app-main">
@@ -340,6 +366,12 @@ totalBadgeCount={totalBadgeCount}
             user={user}
             userPlan={userPlan}
             onBack={() => { setMode("chat"); setActiveGroupId(null); }}
+          />
+        ) : mode === "dm" && activeDM ? (
+          <DMWindow
+            user={user}
+            friend={activeDM}
+            onBack={() => { setMode("chat"); setActiveDM(null); }}
           />
         ) : (
           <ChatWindow
@@ -352,17 +384,6 @@ totalBadgeCount={totalBadgeCount}
           />
         )}
 
-        {showGroupNotifs && (
-          <GroupNotifications
-            user={user}
-            onAccepted={(groupId) => {
-              setActiveGroupId(groupId);
-              setMode("group");
-              setShowGroupNotifs(false);
-            }}
-            onClose={() => setShowGroupNotifs(false)}
-          />
-        )}
 
         {sharedData && (
           <SharedChatViewer
@@ -377,16 +398,22 @@ totalBadgeCount={totalBadgeCount}
         )}
       </div>
 
-      {showNotifPanel && (
+   {showNotifPanel && (
   <NotificationsPanel
     user={user}
     myProfile={myProfile}
     notifications={notifications}
     groupInvites={groupInvites}
+    friendsData={friendsData}
     onClose={() => setShowNotifPanel(false)}
     onGroupAccepted={(groupId) => {
       setActiveGroupId(groupId);
       setMode("group");
+      setShowNotifPanel(false);
+    }}
+    onOpenDM={(friend) => {
+      setActiveDM(friend);
+      setMode("dm");
       setShowNotifPanel(false);
     }}
   />

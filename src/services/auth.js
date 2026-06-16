@@ -6,74 +6,63 @@ import {
   signInWithPopup,
   onAuthStateChanged,
   signOut,
-  updateProfile,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-// ── Internal: save/update user profile in Firestore ─────────────────────────
-async function ensureUserProfile(firebaseUser, username) {
+// ── Internal: create the bare Firestore profile (no username yet) ──────────
+async function ensureUserProfile(firebaseUser) {
   const ref  = doc(db, "users", firebaseUser.uid);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {
-    const resolvedUsername =
-      username ||
-      firebaseUser.displayName ||
-      firebaseUser.email.split("@")[0];
-
     await setDoc(ref, {
-      uid:                  firebaseUser.uid,
-      email:                firebaseUser.email,
-      username:             resolvedUsername,
-      friends:              [],
+      uid:                   firebaseUser.uid,
+      email:                 firebaseUser.email,
+      displayName:           firebaseUser.displayName || "",
+      username:              null,
+      usernameSet:           false,
+      friends:               [],
       pendingFriendRequests: [],
-      sentFriendRequests:   [],
-      online:               true,
-      lastSeen:             serverTimestamp(),
-      createdAt:            serverTimestamp(),
+      sentFriendRequests:    [],
+      online:                true,
+      lastSeen:              serverTimestamp(),
+      createdAt:             serverTimestamp(),
     });
-    return resolvedUsername;
+    return { username: null, usernameSet: false, displayName: firebaseUser.displayName || "" };
   } else {
-  const existingUsername = snap.data().username;
-  const needsUsername = !existingUsername || existingUsername === snap.data().email;
-  await updateDoc(ref, {
-    online: true,
-    lastSeen: serverTimestamp(),
-    // Fix existing users who have email stored as username
-    ...(needsUsername && firebaseUser.displayName
-      ? { username: firebaseUser.displayName }
-      : {}),
-  });
-  return needsUsername && firebaseUser.displayName
-    ? firebaseUser.displayName
-    : existingUsername || snap.data().email;
-}
+    const data = snap.data();
+    await updateDoc(ref, { online: true, lastSeen: serverTimestamp() });
+    return {
+      username: data.username || null,
+      usernameSet: !!data.usernameSet,
+      displayName: data.displayName || firebaseUser.displayName || "",
+    };
+  }
 }
 
 // ── Listen to auth state changes ─────────────────────────────────────────────
 export const checkAuth = (setUser) => {
   return onAuthStateChanged(auth, async (firebaseUser) => {
     if (firebaseUser) {
-      // Load username from Firestore
       try {
         const ref  = doc(db, "users", firebaseUser.uid);
         const snap = await getDoc(ref);
-        const username = snap.exists()
-          ? snap.data().username
-          : firebaseUser.displayName || firebaseUser.email.split("@")[0];
+        const data = snap.exists() ? snap.data() : {};
 
         setUser({
           uid:         firebaseUser.uid,
           email:       firebaseUser.email,
-          username,
-          displayName: username,
+          username:    data.username || null,
+          usernameSet: !!data.usernameSet,
+          displayName: data.displayName || firebaseUser.displayName || "",
         });
       } catch {
         setUser({
           uid:         firebaseUser.uid,
           email:       firebaseUser.email,
-          username:    firebaseUser.email.split("@")[0],
-          displayName: firebaseUser.email.split("@")[0],
+          username:    null,
+          usernameSet: false,
+          displayName: firebaseUser.displayName || "",
         });
       }
     } else {
@@ -87,31 +76,33 @@ export const loginWithEmail = async (email, password) => {
   const cred = await signInWithEmailAndPassword(auth, email, password);
   const u    = cred.user;
 
-  // Load username from Firestore
   const ref  = doc(db, "users", u.uid);
   const snap = await getDoc(ref);
-  const username = snap.exists() ? snap.data().username : u.email.split("@")[0];
+  const data = snap.exists() ? snap.data() : {};
 
-  // Update online status
   if (snap.exists()) {
     await updateDoc(ref, { online: true, lastSeen: serverTimestamp() });
   }
 
-  return { uid: u.uid, email: u.email, username, displayName: username };
+  return {
+    uid: u.uid,
+    email: u.email,
+    username: data.username || null,
+    usernameSet: !!data.usernameSet,
+    displayName: data.displayName || "",
+  };
 };
 
 // ── Email + Password Signup ──────────────────────────────────────────────────
-export const signupWithEmail = async (email, password, username) => {
+// NOTE: no username param anymore — that's handled by ProfileSetupModal
+// after signup completes.
+export const signupWithEmail = async (email, password) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   const u    = cred.user;
 
-  // Save displayName to Firebase Auth as well
-  await updateProfile(u, { displayName: username || email.split("@")[0] });
+  const profile = await ensureUserProfile(u);
 
-  // Save to Firestore
-  const resolvedUsername = await ensureUserProfile(u, username);
-
-  return { uid: u.uid, email: u.email, username: resolvedUsername, displayName: resolvedUsername };
+  return { uid: u.uid, email: u.email, ...profile };
 };
 
 // ── Google Login ─────────────────────────────────────────────────────────────
@@ -119,9 +110,9 @@ export const loginWithGoogle = async () => {
   const result = await signInWithPopup(auth, googleProvider);
   const u      = result.user;
 
-  const resolvedUsername = await ensureUserProfile(u, u.displayName);
+  const profile = await ensureUserProfile(u);
 
-  return { uid: u.uid, email: u.email, username: resolvedUsername, displayName: resolvedUsername };
+  return { uid: u.uid, email: u.email, ...profile };
 };
 
 // ── Logout ───────────────────────────────────────────────────────────────────

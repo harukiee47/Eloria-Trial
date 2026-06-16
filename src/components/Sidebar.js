@@ -929,6 +929,7 @@ export default function Sidebar({
   groups = [], activeGroupId, setActiveGroupId,
   pendingInviteCount = 0, setShowGroupNotifs,
   mode, setMode, createGroup, showNotifPanel, setShowNotifPanel, totalBadgeCount,
+friendsData = {}, activeDM, setActiveDM,
 }) {
   const [panel, setPanel]           = useState(null);
   const [search, setSearch]         = useState("");
@@ -1199,7 +1200,17 @@ export default function Sidebar({
             <path d="M16 3.13a4 4 0 010 7.75"/>
           </svg>
           <span>Groups</span>
-          {pendingInviteCount > 0 && <span className="notif-dot" />}
+        </button>
+
+        <button
+          className={`sb-btn${panel === "dms" ? " active" : ""}`}
+          title="Direct Messages"
+          onClick={() => togglePanel("dms")}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+          </svg>
+          <span>DMs</span>
         </button>
 
         <button
@@ -1296,13 +1307,6 @@ export default function Sidebar({
                 <path d="M16 3.13a4 4 0 010 7.75"/>
               </svg>
               Groups
-              {pendingInviteCount > 0 && (
-                <span style={{
-                  marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 9,
-                  background: "#e05050", color: "#fff", fontSize: 10, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px"
-                }}>{pendingInviteCount}</span>
-              )}
             </button>
 
             <button
@@ -1448,18 +1452,6 @@ export default function Sidebar({
             <div className="panel-hdr">
               <span className="panel-title">Groups</span>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                {pendingInviteCount > 0 && (
-                  <button
-                    onClick={() => { setPanel(null); setShowGroupNotifs(true); }}
-                    style={{
-                      background: "#e05050", border: "none", borderRadius: 8,
-                      color: "#fff", fontSize: 12, fontWeight: 600, padding: "4px 10px",
-                      cursor: "pointer", fontFamily: "var(--font)"
-                    }}
-                  >
-                    {pendingInviteCount} invite{pendingInviteCount > 1 ? "s" : ""}
-                  </button>
-                )}
                 <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
               </div>
             </div>
@@ -1556,6 +1548,30 @@ export default function Sidebar({
               )}
             </div>
           </>}
+
+          {/* ── DMS PANEL ── */}
+{panel === "dms" && <>
+  <div className="panel-hdr">
+    <span className="panel-title">Direct Messages</span>
+    <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
+  </div>
+  <div className="panel-list">
+    {(friendsData.friends || []).length === 0 ? (
+      <p className="panel-empty">Add friends first — then you can message them privately here.</p>
+    ) : (
+      (friendsData.friends || []).map(f => (
+        <div
+          key={f.uid}
+          className="chat-row"
+          onClick={() => { setActiveDM(f); setMode("dm"); setPanel(null); }}
+          style={{ cursor: "pointer" }}
+        >
+          <span className="chat-row-label">@{f.username}</span>
+        </div>
+      ))
+    )}
+  </div>
+</>}
 
           {/* ── ELORIA CODE PANEL ── */}
           {panel==="code" && <>
