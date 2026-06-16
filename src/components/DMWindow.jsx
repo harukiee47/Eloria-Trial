@@ -4,16 +4,15 @@ import { getOrCreateDM, sendDM, subscribeToDMMessages } from "../services/dmServ
 import { formatLastSeen } from "../services/friendService";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
-const MAX_FILES = 2;
-
+// ── Attach type definitions (mirrors ChatWindow) ──────────────────────────────
 const ATTACH_TYPES = {
   image: {
     accept: "image/jpeg,image/png,image/gif,image/webp",
     label: "Image",
     hint: "jpg · png · gif",
-    maxSize: 5 * 1024 * 1024,
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <circle cx="8.5" cy="8.5" r="1.5"/>
         <polyline points="21 15 16 10 5 21"/>
@@ -21,12 +20,12 @@ const ATTACH_TYPES = {
     ),
   },
   document: {
-    accept: ".pdf,.doc,.docx,.txt,.xls,.xlsx,.csv,.zip,.rar",
+    accept: ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.rar",
     label: "Document",
-    hint: "pdf · doc · txt",
-    maxSize: 10 * 1024 * 1024,
+    hint: "pdf · doc · zip",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
         <line x1="16" y1="13" x2="8" y2="13"/>
@@ -37,25 +36,61 @@ const ATTACH_TYPES = {
   },
 };
 
+const MAX_FILES = 2;
+
+function getAttachKind(file) {
+  if (file.type.startsWith("image/")) return "image";
+  return "document";
+}
+
+function getExt(name) {
+  const parts = (name || "").split(".");
+  return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : "FILE";
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileIcon(mimeType) {
+  if (mimeType?.startsWith("image/")) return "🖼️";
+  if (mimeType?.includes("pdf")) return "📄";
+  if (mimeType?.includes("word") || mimeType?.includes("document")) return "📝";
+  if (mimeType?.includes("sheet") || mimeType?.includes("excel") || mimeType?.includes("csv")) return "📊";
+  if (mimeType?.includes("zip") || mimeType?.includes("rar")) return "🗜️";
+  return "📎";
+}
+
+function docIconStyle(ext) {
+  const map = {
+    PDF:  { bg: "#fff1f1", color: "#e53e3e" },
+    TXT:  { bg: "#f0f4ff", color: "#4a6cf7" },
+    DOC:  { bg: "#eff6ff", color: "#2563eb" },
+    DOCX: { bg: "#eff6ff", color: "#2563eb" },
+    XLS:  { bg: "#f0fdf4", color: "#16a34a" },
+    XLSX: { bg: "#f0fdf4", color: "#16a34a" },
+    CSV:  { bg: "#f0fdf4", color: "#16a34a" },
+    ZIP:  { bg: "#faf5ff", color: "#7c3aed" },
+    RAR:  { bg: "#faf5ff", color: "#7c3aed" },
+  };
+  return map[ext] || { bg: "#f5f5f0", color: "#888" };
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 const DM_STYLE = `
-  @keyframes dmFadeIn {
+  /* ── MOUNT ANIMATION ── */
+  @keyframes dmFadeUp {
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  @keyframes dmFadeUp {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes dmMenuIn {
-    from { opacity: 0; transform: translateY(6px) scale(.97); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  @keyframes dmFadeInPlain { from { opacity: 0; } to { opacity: 1; } }
 
   .dm-shell {
     display: flex; width: 100%; height: 100vh; overflow: hidden;
     background: var(--bg-app);
-    animation: dmFadeIn .3s ease;
+    animation: dmFadeUp .28s ease;
   }
 
   /* ── DM LEFT SIDEBAR ── */
@@ -79,7 +114,6 @@ const DM_STYLE = `
     .dm-back-btn { justify-content: center; padding: 10px 0; width: 100%; }
   }
 
-  /* Back button — flush to sidebar edges */
   .dm-back-btn {
     display: flex; align-items: center; gap: 8px;
     margin: 0; padding: 12px 14px;
@@ -105,7 +139,6 @@ const DM_STYLE = `
     color: var(--t3); text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0;
   }
 
-  /* Friends list — no side padding so rows go edge-to-edge */
   .dm-friends-list { flex: 1; overflow-y: auto; padding: 0 0 12px; }
 
   .dm-friend-row {
@@ -127,7 +160,6 @@ const DM_STYLE = `
   .dm-chat {
     flex: 1; display: flex; flex-direction: column;
     height: 100%; overflow: hidden; background: var(--bg-chat);
-    animation: dmFadeIn .25s ease;
   }
   .dm-chat-header {
     display: flex; align-items: center; gap: 10px;
@@ -135,59 +167,67 @@ const DM_STYLE = `
     background: var(--bg-panel);
   }
   .dm-messages {
-    flex: 1; overflow-y: auto; padding: 20px 18px;
+    flex: 1; overflow-y: auto; padding: 12px 0 8px;
     display: flex; flex-direction: column; gap: 2px;
   }
   .dm-start-notice {
     text-align: center; margin-bottom: 28px; padding: 0 16px;
   }
-  .dm-input-area {
-    padding: 10px 16px 16px; border-top: 1px solid var(--border);
-    flex-shrink: 0; background: var(--bg-panel);
-  }
-  .dm-input-row {
-    display: flex; gap: 8px; max-width: 800px; margin: 0 auto;
-    align-items: flex-end;
-  }
-  .dm-input {
-    flex: 1; padding: 10px 14px; border-radius: 22px;
-    border: 1px solid var(--border); outline: none;
-    font-size: 13.5px; font-family: var(--font);
-    background: var(--bg-app); color: var(--t1);
-    resize: none; min-height: 42px; max-height: 120px;
-    line-height: 1.45; overflow-y: auto;
-    transition: border-color 0.13s;
-    display: block;
-  }
-  .dm-input:focus { border-color: var(--accent); }
-  .dm-send-btn {
-    width: 42px; height: 42px; border-radius: 50%; border: none;
-    background: var(--accent); color: #fff;
-    cursor: pointer; transition: opacity 0.13s;
-    flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .dm-send-btn:disabled { opacity: 0.4; cursor: default; }
 
-  /* ── ATTACH BUTTON + DROPDOWN (mirrors ChatWindow) ── */
+  /* ── INPUT AREA (mirrors ChatWindow .cw-input-wrap / .cw-input-box) ── */
+  .dm-input-wrap {
+    flex-shrink: 0;
+    padding: 8px 16px 14px;
+    background: var(--bg-chat);
+    border-top: 1px solid var(--border);
+  }
+  .dm-input-box {
+    max-width: 720px; margin: 0 auto;
+    background: #fafaf8; border: 1.5px solid var(--border);
+    border-radius: 18px; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: border-color .15s, box-shadow .15s;
+    box-shadow: 0 1px 6px rgba(0,0,0,.04);
+  }
+  .dm-input-box:focus-within {
+    border-color: rgba(193,127,42,.45);
+    box-shadow: 0 0 0 3px rgba(193,127,42,.08), 0 1px 6px rgba(0,0,0,.04);
+    background: #fff;
+  }
+  .dm-textarea-row { display: flex; align-items: flex-end; gap: 8px; }
+  .dm-textarea {
+    flex: 1; border: none; background: none; outline: none;
+    font-family: var(--font); font-size: 14px; color: var(--t1);
+    resize: none; min-height: 22px; max-height: 120px;
+    line-height: 1.55; overflow-y: auto; scrollbar-width: thin;
+    caret-color: var(--accent);
+  }
+  .dm-textarea::placeholder { color: var(--t3); }
+
+  /* Attach button */
   .dm-attach { position: relative; flex-shrink: 0; }
   .dm-attach-btn {
-    width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border);
-    background: var(--bg-app); cursor: pointer; flex-shrink: 0;
+    width: 32px; height: 32px; border: none; border-radius: 50%;
+    background: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    color: var(--t2); transition: background 0.12s, color 0.12s;
+    color: var(--t3); transition: background .12s, color .12s;
   }
-  .dm-attach-btn:hover { background: var(--accent-bg); color: var(--accent); }
-  .dm-attach-btn:disabled { opacity: 0.4; cursor: default; }
+  .dm-attach-btn:hover { background: #f0ede6; color: var(--accent); }
   .dm-attach-btn.has-files { color: var(--accent); }
-  .dm-attach-btn svg { width: 18px; height: 18px; }
+  .dm-attach-btn svg { width: 17px; height: 17px; }
+  .dm-attach-btn:disabled { opacity: 0.4; cursor: default; }
 
+  /* Attach dropdown — opens upward */
   .dm-attach-menu {
     position: absolute; bottom: calc(100% + 8px); left: 0;
-    background: var(--bg-panel); border: 1px solid var(--border);
-    border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.16);
-    padding: 5px; min-width: 170px; z-index: 200;
+    background: #fff; border: 1px solid #e8e6e0;
+    border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
+    padding: 5px; min-width: 165px; z-index: 200;
     animation: dmMenuIn .12s ease;
+  }
+  @keyframes dmMenuIn {
+    from { opacity: 0; transform: translateY(6px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
   .dm-attach-menu-item {
     display: flex; align-items: center; gap: 10px;
@@ -195,27 +235,44 @@ const DM_STYLE = `
     border-radius: 10px; cursor: pointer;
     transition: background .11s; font-family: var(--font); font-weight: 500;
   }
-  .dm-attach-menu-item:hover { background: var(--accent-bg); color: var(--accent); }
+  .dm-attach-menu-item:hover { background: #faf7f2; color: var(--accent); }
   .dm-attach-menu-item svg { width: 15px; height: 15px; flex-shrink: 0; }
-  .dm-attach-menu-sep { height: 1px; background: var(--border); margin: 3px 8px; }
+  .dm-attach-menu-sep { height: 1px; background: #f0ede8; margin: 3px 8px; }
   .dm-attach-menu-limit { font-size: 10px; color: var(--t3); padding: 4px 12px 5px; font-family: var(--font); }
 
-  /* ── PENDING ATTACHMENT STRIP ── */
+  /* Send button */
+  .dm-send-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; color: #fff;
+    transition: opacity .13s, box-shadow .13s, transform .1s;
+  }
+  .dm-send-btn:hover:not(:disabled) {
+    opacity: .9; box-shadow: 0 3px 14px rgba(193,127,42,.4); transform: scale(1.05);
+  }
+  .dm-send-btn:disabled { opacity: .3; cursor: default; }
+  .dm-send-btn svg { width: 15px; height: 15px; }
+
+  /* ── PENDING STRIP ── */
   .dm-pending-strip {
     display: flex; gap: 8px; flex-wrap: wrap;
-    padding: 8px 16px 2px; max-width: 800px; margin: 0 auto; width: 100%;
+    padding: 8px 16px 2px;
+    max-width: 720px; margin: 0 auto; width: 100%;
     animation: dmFadeUp .15s ease;
   }
   .dm-pending-chip {
     display: flex; align-items: center; gap: 7px;
     padding: 6px 10px 6px 8px;
-    background: var(--bg-app);
-    border: 1.5px solid var(--accent);
+    background: #faf8f3;
+    border: 1.5px solid rgba(193,127,42,.25);
     border-radius: 10px; max-width: 200px;
+    transition: box-shadow .12s;
   }
+  .dm-pending-chip:hover { box-shadow: 0 2px 8px rgba(193,127,42,.1); }
   .dm-pending-thumb {
     width: 32px; height: 32px; border-radius: 6px;
-    object-fit: cover; flex-shrink: 0; border: 1px solid var(--border);
+    object-fit: cover; flex-shrink: 0; border: 1px solid rgba(0,0,0,.06);
   }
   .dm-pending-doc-icon {
     width: 32px; height: 32px; border-radius: 6px;
@@ -234,21 +291,38 @@ const DM_STYLE = `
     font-size: 11px; display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; transition: color .1s, background .1s; padding: 0;
   }
-  .dm-pending-remove:hover { color: #e05252; background: rgba(224,82,82,0.1); }
+  .dm-pending-remove:hover { color: #e05252; background: #fef2f2; }
   .dm-pending-limit {
     font-size: 10.5px; color: var(--t3);
-    padding: 0 16px 4px; max-width: 800px; margin: 0 auto; width: 100%;
+    padding: 0 16px 4px; max-width: 720px; margin: 0 auto; width: 100%;
   }
 
-  /* ── MESSAGE BUBBLES ── */
+  /* ── UPLOAD PROGRESS BAR ── */
+  .dm-upload-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; background: var(--accent-bg);
+    border-radius: 10px; margin: 0 auto 4px; max-width: 720px; width: calc(100% - 32px);
+    font-size: 12px; color: var(--t2);
+  }
+  .dm-upload-progress {
+    flex: 1; height: 4px; background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+  .dm-upload-fill {
+    height: 100%; background: var(--accent); transition: width 0.2s;
+  }
+
+  /* ── MESSAGE ROW ── */
   .dm-msg-row {
     display: flex; align-items: flex-end; gap: 8px;
+    padding: 0 20px;
+    max-width: 780px; width: 100%; margin: 0 auto;
     animation: dmFadeUp .2s ease;
   }
   .dm-msg-row.mine { flex-direction: row-reverse; }
-  .dm-msg-row + .dm-msg-row { margin-top: 2px; }
   .dm-msg-row.new-group { margin-top: 10px; }
 
+  /* ── AVATAR ── */
   .dm-msg-avatar {
     width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, var(--accent), #e8a84a);
@@ -258,73 +332,66 @@ const DM_STYLE = `
   }
   .dm-msg-avatar.hidden { visibility: hidden; }
 
+  /* ── BUBBLE STACK (mirrors .cw-bubble-stack) ── */
+  .dm-bubble-stack {
+    display: flex; flex-direction: column; gap: 4px;
+    max-width: min(68%, 520px);
+    align-items: flex-end;
+  }
+  .dm-bubble-stack.theirs { align-items: flex-start; }
+
+  /* ── TEXT BUBBLE (mirrors .cw-bubble exactly) ── */
   .dm-bubble {
-    max-width: 65%;
     padding: 10px 15px;
+    font-size: 13px; line-height: 1.5;
+    word-break: break-word; white-space: pre-wrap;
     border-radius: 18px;
-    font-size: 13px;
-    line-height: 1.5;
-    word-break: break-word;
-    white-space: pre-wrap;
     font-family: var(--font);
   }
+  .dm-bubble.mine {
+    background: var(--accent);
+    color: #fff;
+    border-bottom-right-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  }
   .dm-bubble.theirs {
-    background: transparent; color: var(--t1);
+    background: transparent;
+    color: var(--t1);
     border: 1px solid #ececea;
     border-bottom-left-radius: 5px;
     box-shadow: 0 1px 6px rgba(0,0,0,.06);
   }
-  .dm-bubble.mine {
-    background: var(--accent); color: #fff;
-    border-bottom-right-radius: 5px;
-    box-shadow: 0 2px 10px rgba(0,0,0,.25);
-  }
 
-  /* ── FILE UPLOAD PROGRESS (shown while sending) ── */
-  .dm-upload-bar {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 12px; background: var(--accent-bg);
-    border-radius: 10px; margin: 0 auto 8px; max-width: 800px;
-    font-size: 12px; color: var(--t2);
-  }
-  .dm-upload-progress {
-    flex: 1; height: 4px; background: var(--border);
-    border-radius: 2px; overflow: hidden;
-  }
-  .dm-upload-fill {
-    height: 100%; background: var(--accent);
-    transition: width 0.2s;
-  }
-
-  /* ── SENT IMAGE/DOC BUBBLES (mirrors ChatWindow attach bubbles) ── */
-  .dm-attach-img-bubble {
+  /* ── IMAGE BUBBLE ── */
+  .dm-img-bubble {
     border-radius: 16px; overflow: hidden;
     border: 1.5px solid rgba(0,0,0,.08);
     max-width: 240px; min-width: 120px;
     box-shadow: 0 2px 12px rgba(0,0,0,.1);
-    cursor: pointer; position: relative;
+    cursor: pointer;
     transition: transform .15s, box-shadow .15s;
   }
-  .dm-attach-img-bubble:hover { transform: scale(1.02); box-shadow: 0 4px 20px rgba(0,0,0,.15); }
-  .dm-attach-img-bubble img { width: 100%; display: block; max-height: 220px; object-fit: cover; }
-  .dm-attach-img-bubble.theirs { border-bottom-left-radius: 5px; }
-  .dm-attach-img-bubble.mine { border-bottom-right-radius: 5px; }
+  .dm-img-bubble:hover { transform: scale(1.02); box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+  .dm-img-bubble img { width: 100%; display: block; max-height: 220px; object-fit: cover; }
+  .dm-img-bubble.mine { border-bottom-right-radius: 5px; }
+  .dm-img-bubble.theirs { border-bottom-left-radius: 5px; }
 
-  .dm-attach-doc-bubble {
+  /* ── DOCUMENT BUBBLE ── */
+  .dm-doc-bubble {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 14px;
     border-radius: 16px;
-    max-width: 280px; min-width: 200px;
+    max-width: 280px; min-width: 180px;
     transition: box-shadow .14s;
   }
-  .dm-attach-doc-bubble.mine {
+  .dm-doc-bubble.mine {
     background: rgba(255,255,255,.18);
     border: 1.5px solid rgba(255,255,255,.3);
     border-bottom-right-radius: 5px;
   }
-  .dm-attach-doc-bubble.theirs {
-    background: var(--bg-panel);
-    border: 1.5px solid var(--border);
+  .dm-doc-bubble.theirs {
+    background: #faf9f6;
+    border: 1.5px solid #ececea;
     border-bottom-left-radius: 5px;
     box-shadow: 0 1px 6px rgba(0,0,0,.06);
   }
@@ -338,120 +405,115 @@ const DM_STYLE = `
     font-size: 12.5px; font-weight: 600;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;
   }
-  .dm-attach-doc-bubble.mine .dm-doc-name { color: #fff; }
-  .dm-attach-doc-bubble.theirs .dm-doc-name { color: var(--t1); }
+  .dm-doc-bubble.mine .dm-doc-name { color: #fff; }
+  .dm-doc-bubble.theirs .dm-doc-name { color: var(--t1); }
   .dm-doc-meta { font-size: 10.5px; margin-top: 2px; }
-  .dm-attach-doc-bubble.mine .dm-doc-meta { color: rgba(255,255,255,.65); }
-  .dm-attach-doc-bubble.theirs .dm-doc-meta { color: var(--t3); }
-  .dm-doc-download {
-    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    text-decoration: none; transition: background .12s;
+  .dm-doc-bubble.mine .dm-doc-meta { color: rgba(255,255,255,.65); }
+  .dm-doc-bubble.theirs .dm-doc-meta { color: var(--t3); }
+  .dm-doc-dl {
+    display: inline-block; margin-top: 6px;
+    font-size: 11px; font-weight: 600; padding: 4px 10px;
+    border-radius: 6px; border: none; cursor: pointer;
+    font-family: var(--font); text-decoration: none;
   }
-  .dm-attach-doc-bubble.mine .dm-doc-download { background: rgba(255,255,255,.2); color: #fff; }
-  .dm-attach-doc-bubble.mine .dm-doc-download:hover { background: rgba(255,255,255,.32); }
-  .dm-attach-doc-bubble.theirs .dm-doc-download { background: var(--accent); color: #fff; }
-  .dm-attach-doc-bubble.theirs .dm-doc-download:hover { opacity: .85; }
-  .dm-doc-download svg { width: 14px; height: 14px; }
+  .dm-doc-bubble.mine .dm-doc-dl { background: rgba(255,255,255,.22); color: #fff; }
+  .dm-doc-bubble.theirs .dm-doc-dl { background: var(--accent); color: #fff; }
 
-  /* ── IMAGE LIGHTBOX ── */
+  /* ── LIGHTBOX ── */
   .dm-lightbox {
     position: fixed; inset: 0; z-index: 1000;
     background: rgba(0,0,0,.85);
     display: flex; align-items: center; justify-content: center;
-    animation: dmFadeInPlain .18s ease; cursor: zoom-out;
+    animation: dmFadeIn .18s ease; cursor: zoom-out;
   }
+  @keyframes dmFadeIn { from { opacity: 0; } to { opacity: 1; } }
   .dm-lightbox img {
     max-width: 90vw; max-height: 88vh;
     border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
     object-fit: contain; cursor: default;
   }
-  .dm-lightbox-close, .dm-lightbox-download {
-    position: absolute; top: 20px;
+  .dm-lightbox-close {
+    position: absolute; top: 20px; right: 20px;
     background: rgba(255,255,255,.12); border: none; border-radius: 50%;
     width: 38px; height: 38px; cursor: pointer; color: #fff;
     display: flex; align-items: center; justify-content: center;
-    font-size: 18px; transition: background .12s; text-decoration: none;
+    font-size: 18px; transition: background .12s;
   }
-  .dm-lightbox-close { right: 20px; }
-  .dm-lightbox-download { right: 68px; }
-  .dm-lightbox-close:hover, .dm-lightbox-download:hover { background: rgba(255,255,255,.22); }
-  .dm-lightbox-download svg { width: 17px; height: 17px; }
+  .dm-lightbox-close:hover { background: rgba(255,255,255,.22); }
 
   @media(max-width: 640px) {
-    .dm-messages { padding: 14px 10px; }
-    .dm-input-area { padding: 8px 10px 12px; }
-    .dm-bubble { max-width: 80%; font-size: 13px; }
-    .dm-attach-img-bubble { max-width: 200px; }
-    .dm-attach-doc-bubble { max-width: 220px; min-width: 0; }
-    .dm-lightbox-close { top: 14px; right: 14px; width: 34px; height: 34px; }
-    .dm-lightbox-download { top: 14px; right: 56px; width: 34px; height: 34px; }
+    .dm-messages { padding: 10px 0; }
+    .dm-msg-row { padding: 0 12px; }
+    .dm-input-wrap { padding: 6px 10px 12px; }
+    .dm-bubble { font-size: 13px; }
+    .dm-bubble-stack { max-width: min(82%, 100%); }
+    .dm-img-bubble { max-width: 200px; }
+    .dm-img-bubble img { max-height: 180px; }
+    .dm-doc-bubble { min-width: 150px; max-width: 240px; }
   }
 `;
 
-function formatBytes(bytes) {
-  if (!bytes) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+// ── PendingChip component ─────────────────────────────────────────────────────
+function PendingChip({ file, onRemove }) {
+  const ext = getExt(file.name);
+  const di = docIconStyle(ext);
+  return (
+    <div className="dm-pending-chip">
+      {file.kind === "image" ? (
+        <img className="dm-pending-thumb" src={file.previewUrl} alt={file.name} />
+      ) : (
+        <div className="dm-pending-doc-icon" style={{ background: di.bg, color: di.color }}>
+          {ext.slice(0, 3)}
+        </div>
+      )}
+      <div className="dm-pending-chip-info">
+        <div className="dm-pending-chip-name">{file.name}</div>
+        <div className="dm-pending-chip-meta">{formatBytes(file.size)} · {ext}</div>
+      </div>
+      <button className="dm-pending-remove" onClick={onRemove}>✕</button>
+    </div>
+  );
 }
 
-function getExt(name) {
-  const parts = (name || "").split(".");
-  return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : "FILE";
-}
-
-function docIcon(ext) {
-  const map = {
-    PDF: { bg: "#fff1f1", color: "#e53e3e", char: "PDF" },
-    TXT: { bg: "#f0f4ff", color: "#4a6cf7", char: "TXT" },
-    DOC: { bg: "#eff6ff", color: "#2563eb", char: "DOC" },
-    DOCX: { bg: "#eff6ff", color: "#2563eb", char: "DOC" },
-    XLS: { bg: "#effaf0", color: "#16a34a", char: "XLS" },
-    XLSX: { bg: "#effaf0", color: "#16a34a", char: "XLS" },
-    CSV: { bg: "#effaf0", color: "#16a34a", char: "CSV" },
-    ZIP: { bg: "#f5f0fa", color: "#7c3aed", char: "ZIP" },
-    RAR: { bg: "#f5f0fa", color: "#7c3aed", char: "RAR" },
-  };
-  return map[ext] || { bg: "var(--accent-bg)", color: "var(--accent)", char: ext.slice(0, 3) };
-}
-
+// ── Main component ────────────────────────────────────────────────────────────
 export default function DMWindow({ user, friend, friends = [], onSelectFriend, onBack }) {
-  const [dmId, setDmId] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
+  const [dmId, setDmId]                   = useState(null);
+  const [messages, setMessages]           = useState([]);
+  const [input, setInput]                 = useState("");
+  const [sending, setSending]             = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null); // { name, pct }
-  const [pendingFiles, setPendingFiles] = useState([]); // [{ id, name, size, kind, file, previewUrl }]
-  const [showAttach, setShowAttach] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [pendingFiles, setPendingFiles]   = useState([]);     // local attach chips
+  const [showAttach, setShowAttach]       = useState(false);
+  const [lightboxSrc, setLightboxSrc]     = useState(null);
 
-  const bottomRef = useRef(null);
-  const unsubRef = useRef(() => {});
+  const bottomRef    = useRef(null);
+  const unsubRef     = useRef(() => {});
   const fileInputRef = useRef(null);
-  const pickKindRef = useRef("document");
-  const attachRef = useRef(null);
-  const textareaRef = useRef(null);
+  const fileAcceptRef = useRef("");
+  const textareaRef  = useRef(null);
+  const attachRef    = useRef(null);
 
   const canAddMore = pendingFiles.length < MAX_FILES;
 
   // Inject styles once
   useEffect(() => {
-    if (!document.getElementById("dm-style")) {
+    if (!document.getElementById("dm-style-v2")) {
       const tag = document.createElement("style");
-      tag.id = "dm-style";
+      tag.id = "dm-style-v2";
       tag.textContent = DM_STYLE;
       document.head.appendChild(tag);
     }
+    // Remove old style tag if present
+    const old = document.getElementById("dm-style");
+    if (old) old.remove();
   }, []);
 
-  // Subscribe to messages whenever friend changes
+  // Subscribe to messages when friend changes
   useEffect(() => {
     if (!friend?.uid) return;
     setMessages([]);
     setDmId(null);
     setPendingFiles([]);
-    setInput("");
     unsubRef.current();
 
     let cancelled = false;
@@ -469,6 +531,7 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
     };
   }, [user.uid, friend?.uid]);
 
+  // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -482,7 +545,7 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // Close lightbox on Escape
+  // Escape closes lightbox
   useEffect(() => {
     const h = (e) => { if (e.key === "Escape") setLightboxSrc(null); };
     document.addEventListener("keydown", h);
@@ -499,109 +562,105 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
     }
   };
 
+  // Open file picker for a given kind (image | document)
   const openFilePicker = (kind) => {
     if (!canAddMore) return;
     setShowAttach(false);
-    pickKindRef.current = kind;
+    fileAcceptRef.current = ATTACH_TYPES[kind].accept;
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
-      fileInputRef.current.setAttribute("accept", ATTACH_TYPES[kind].accept);
+      fileInputRef.current.setAttribute("accept", fileAcceptRef.current);
       fileInputRef.current.click();
     }
   };
 
+  // Handle local file selection → add to pending chips
   const onFileChange = (e) => {
-    const kind = pickKindRef.current;
     const files = Array.from(e.target.files || []);
     const slots = MAX_FILES - pendingFiles.length;
-    const toAdd = files.slice(0, slots);
-
-    toAdd.forEach((f) => {
-      const maxSize = ATTACH_TYPES[kind].maxSize;
-      if (f.size > maxSize) {
-        alert(`"${f.name}" is too large. Max size is ${formatBytes(maxSize)}.`);
-        return;
-      }
-
-      const id = Date.now() + Math.random();
-      setPendingFiles((prev) => [...prev, { id, name: f.name, size: f.size, kind, file: f, previewUrl: null }]);
-
+    files.slice(0, slots).forEach((f) => {
+      const kind = getAttachKind(f);
+      const reader = new FileReader();
       if (kind === "image") {
-        const reader = new FileReader();
         reader.onload = (ev) => {
-          setPendingFiles((prev) => prev.map((p) => (p.id === id ? { ...p, previewUrl: ev.target.result } : p)));
+          setPendingFiles((prev) => [...prev, {
+            id: Date.now() + Math.random(),
+            name: f.name, size: f.size, kind,
+            previewUrl: ev.target.result,
+            raw: f,
+          }]);
         };
         reader.readAsDataURL(f);
+      } else {
+        setPendingFiles((prev) => [...prev, {
+          id: Date.now() + Math.random(),
+          name: f.name, size: f.size, kind,
+          previewUrl: null,
+          raw: f,
+        }]);
       }
     });
   };
 
-  const removePendingFile = (id) => setPendingFiles((prev) => prev.filter((p) => p.id !== id));
+  // Upload one file to Firebase Storage and send as DM
+  const uploadAndSend = async (fileEntry) => {
+    const storage = getStorage();
+    const path = `dms/${dmId}/${Date.now()}_${fileEntry.name}`;
+    const storageRef = ref(storage, path);
+    const task = uploadBytesResumable(storageRef, fileEntry.raw);
+
+    return new Promise((resolve, reject) => {
+      task.on(
+        "state_changed",
+        (snap) => {
+          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          setUploadProgress({ name: fileEntry.name, pct });
+        },
+        (err) => { setUploadProgress(null); reject(err); },
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          setUploadProgress(null);
+          resolve({ url, kind: fileEntry.kind });
+        }
+      );
+    });
+  };
 
   const handleSend = async () => {
     const text = input.trim();
-    const files = pendingFiles;
-    if ((!text && files.length === 0) || !dmId || sending) return;
+    if ((!text && pendingFiles.length === 0) || !dmId || sending) return;
 
     setSending(true);
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "22px";
+
+    const filesToSend = [...pendingFiles];
     setPendingFiles([]);
-    if (textareaRef.current) textareaRef.current.style.height = "42px";
 
     try {
-      const storage = getStorage();
-
-      // Files go out first so they render above the caption, like ChatWindow's stack
-      for (const f of files) {
-        setUploadProgress({ name: f.name, pct: 0 });
-        const path = `dms/${dmId}/${Date.now()}_${f.name}`;
-        const storageRef = ref(storage, path);
-        const task = uploadBytesResumable(storageRef, f.file);
-
-        await new Promise((resolve, reject) => {
-          task.on(
-            "state_changed",
-            (snap) => {
-              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-              setUploadProgress({ name: f.name, pct });
-            },
-            reject,
-            async () => {
-              try {
-                const url = await getDownloadURL(task.snapshot.ref);
-                await sendDM(dmId, user.uid, null, {
-                  type: f.kind === "image" ? "image" : "file",
-                  url,
-                  name: f.name,
-                  size: f.size,
-                  mimeType: f.file.type,
-                });
-                resolve();
-              } catch (err) {
-                reject(err);
-              }
-            }
-          );
-        });
-      }
-      setUploadProgress(null);
-
+      // Send text first (if any)
       if (text) {
         await sendDM(dmId, user.uid, text);
       }
+      // Upload and send each file sequentially
+      for (const fileEntry of filesToSend) {
+        const { url, kind } = await uploadAndSend(fileEntry);
+        await sendDM(dmId, user.uid, null, {
+          type: kind === "image" ? "image" : "file",
+          url,
+          name: fileEntry.name,
+          size: fileEntry.size,
+          mimeType: fileEntry.raw?.type || "",
+        });
+      }
     } catch (e) {
-      console.error("DM send failed:", e);
-      setUploadProgress(null);
+      console.error("DM send error:", e);
     } finally {
       setSending(false);
     }
   };
 
-  const Avatar = ({ name, hidden = false }) => (
-    <div className={`dm-msg-avatar${hidden ? " hidden" : ""}`}>
-      {hidden ? null : name?.[0]?.toUpperCase() || "?"}
-    </div>
-  );
+  // ── Sub-components ──────────────────────────────────────────────────────────
 
   const SidebarAvatar = ({ name, size = 36, online }) => (
     <div style={{
@@ -622,32 +681,71 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
     </div>
   );
 
-  const showBeginning = messages.length === 0;
+  const MsgAvatar = ({ name, hidden }) => (
+    <div className={`dm-msg-avatar${hidden ? " hidden" : ""}`}>
+      {hidden ? null : name?.[0]?.toUpperCase() || "?"}
+    </div>
+  );
 
+  // ── Render a received/sent firebase file message ────────────────────────────
+  const renderFileBubble = (m, isMe) => {
+    const side = isMe ? "mine" : "theirs";
+
+    if (m.fileType === "image") {
+      return (
+        <div
+          className={`dm-img-bubble ${side}`}
+          onClick={() => setLightboxSrc(m.fileUrl)}
+        >
+          <img src={m.fileUrl} alt={m.fileName || "image"} />
+        </div>
+      );
+    }
+
+    // document
+    const ext = getExt(m.fileName || "");
+    const di = docIconStyle(ext);
+    return (
+      <div className={`dm-doc-bubble ${side}`}>
+        <div className="dm-doc-icon-box" style={{ background: isMe ? "rgba(255,255,255,.2)" : di.bg, color: isMe ? "#fff" : di.color }}>
+          {ext.slice(0, 3) || fileIcon(m.fileMimeType)}
+        </div>
+        <div className="dm-doc-info">
+          <div className="dm-doc-name">{m.fileName}</div>
+          <div className="dm-doc-meta">{formatBytes(m.fileSize)} · {ext}</div>
+          <a
+            href={m.fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            download={m.fileName}
+            className={`dm-doc-dl ${side}`}
+          >
+            Download
+          </a>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Main render ─────────────────────────────────────────────────────────────
   return (
     <div className="dm-shell">
 
+      {/* Lightbox */}
       {lightboxSrc && (
         <div className="dm-lightbox" onClick={() => setLightboxSrc(null)}>
           <img src={lightboxSrc} alt="preview" onClick={(e) => e.stopPropagation()} />
-          <a
-            href={lightboxSrc}
-            download
-            target="_blank"
-            rel="noreferrer"
-            className="dm-lightbox-download"
-            onClick={(e) => e.stopPropagation()}
-            title="Download"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          </a>
           <button className="dm-lightbox-close" onClick={() => setLightboxSrc(null)}>✕</button>
         </div>
       )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        style={{ display: "none" }}
+        onChange={onFileChange}
+      />
 
       {/* ── LEFT SIDEBAR ── */}
       <div className="dm-sidebar">
@@ -660,7 +758,6 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
           <span>Back</span>
         </button>
 
-        {/* My profile */}
         <div className="dm-my-profile">
           <SidebarAvatar name={user.displayName || user.username} size={38} />
           <div style={{ overflow: "hidden", flex: 1 }}>
@@ -676,7 +773,7 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
             <div className="dm-no-friends">
               Add friends from the notifications panel to start messaging.
             </div>
-          ) : friends.map(f => (
+          ) : friends.map((f) => (
             <div
               key={f.uid}
               className={`dm-friend-row${friend?.uid === f.uid ? " active" : ""}`}
@@ -694,8 +791,8 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
         </div>
       </div>
 
-      {/* ── CHAT AREA (keyed so it fades in fresh on every conversation switch) ── */}
-      <div className="dm-chat" key={friend?.uid || "none"}>
+      {/* ── CHAT AREA ── */}
+      <div className="dm-chat">
 
         {/* Header */}
         <div className="dm-chat-header">
@@ -712,7 +809,7 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
 
         {/* Messages */}
         <div className="dm-messages">
-          {showBeginning && (
+          {messages.length === 0 && (
             <div className="dm-start-notice">
               <div style={{
                 width: 56, height: 56, borderRadius: "50%", margin: "0 auto 10px",
@@ -737,10 +834,9 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
               ? (user.displayName || user.username)
               : (friend?.username || "?");
 
-            // Group consecutive messages from same sender — hide avatar on non-last in group
             const nextMsg = messages[i + 1];
-            const isLastInGroup = !nextMsg || nextMsg.senderId !== m.senderId;
             const prevMsg = messages[i - 1];
+            const isLastInGroup  = !nextMsg || nextMsg.senderId !== m.senderId;
             const isFirstInGroup = !prevMsg || prevMsg.senderId !== m.senderId;
 
             return (
@@ -748,58 +844,26 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
                 key={m.id}
                 className={`dm-msg-row${isMe ? " mine" : ""}${isFirstInGroup ? " new-group" : ""}`}
               >
-                {/* Avatar only on last bubble in a group */}
-                <Avatar name={senderName} hidden={!isLastInGroup} />
+                <MsgAvatar name={senderName} hidden={!isLastInGroup} />
 
-                <div>
-                  {m.fileType === "image" ? (
-                    <div
-                      className={`dm-attach-img-bubble ${isMe ? "mine" : "theirs"}`}
-                      onClick={() => setLightboxSrc(m.fileUrl)}
-                    >
-                      <img src={m.fileUrl} alt={m.fileName || "image"} />
-                    </div>
-                  ) : m.fileType === "file" ? (
-                    (() => {
-                      const ext = getExt(m.fileName);
-                      const di = docIcon(ext);
-                      return (
-                        <div className={`dm-attach-doc-bubble ${isMe ? "mine" : "theirs"}`}>
-                          <div className="dm-doc-icon-box" style={{ background: di.bg, color: di.color }}>{di.char}</div>
-                          <div className="dm-doc-info">
-                            <div className="dm-doc-name">{m.fileName}</div>
-                            <div className="dm-doc-meta">{formatBytes(m.fileSize)} · {ext}</div>
-                          </div>
-                          <a
-                            href={m.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            download={m.fileName}
-                            className="dm-doc-download"
-                            title="Download"
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                              <polyline points="7 10 12 15 17 10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </a>
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    <div className={`dm-bubble ${isMe ? "mine" : "theirs"}`}>
-                      {m.text}
-                    </div>
-                  )}
+                <div className={`dm-bubble-stack ${isMe ? "mine" : "theirs"}`}>
+                  {m.fileType === "image" || m.fileType === "file"
+                    ? renderFileBubble(m, isMe)
+                    : (
+                      <div className={`dm-bubble ${isMe ? "mine" : "theirs"}`}>
+                        {m.text}
+                      </div>
+                    )
+                  }
                 </div>
               </div>
             );
           })}
+
           <div ref={bottomRef} />
         </div>
 
-        {/* Upload progress bar */}
+        {/* Upload progress */}
         {uploadProgress && (
           <div style={{ padding: "0 16px 4px" }}>
             <div className="dm-upload-bar">
@@ -812,115 +876,111 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
           </div>
         )}
 
-        {/* Pending attachment chips */}
+        {/* Pending chips strip */}
         {pendingFiles.length > 0 && (
-          <div style={{ background: "var(--bg-panel)" }}>
+          <div style={{ background: "var(--bg-chat)", borderTop: "1px solid var(--border)", paddingTop: 2 }}>
             <div className="dm-pending-strip">
-              {pendingFiles.map((f) => {
-                const ext = getExt(f.name);
-                const di = docIcon(ext);
-                return (
-                  <div key={f.id} className="dm-pending-chip">
-                    {f.kind === "image" ? (
-                      f.previewUrl
-                        ? <img className="dm-pending-thumb" src={f.previewUrl} alt={f.name} />
-                        : <div className="dm-pending-thumb" style={{ background: "var(--border)" }} />
-                    ) : (
-                      <div className="dm-pending-doc-icon" style={{ background: di.bg, color: di.color }}>{di.char}</div>
-                    )}
-                    <div className="dm-pending-chip-info">
-                      <div className="dm-pending-chip-name">{f.name}</div>
-                      <div className="dm-pending-chip-meta">{formatBytes(f.size)} · {ext}</div>
-                    </div>
-                    <button className="dm-pending-remove" onClick={() => removePendingFile(f.id)}>✕</button>
-                  </div>
-                );
-              })}
+              {pendingFiles.map((f) => (
+                <PendingChip
+                  key={f.id}
+                  file={f}
+                  onRemove={() => setPendingFiles((prev) => prev.filter((x) => x.id !== f.id))}
+                />
+              ))}
             </div>
             {pendingFiles.length >= MAX_FILES && (
-              <div className="dm-pending-limit">Max {MAX_FILES} attachments per message</div>
+              <div className="dm-pending-limit">Max 2 attachments per message</div>
             )}
           </div>
         )}
 
         {/* Input */}
-        <div className="dm-input-area">
-          <div className="dm-input-row">
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: "none" }}
-              onChange={onFileChange}
-            />
+        <div className="dm-input-wrap">
+          <div className="dm-input-box">
+            <div className="dm-textarea-row">
 
-            <div className="dm-attach" ref={attachRef}>
+              {/* Attach button + dropdown */}
+              <div className="dm-attach" ref={attachRef}>
+                <button
+                  className={`dm-attach-btn${pendingFiles.length > 0 ? " has-files" : ""}`}
+                  onClick={() => setShowAttach((v) => !v)}
+                  title="Attach file"
+                  disabled={!dmId}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                  </svg>
+                </button>
+
+                {showAttach && (
+                  <div className="dm-attach-menu">
+                    {!canAddMore && (
+                      <div className="dm-attach-menu-limit">Max 2 files per message</div>
+                    )}
+                    {canAddMore && (
+                      <>
+                        <div className="dm-attach-menu-item" onClick={() => openFilePicker("image")}>
+                          {ATTACH_TYPES.image.icon}
+                          <span>Image</span>
+                          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--t3)" }}>
+                            {ATTACH_TYPES.image.hint}
+                          </span>
+                        </div>
+                        <div className="dm-attach-menu-sep" />
+                        <div className="dm-attach-menu-item" onClick={() => openFilePicker("document")}>
+                          {ATTACH_TYPES.document.icon}
+                          <span>Document</span>
+                          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--t3)" }}>
+                            {ATTACH_TYPES.document.hint}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {pendingFiles.length > 0 && canAddMore && (
+                      <>
+                        <div className="dm-attach-menu-sep" />
+                        <div className="dm-attach-menu-limit">{pendingFiles.length}/2 attached</div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <textarea
+                ref={textareaRef}
+                className="dm-textarea"
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder={
+                  pendingFiles.length > 0
+                    ? "Add a message about your files…"
+                    : `Message @${friend?.username}…`
+                }
+                rows={1}
+              />
+
               <button
-                className={`dm-attach-btn${pendingFiles.length > 0 ? " has-files" : ""}`}
-                onClick={() => setShowAttach((v) => !v)}
-                title="Attach file"
-                disabled={!dmId}
+                className="dm-send-btn"
+                onClick={handleSend}
+                disabled={(!input.trim() && pendingFiles.length === 0) || sending || !dmId}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                  strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66L9.41 16.41a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"/>
+                  <polyline points="5 12 12 5 19 12"/>
                 </svg>
               </button>
-
-              {showAttach && (
-                <div className="dm-attach-menu">
-                  {!canAddMore && <div className="dm-attach-menu-limit">Max {MAX_FILES} files per message</div>}
-                  {canAddMore && (
-                    <>
-                      <div className="dm-attach-menu-item" onClick={() => openFilePicker("image")}>
-                        {ATTACH_TYPES.image.icon}
-                        <span>Image</span>
-                        <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--t3)" }}>{ATTACH_TYPES.image.hint}</span>
-                      </div>
-                      <div className="dm-attach-menu-sep" />
-                      <div className="dm-attach-menu-item" onClick={() => openFilePicker("document")}>
-                        {ATTACH_TYPES.document.icon}
-                        <span>Document</span>
-                        <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--t3)" }}>{ATTACH_TYPES.document.hint}</span>
-                      </div>
-                    </>
-                  )}
-                  {pendingFiles.length > 0 && canAddMore && (
-                    <>
-                      <div className="dm-attach-menu-sep" />
-                      <div className="dm-attach-menu-limit">{pendingFiles.length}/{MAX_FILES} attached</div>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
-
-            <textarea
-              ref={textareaRef}
-              className="dm-input"
-              value={input}
-              onChange={handleInputChange}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder={pendingFiles.length > 0 ? "Add a message about your files…" : `Message @${friend?.username}…`}
-              rows={1}
-            />
-            <button
-              className="dm-send-btn"
-              onClick={handleSend}
-              disabled={(!input.trim() && pendingFiles.length === 0) || sending || !dmId}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            </button>
           </div>
         </div>
+
       </div>
     </div>
   );
