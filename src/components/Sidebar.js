@@ -1203,10 +1203,19 @@ friendsData = {}, activeDM, setActiveDM,
         </button>
 
         <button
-          className={`sb-btn${panel === "dms" ? " active" : ""}`}
-          title="Direct Messages"
-          onClick={() => togglePanel("dms")}
-        >
+  className={`sb-btn${mode === "dms" ? " active" : ""}`}
+  title="Direct Messages"
+  onClick={() => {
+    const friends = friendsData.friends || [];
+    if (friends.length === 0) {
+      togglePanel("dms");
+    } else {
+      setActiveDM(friends[0]);
+      setMode("dm");
+      setPanel(null);
+    }
+  }}
+>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
           </svg>
@@ -1548,30 +1557,6 @@ friendsData = {}, activeDM, setActiveDM,
               )}
             </div>
           </>}
-
-          {/* ── DMS PANEL ── */}
-{panel === "dms" && <>
-  <div className="panel-hdr">
-    <span className="panel-title">Direct Messages</span>
-    <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
-  </div>
-  <div className="panel-list">
-    {(friendsData.friends || []).length === 0 ? (
-      <p className="panel-empty">Add friends first — then you can message them privately here.</p>
-    ) : (
-      (friendsData.friends || []).map(f => (
-        <div
-          key={f.uid}
-          className="chat-row"
-          onClick={() => { setActiveDM(f); setMode("dm"); setPanel(null); }}
-          style={{ cursor: "pointer" }}
-        >
-          <span className="chat-row-label">@{f.username}</span>
-        </div>
-      ))
-    )}
-  </div>
-</>}
 
           {/* ── ELORIA CODE PANEL ── */}
           {panel==="code" && <>

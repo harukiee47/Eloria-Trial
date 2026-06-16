@@ -7,6 +7,7 @@ import {
 import { db } from "./firebase";
 
 
+
 // ── Plan limits ──────────────────────────────────────────────────────────────
 export const GROUP_LIMITS = {
   free: { maxGroups: 2, maxMembers: 4 },

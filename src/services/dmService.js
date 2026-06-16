@@ -25,18 +25,31 @@ export async function getOrCreateDM(uid1, uid2) {
   return dmId;
 }
 
-export async function sendDM(dmId, fromUid, text) {
-  const trimmed = text.trim();
-  if (!trimmed) return;
-
-  await addDoc(collection(db, "dms", dmId, "messages"), {
+export async function sendDM(dmId, fromUid, text, file = null) {
+  const msgData = {
     senderId: fromUid,
-    text: trimmed,
     createdAt: serverTimestamp(),
-  });
+  };
+
+  if (file) {
+    msgData.fileType = file.type;       // "image" or "file"
+    msgData.fileUrl = file.url;
+    msgData.fileName = file.name;
+    msgData.fileSize = file.size;
+    msgData.fileMimeType = file.mimeType;
+    msgData.text = null;
+  } else {
+    msgData.text = text?.trim() || "";
+  }
+
+  await addDoc(collection(db, "dms", dmId, "messages"), msgData);
 
   await setDoc(doc(db, "dms", dmId), {
-    lastMessage: { text: trimmed, senderId: fromUid, at: serverTimestamp() },
+    lastMessage: {
+      text: file ? `📎 ${file.name}` : text?.trim(),
+      senderId: fromUid,
+      at: serverTimestamp(),
+    },
   }, { merge: true });
 }
 
