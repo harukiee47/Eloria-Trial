@@ -622,7 +622,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   const [limitModal, setLimitModal]     = useState(null); // { message: string }
 
   // ── @mention dropdown ────────────────────────────────────────
-  const [mentionQuery, setMentionQuery]   = useState("");   // text after @
   const [mentionResults, setMentionResults] = useState([]); // filtered members
   const [mentionActive, setMentionActive]   = useState(-1); // keyboard nav index
 
@@ -710,8 +709,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
       const query = mentionMatch[1].toLowerCase();
       // Only show if query doesn't already look like a full email (no second @)
       if (!query.includes("@")) {
-        setMentionQuery(query);
-        const filtered = memberEmails.filter(email => {
+            const filtered = memberEmails.filter(email => {
           if (!email || email === user.email) return false;
           return email.toLowerCase().includes(query);
         });
@@ -721,7 +719,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
       }
     }
     setMentionResults([]);
-    setMentionQuery("");
   };
 
   const insertMention = (email) => {
@@ -732,7 +729,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     const newVal = replaced + input.slice(cursorPos);
     setInput(newVal);
     setMentionResults([]);
-    setMentionQuery("");
     setMentionActive(-1);
     setTimeout(() => {
       const ta = textareaRef.current;
