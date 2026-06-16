@@ -419,6 +419,53 @@ const GC_STYLE = `
   }
   .gc-limit-close:hover { opacity: .87; }
 
+
+  /* ── CONFIRM MODAL ───────────────────────────────────────── */
+  .gc-confirm-backdrop {
+    position: fixed; inset: 0; z-index: 950;
+    background: rgba(0,0,0,.4); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn .15s ease;
+  }
+  .gc-confirm-modal {
+    background: var(--bg-panel);
+    border-radius: var(--r-lg);
+    width: 300px; margin: 0 20px;
+    box-shadow: 0 24px 60px rgba(13,58,53,.22);
+    animation: slideUp .17s ease;
+    overflow: hidden;
+    padding: 24px;
+  }
+  .gc-confirm-title {
+    font-size: 15px; font-weight: 700; color: var(--t1);
+    margin-bottom: 10px;
+  }
+  .gc-confirm-msg {
+    font-size: 13px; color: var(--t2); line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .gc-confirm-btns {
+    display: flex; gap: 8px; justify-content: flex-end;
+  }
+  .gc-confirm-cancel {
+    padding: 8px 16px;
+    background: none; border: 1px solid var(--border);
+    border-radius: var(--r-sm); color: var(--t2);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: var(--font);
+    transition: background .12s;
+  }
+  .gc-confirm-cancel:hover { background: #f0f0ec; }
+  .gc-confirm-ok {
+    padding: 8px 16px;
+    background: var(--danger); border: none;
+    border-radius: var(--r-sm); color: #fff;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: var(--font);
+    transition: opacity .12s;
+  }
+  .gc-confirm-ok:hover { opacity: .87; }
+
   /* ── INFO PANEL ──────────────────────────────────────────── */
   .gc-info-backdrop {
     position: fixed; inset: 0; z-index: 600;
@@ -620,6 +667,9 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
 
   // ── Limit modal (replaces alert() for group/member limits) ──
   const [limitModal, setLimitModal]     = useState(null); // { message: string }
+
+  // ── Confirm modal (replaces window.confirm for destructive actions) ──
+  const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
 
   // ── @mention dropdown ────────────────────────────────────────
   const [mentionResults, setMentionResults] = useState([]); // filtered members
@@ -893,33 +943,48 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     }
   };
 
-  const handleKick = async (targetUid, targetEmail, targetName) => {
-    if (!window.confirm(`Remove ${targetName} from the group?`)) return;
-    try { await kickMember(group.id, targetUid, targetEmail); }
-    catch (err) { alert(err.message); }
+  const handleKick = (targetUid, targetEmail, targetName) => {
+    setConfirmModal({
+      message: `Remove ${targetName} from the group?`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await kickMember(group.id, targetUid, targetEmail); }
+        catch (err) { setLimitModal({ message: err.message }); }
+      }
+    });
   };
 
-  const handleLeave = async () => {
-    if (!window.confirm("Leave this group?")) return;
-    try { await leaveGroup(group.id, user); onBack(); }
-    catch (err) { alert(err.message); }
+  const handleLeave = () => {
+    setConfirmModal({
+      message: "Leave this group? You'll need a new invite to rejoin.",
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await leaveGroup(group.id, user); onBack(); }
+        catch (err) { setLimitModal({ message: err.message }); }
+      }
+    });
   };
 
   // FIX 5: After delete, call onBack() so user goes to normal chat, not blank screen
-  const handleDelete = async () => {
-    if (!window.confirm(`Delete "${group.name}"? This is permanent.`)) return;
-    try {
-      await deleteGroup(group.id);
-      onBack(); // ← navigates back to normal chat / group list
-    } catch (err) {
-      alert(err.message);
-    }
+  const handleDelete = () => {
+    setConfirmModal({
+      message: `Delete "${group.name}"? This cannot be undone.`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          await deleteGroup(group.id);
+          onBack();
+        } catch (err) {
+          setLimitModal({ message: err.message });
+        }
+      }
+    });
   };
 
   const handleRename = async () => {
     if (!renameVal.trim() || renameVal.trim() === group.name) return;
     try { await renameGroup(group.id, renameVal.trim()); }
-    catch (err) { alert(err.message); }
+    catch (err) { setLimitModal({ message: err.message }); }
   };
 
   const grouped = [];
@@ -1201,6 +1266,20 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
             <div className="gc-info-section">
               {!isCreator && <button className="gc-danger-btn" onClick={handleLeave}>Leave Group</button>}
               {isCreator  && <button className="gc-danger-btn" onClick={handleDelete}>Delete Group</button>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONFIRM MODAL (replaces window.confirm for destructive actions) ── */}
+      {confirmModal && (
+        <div className="gc-confirm-backdrop" onClick={() => setConfirmModal(null)}>
+          <div className="gc-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="gc-confirm-title">Are you sure?</div>
+            <div className="gc-confirm-msg">{confirmModal.message}</div>
+            <div className="gc-confirm-btns">
+              <button className="gc-confirm-cancel" onClick={() => setConfirmModal(null)}>Cancel</button>
+              <button className="gc-confirm-ok" onClick={confirmModal.onConfirm}>Confirm</button>
             </div>
           </div>
         </div>
