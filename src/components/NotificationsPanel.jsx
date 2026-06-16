@@ -389,6 +389,12 @@ const PANEL_STYLE = `
   }
   .pending-req-decline:hover { background: #f0f0ec; color: var(--t1); }
 `;
+if (typeof document !== "undefined" && !document.getElementById("notif-panel-style")) {
+  const tag = document.createElement("style");
+  tag.id = "notif-panel-style";
+  tag.textContent = PANEL_STYLE;
+  document.head.appendChild(tag);
+}
 
 export default function NotificationsPanel({
   user,
@@ -404,16 +410,6 @@ export default function NotificationsPanel({
   const [friendFeedback, setFriendFeedback] = useState(null);
   const [friendProfiles, setFriendProfiles] = useState([]);
   const [pendingProfiles, setPendingProfiles] = useState([]);
-
-  // Inject styles once
-  useEffect(() => {
-    if (!document.getElementById("notif-panel-style")) {
-      const tag = document.createElement("style");
-      tag.id = "notif-panel-style";
-      tag.textContent = PANEL_STYLE;
-      document.head.appendChild(tag);
-    }
-  }, []);
 
   // Subscribe to friend profiles
   useEffect(() => {

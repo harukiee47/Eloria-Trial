@@ -317,6 +317,10 @@ const GC_STYLE = `
     border-top: 1px solid var(--border);
     flex-shrink: 0;
     position: relative;
+    max-width: 760px;    
+  width: 100%;        
+  margin: 0 auto;     
+  align-self: center;  
   }
   .gc-eloria-note {
     font-size: 11px; color: var(--t3); text-align: center;
@@ -700,7 +704,7 @@ const mentionableMembers = (group.members || [])
   .filter(uid => uid !== user.uid)
   .map(uid => ({
     uid,
-    username: memberUsernames[uid] || memberNames[uid] || "Unknown",
+    username: memberUsernames[uid] || memberNames[uid]?.split("@")[0] || "Unknown",
     email: memberEmails[group.members?.indexOf(uid)] || "",
   }));
 

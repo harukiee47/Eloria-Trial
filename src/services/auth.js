@@ -34,10 +34,20 @@ async function ensureUserProfile(firebaseUser, username) {
     });
     return resolvedUsername;
   } else {
-    // Just update online status
-    await updateDoc(ref, { online: true, lastSeen: serverTimestamp() });
-    return snap.data().username || snap.data().email;
-  }
+  const existingUsername = snap.data().username;
+  const needsUsername = !existingUsername || existingUsername === snap.data().email;
+  await updateDoc(ref, {
+    online: true,
+    lastSeen: serverTimestamp(),
+    // Fix existing users who have email stored as username
+    ...(needsUsername && firebaseUser.displayName
+      ? { username: firebaseUser.displayName }
+      : {}),
+  });
+  return needsUsername && firebaseUser.displayName
+    ? firebaseUser.displayName
+    : existingUsername || snap.data().email;
+}
 }
 
 // ── Listen to auth state changes ─────────────────────────────────────────────
