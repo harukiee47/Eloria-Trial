@@ -321,41 +321,43 @@ const unsub = subscribeToInvites(user.email, (invites) => {
         <div className="mobile-overlay" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <Sidebar
-        user={user}
-        chats={chats}
-        setChats={setChats}
-        activeChatId={activeChatId}
-        setActiveChatId={setActiveChatId}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        onLogout={async () => {
-          await logout(user?.uid);
-          setUser(null);
-          setChats([]);
-          setActiveChatId(null);
-          setMode("chat");
-          setStage("login");
-        }}
-        groups={groups}
-        activeGroupId={activeGroupId}
-        setActiveGroupId={setActiveGroupId}
-        pendingInviteCount={pendingInviteCount}
-        userPlan={userPlan}
-        mode={mode}
-        setMode={setMode}
-        createGroup={handleCreateGroup}
-        setShowPricing={setShowPricing}
-        createNewProject={createNewProject}
-        codeProjects={codeProjects}
-        activeProjectId={activeProjectId}
-        showNotifPanel={showNotifPanel}
-setShowNotifPanel={setShowNotifPanel}
-totalBadgeCount={totalBadgeCount}
-friendsData={friendsData}
-activeDM={activeDM}
-setActiveDM={setActiveDM}
-      />
+      {mode !== "dm" && (
+  <Sidebar
+    user={user}
+    chats={chats}
+    setChats={setChats}
+    activeChatId={activeChatId}
+    setActiveChatId={setActiveChatId}
+    sidebarOpen={sidebarOpen}
+    setSidebarOpen={setSidebarOpen}
+    onLogout={async () => {
+      await logout(user?.uid);
+      setUser(null);
+      setChats([]);
+      setActiveChatId(null);
+      setMode("chat");
+      setStage("login");
+    }}
+    groups={groups}
+    activeGroupId={activeGroupId}
+    setActiveGroupId={setActiveGroupId}
+    pendingInviteCount={pendingInviteCount}
+    userPlan={userPlan}
+    mode={mode}
+    setMode={setMode}
+    createGroup={handleCreateGroup}
+    setShowPricing={setShowPricing}
+    createNewProject={createNewProject}
+    codeProjects={codeProjects}
+    activeProjectId={activeProjectId}
+    showNotifPanel={showNotifPanel}
+    setShowNotifPanel={setShowNotifPanel}
+    totalBadgeCount={totalBadgeCount}
+    friendsData={friendsData}
+    activeDM={activeDM}
+    setActiveDM={setActiveDM}
+  />
+)}
 
       <div className="app-main">
         {/* FIX: only render GroupChat when activeGroup actually exists */}

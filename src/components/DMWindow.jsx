@@ -68,7 +68,7 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
       {/* ── LEFT SIDEBAR ── */}
       <div style={{
         width: 240, flexShrink: 0, borderRight: "1px solid var(--border)",
-        display: "flex", flexDirection: "column", background: "var(--bg-sidebar, #f7f8fa)",
+        display: "flex", flexDirection: "column", background: "var(--bg-sidebar)",
         height: "100%", overflow: "hidden",
       }}>
 
@@ -132,8 +132,8 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
                     <span style={{
                       position: "absolute", bottom: 1, right: 1,
                       width: 8, height: 8, borderRadius: "50%",
-                      background: f.online ? "#22c55e" : "#9ca3af",
-                      border: "2px solid var(--bg-sidebar, #f7f8fa)",
+                      background: f.online ? "#052816" : "#9ca3af",
+                      border: "2px solid var(--bg-sidebar)",
                     }} />
                   </div>
                   <div style={{ overflow: "hidden", flex: 1 }}>
