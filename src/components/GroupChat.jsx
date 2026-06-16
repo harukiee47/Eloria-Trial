@@ -9,14 +9,14 @@ import {
 const GC_STYLE = `
   /* ── GROUP CHAT WRAPPER ─────────────────────────────────── */
   .gc-wrap {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg-chat);
-  font-family: var(--font);
-}
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--bg-chat);
+    font-family: var(--font);
+  }
 
   /* ── TOUCH / MOBILE BASE TWEAKS ─────────────────────────── */
   .gc-header-back, .gc-icon-btn, .gc-send-btn, .gc-info-close,
@@ -68,9 +68,9 @@ const GC_STYLE = `
   /* ── MESSAGES ────────────────────────────────────────────── */
   .gc-messages {
     flex: 1;
-    min-height: 0;   /* ← critical: allows shrinking below content size */
+    min-height: 0;
     overflow-y: auto;
-     padding: 16px 16px 8px;
+    padding: 16px 16px 8px;
     display: flex; flex-direction: column; gap: 2px;
     scrollbar-width: thin; scrollbar-color: #e0e0da transparent;
     -webkit-overflow-scrolling: touch;
@@ -140,11 +140,8 @@ const GC_STYLE = `
 
   /* ── REPLY QUOTE inside a bubble ─────────────────────────── */
   .gc-reply-quote {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-    padding: 5px 8px;
-    border-radius: 8px;
+    display: flex; gap: 6px; margin-bottom: 6px;
+    padding: 5px 8px; border-radius: 8px;
     background: rgba(0,0,0,.08);
     border-left: 3px solid rgba(255,255,255,.5);
     cursor: default;
@@ -206,6 +203,16 @@ const GC_STYLE = `
     font-size: 12px;
   }
 
+  /* ── @MENTION highlight ──────────────────────────────────── */
+  .gc-mention {
+    background: var(--accent-bg);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 0 3px;
+    font-weight: 600;
+    font-size: 0.95em;
+  }
+
   .gc-msg-time {
     font-size: 10px; color: var(--t3);
     margin-top: 3px; padding: 0 3px;
@@ -229,9 +236,7 @@ const GC_STYLE = `
   .gc-typing-label { font-size: 12px; color: var(--t3); font-style: italic; }
 
   /* ── CONTEXT MENU ────────────────────────────────────────── */
-  .gc-ctx-backdrop {
-    display: none;
-  }
+  .gc-ctx-backdrop { display: none; }
   .gc-ctx-menu {
     position: fixed;
     background: var(--bg-panel);
@@ -252,20 +257,13 @@ const GC_STYLE = `
     to   { opacity: 1; transform: translateY(0); }
   }
   .gc-ctx-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 11px;
-    border: none;
-    background: none;
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 8px 11px;
+    border: none; background: none;
     border-radius: var(--r-sm);
-    font-size: 13px;
-    color: var(--t1);
-    cursor: pointer;
-    font-family: var(--font);
-    text-align: left;
-    transition: background .11s;
+    font-size: 13px; color: var(--t1);
+    cursor: pointer; font-family: var(--font);
+    text-align: left; transition: background .11s;
   }
   .gc-ctx-item:hover { background: #f4f4f0; }
   .gc-ctx-item.danger { color: var(--danger); }
@@ -274,15 +272,11 @@ const GC_STYLE = `
   .gc-ctx-divider { height: 1px; background: var(--border-soft); margin: 3px 6px; }
 
   /* ── BOTTOM-SHEET DRAG HANDLE (mobile only) ─────────────── */
-  .gc-sheet-handle {
-    display: none;
-  }
+  .gc-sheet-handle { display: none; }
 
   /* ── REPLY PREVIEW BAR (above input) ────────────────────── */
   .gc-reply-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: flex; align-items: center; gap: 8px;
     padding: 8px 14px;
     background: var(--accent-bg);
     border-top: 1px solid #c8e0d8;
@@ -321,6 +315,7 @@ const GC_STYLE = `
     background: var(--bg-panel);
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+    position: relative;
   }
   .gc-eloria-note {
     font-size: 11px; color: var(--t3); text-align: center;
@@ -353,6 +348,77 @@ const GC_STYLE = `
   .gc-send-btn:disabled { opacity: .4; cursor: not-allowed; }
   .gc-send-btn svg { width: 17px; height: 17px; }
 
+  /* ── @MENTION DROPDOWN ───────────────────────────────────── */
+  .gc-mention-dropdown {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 14px; right: 14px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    box-shadow: 0 4px 20px rgba(13,58,53,.14);
+    z-index: 700;
+    overflow: hidden;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .gc-mention-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    cursor: pointer;
+    transition: background .1s;
+    font-size: 13px; color: var(--t1);
+  }
+  .gc-mention-item:hover, .gc-mention-item.active {
+    background: var(--accent-bg);
+  }
+  .gc-mention-av {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, #6a9a94, #3a7a6a);
+    color: #fff; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .gc-mention-email { font-size: 12px; color: var(--t3); }
+
+  /* ── LIMIT MODAL ─────────────────────────────────────────── */
+  .gc-limit-backdrop {
+    position: fixed; inset: 0; z-index: 900;
+    background: rgba(0,0,0,.35); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn .15s ease;
+  }
+  .gc-limit-modal {
+    background: var(--bg-panel);
+    border-radius: var(--r-lg);
+    width: 320px; margin: 0 20px;
+    box-shadow: 0 24px 60px rgba(13,58,53,.2);
+    animation: slideUp .17s ease;
+    overflow: hidden;
+  }
+  .gc-limit-icon {
+    font-size: 36px; text-align: center;
+    padding: 24px 24px 8px;
+  }
+  .gc-limit-title {
+    font-size: 16px; font-weight: 700; color: var(--t1);
+    text-align: center; padding: 0 24px 8px;
+  }
+  .gc-limit-msg {
+    font-size: 13px; color: var(--t2); line-height: 1.6;
+    text-align: center; padding: 0 24px 20px;
+  }
+  .gc-limit-close {
+    display: block; width: calc(100% - 32px);
+    margin: 0 16px 20px;
+    padding: 10px;
+    background: var(--accent); border: none; border-radius: var(--r-md);
+    color: #fff; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: var(--font);
+    transition: opacity .12s;
+  }
+  .gc-limit-close:hover { opacity: .87; }
+
   /* ── INFO PANEL ──────────────────────────────────────────── */
   .gc-info-backdrop {
     position: fixed; inset: 0; z-index: 600;
@@ -379,14 +445,12 @@ const GC_STYLE = `
     transition: background .12s; font-size: 14px;
   }
   .gc-info-close:hover { background: #f0f0ec; color: var(--t1); }
-
   .gc-info-section { padding: 14px 18px; }
   .gc-info-section + .gc-info-section { border-top: 1px solid var(--border-soft); }
   .gc-info-label {
     font-size: 10px; font-weight: 700; color: var(--t3);
     text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px;
   }
-
   .gc-rename-row { display: flex; gap: 8px; }
   .gc-rename-input {
     flex: 1; padding: 7px 10px; border: 1.5px solid var(--accent);
@@ -400,7 +464,6 @@ const GC_STYLE = `
     transition: opacity .12s;
   }
   .gc-rename-save:hover { opacity: .87; }
-
   .gc-member-row {
     display: flex; align-items: center; gap: 10px;
     padding: 6px 0; border-radius: var(--r-sm);
@@ -422,7 +485,6 @@ const GC_STYLE = `
     transition: color .12s, background .12s; font-family: var(--font);
   }
   .gc-kick-btn:hover { color: var(--danger); background: var(--danger-bg); }
-
   .gc-invite-row { display: flex; gap: 8px; margin-top: 8px; }
   .gc-invite-input {
     flex: 1; padding: 7px 10px; border: 1.5px solid var(--border);
@@ -440,12 +502,9 @@ const GC_STYLE = `
   }
   .gc-invite-btn:hover { opacity: .87; }
   .gc-invite-btn:disabled { opacity: .4; cursor: not-allowed; }
-  .gc-invite-feedback {
-    font-size: 12px; margin-top: 6px; padding: 0 2px;
-  }
+  .gc-invite-feedback { font-size: 12px; margin-top: 6px; padding: 0 2px; }
   .gc-invite-feedback.ok { color: #2a7a52; }
   .gc-invite-feedback.err { color: var(--danger); }
-
   .gc-danger-btn {
     width: 100%; padding: 9px; background: none;
     border: 1px solid var(--danger); border-radius: var(--r-md);
@@ -462,125 +521,62 @@ const GC_STYLE = `
      MOBILE OPTIMIZATIONS
      ══════════════════════════════════════════════════════════ */
   @media (max-width: 640px) {
-    /* Header — tighter spacing, larger tap targets */
-    .gc-header {
-      padding: 10px 12px;
-      gap: 8px;
+    .gc-header { padding: 10px 12px; gap: 8px; }
+    .gc-header-back, .gc-icon-btn {
+      padding: 9px; min-width: 40px; min-height: 40px; touch-action: manipulation;
     }
-    .gc-header-back,
-    .gc-icon-btn {
-      padding: 9px;
-      min-width: 40px;
-      min-height: 40px;
-      touch-action: manipulation;
-    }
-    .gc-header-back svg,
-    .gc-icon-btn svg {
-      width: 19px; height: 19px;
-    }
-    .gc-header-avatar {
-      width: 32px; height: 32px; font-size: 12px;
-    }
+    .gc-header-back svg, .gc-icon-btn svg { width: 19px; height: 19px; }
+    .gc-header-avatar { width: 32px; height: 32px; font-size: 12px; }
     .gc-header-name { font-size: 14px; }
     .gc-header-members { font-size: 10.5px; }
-
-    /* Messages — more room for bubbles, larger text */
     .gc-messages { padding: 12px 10px 6px; }
     .gc-msg-content { max-width: 84%; }
     .gc-msg-avatar { width: 26px; height: 26px; font-size: 10.5px; }
-    .gc-bubble {
-      font-size: 14.5px;
-      padding: 9px 12px;
-    }
-
+    .gc-bubble { font-size: 14.5px; padding: 9px 12px; }
     .gc-reply-bar { padding: 8px 10px; }
-
-    /* Input bar — respect safe-area + avoid iOS auto-zoom */
     .gc-input-bar {
       padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
     }
     .gc-eloria-note { font-size: 10.5px; margin-bottom: 6px; }
-    .gc-textarea {
-      font-size: 16px;
-      padding: 10px 12px;
-      border-radius: 18px;
-    }
-    .gc-send-btn {
-      width: 44px; height: 44px;
-      border-radius: 14px;
-      touch-action: manipulation;
-    }
-
-    /* Long-press dismiss backdrop */
+    .gc-textarea { font-size: 16px; padding: 10px 12px; border-radius: 18px; }
+    .gc-send-btn { width: 44px; height: 44px; border-radius: 14px; touch-action: manipulation; }
     .gc-ctx-backdrop {
-      display: block;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.25);
-      z-index: 799;
+      display: block; position: fixed; inset: 0;
+      background: rgba(0,0,0,.25); z-index: 799;
       animation: fadeIn .12s ease;
     }
-
-    /* Context menu → bottom action sheet */
     .gc-ctx-menu {
-      left: 0 !important;
-      right: 0 !important;
-      bottom: 0 !important;
-      top: auto !important;
-      width: 100%;
-      min-width: 0;
-      border-radius: 16px 16px 0 0;
-      padding: 6px;
+      left: 0 !important; right: 0 !important;
+      bottom: 0 !important; top: auto !important;
+      width: 100%; min-width: 0;
+      border-radius: 16px 16px 0 0; padding: 6px;
       padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
       box-shadow: 0 -8px 28px rgba(13,58,53,.16);
       animation: ctxSheetIn .16s ease;
     }
-    .gc-ctx-item {
-      padding: 14px 14px;
-      font-size: 15px;
-    }
-
-    /* Bottom-sheet drag handles */
+    .gc-ctx-item { padding: 14px 14px; font-size: 15px; }
     .gc-sheet-handle {
-      display: block;
-      width: 36px; height: 4px;
-      border-radius: 2px;
-      background: var(--border);
+      display: block; width: 36px; height: 4px;
+      border-radius: 2px; background: var(--border);
       margin: 8px auto 4px;
     }
-
-    /* Info panel → bottom sheet */
     .gc-info-backdrop { align-items: flex-end; }
     .gc-info-panel {
-      width: 100%;
-      max-width: 100%;
-      margin: 0;
-      max-height: 88vh;
-      border-radius: 18px 18px 0 0;
+      width: 100%; max-width: 100%; margin: 0;
+      max-height: 88vh; border-radius: 18px 18px 0 0;
       padding-bottom: env(safe-area-inset-bottom, 0px);
       animation: slideUpSheet .2s ease;
     }
     .gc-info-hdr { padding: 8px 16px 12px; }
-    .gc-info-close {
-      width: 34px; height: 34px;
-      touch-action: manipulation;
-    }
+    .gc-info-close { width: 34px; height: 34px; touch-action: manipulation; }
     .gc-member-row { padding: 9px 0; }
     .gc-member-av { width: 32px; height: 32px; }
-    .gc-kick-btn {
-      padding: 6px 10px;
-      font-size: 12.5px;
-      touch-action: manipulation;
-    }
+    .gc-kick-btn { padding: 6px 10px; font-size: 12.5px; touch-action: manipulation; }
     .gc-invite-input, .gc-invite-btn,
-    .gc-rename-input, .gc-rename-save {
-      font-size: 14px;
-      padding: 9px 12px;
-    }
-    .gc-danger-btn {
-      padding: 12px;
-      font-size: 14px;
-      touch-action: manipulation;
-    }
+    .gc-rename-input, .gc-rename-save { font-size: 14px; padding: 9px 12px; }
+    .gc-danger-btn { padding: 12px; font-size: 14px; touch-action: manipulation; }
+    .gc-limit-modal { width: calc(100% - 32px); }
+    .gc-mention-dropdown { left: 10px; right: 10px; }
   }
 `;
 
@@ -600,38 +596,53 @@ function formatDay(ts) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+// Render message text with @email mentions highlighted
+function renderTextWithMentions(text) {
+  if (!text) return text;
+  const parts = text.split(/(@[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,})/g);
+  return parts.map((part, i) =>
+    /^@[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(part)
+      ? <span key={i} className="gc-mention">{part}</span>
+      : part
+  );
+}
+
 export default function GroupChat({ group, user, userPlan, onBack }) {
-  const [messages, setMessages]       = useState([]);
-  const [input, setInput]             = useState("");
-  const [sending, setSending]         = useState(false);
+  const [messages, setMessages]         = useState([]);
+  const [input, setInput]               = useState("");
+  const [sending, setSending]           = useState(false);
   const [eloriaTyping, setEloriaTyping] = useState(false);
-  const [showInfo, setShowInfo]       = useState(false);
-  const [renameVal, setRenameVal]     = useState(group.name);
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [showInfo, setShowInfo]         = useState(false);
+  const [renameVal, setRenameVal]       = useState(group.name);
+  const [inviteEmail, setInviteEmail]   = useState("");
   const [inviteFeedback, setInviteFeedback] = useState(null);
-  const [inviting, setInviting]       = useState(false);
-  const [limitModal, setLimitModal]   = useState(null); // { title, message }
-  // mention dropdown
-  const [mentionQuery, setMentionQuery] = useState(null); // string after "@"
-  const [mentionCursor, setMentionCursor] = useState(0);
+  const [inviting, setInviting]         = useState(false);
 
+  // ── Limit modal (replaces alert() for group/member limits) ──
+  const [limitModal, setLimitModal]     = useState(null); // { message: string }
 
-  const [ctxMenu, setCtxMenu] = useState(null); 
+  // ── @mention dropdown ────────────────────────────────────────
+  const [mentionQuery, setMentionQuery]   = useState("");   // text after @
+  const [mentionResults, setMentionResults] = useState([]); // filtered members
+  const [mentionActive, setMentionActive]   = useState(-1); // keyboard nav index
+
+  const [ctxMenu, setCtxMenu]   = useState(null);
   const ctxRef = useRef(null);
 
+  const [replyTo, setReplyTo]   = useState(null);
 
-  const [replyTo, setReplyTo] = useState(null); 
-
-  // ── mobile long-press (tap-and-hold) support ────────────────
-  const [pressedMsgId, setPressedMsgId] = useState(null);
+  const [pressedMsgId, setPressedMsgId]   = useState(null);
   const longPressTimer = useRef(null);
   const longPressPos   = useRef(null);
 
   const bottomRef   = useRef(null);
   const textareaRef = useRef(null);
-  const uid = user?.uid;
+  const uid       = user?.uid;
   const isCreator = group.creatorId === uid;
 
+  // All member emails for @mention
+  const memberEmails = group.memberEmails || [];
+  const memberNames  = group.memberNames  || {};
 
   useEffect(() => {
     if (!document.getElementById("gc-style")) {
@@ -642,7 +653,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     }
   }, []);
 
-
   useEffect(() => {
     const joinedAt = group.memberJoinedAt?.[uid]
       ? new Date(group.memberJoinedAt[uid])
@@ -651,16 +661,13 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     return () => unsub();
   }, [group.id, uid, group.memberJoinedAt]);
 
-
   useEffect(() => {
     if (uid && group.id) clearUnread(group.id, uid);
   }, [group.id, uid, messages.length]);
 
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, eloriaTyping]);
-
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -669,13 +676,12 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
   }, [input]);
 
-
   useEffect(() => {
     if (!ctxMenu) return;
     const close = (e) => {
       if (ctxRef.current && !ctxRef.current.contains(e.target)) setCtxMenu(null);
     };
-    const onKey = (e) => { if (e.key === "Escape") { setCtxMenu(null); } };
+    const onKey = (e) => { if (e.key === "Escape") setCtxMenu(null); };
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -684,28 +690,64 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     };
   }, [ctxMenu]);
 
-
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape" && replyTo) setReplyTo(null); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [replyTo]);
 
+  // ── @mention: update dropdown when input changes ─────────────
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setInput(val);
+
+    // Find @ that isn't preceded by a word character (fresh @)
+    const cursorPos = e.target.selectionStart;
+    const textToCursor = val.slice(0, cursorPos);
+    const mentionMatch = textToCursor.match(/@([\w.@-]*)$/);
+
+    if (mentionMatch) {
+      const query = mentionMatch[1].toLowerCase();
+      // Only show if query doesn't already look like a full email (no second @)
+      if (!query.includes("@")) {
+        setMentionQuery(query);
+        const filtered = memberEmails.filter(email => {
+          if (!email || email === user.email) return false;
+          return email.toLowerCase().includes(query);
+        });
+        setMentionResults(filtered);
+        setMentionActive(-1);
+        return;
+      }
+    }
+    setMentionResults([]);
+    setMentionQuery("");
+  };
+
+  const insertMention = (email) => {
+    const cursorPos = textareaRef.current?.selectionStart ?? input.length;
+    const textToCursor = input.slice(0, cursorPos);
+    // Replace the @query part with @email
+    const replaced = textToCursor.replace(/@[\w.@-]*$/, `@${email} `);
+    const newVal = replaced + input.slice(cursorPos);
+    setInput(newVal);
+    setMentionResults([]);
+    setMentionQuery("");
+    setMentionActive(-1);
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (ta) { ta.focus(); ta.selectionStart = ta.selectionEnd = replaced.length; }
+    }, 0);
+  };
+
   const handleContextMenu = useCallback((e, msg) => {
     e.preventDefault();
-
     if (msg.deleted) return;
     setCtxMenu({ x: e.clientX, y: e.clientY, msg });
   }, []);
 
-
-  // ── Long-press handlers (tap-and-hold to open the action sheet
-  //    on touch devices, where right-click isn't available) ──────
   const clearLongPress = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     longPressPos.current = null;
     setPressedMsgId(null);
   }, []);
@@ -732,116 +774,42 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     if (dx > 10 || dy > 10) clearLongPress();
   }, [clearLongPress]);
 
-  const handleTouchEnd = useCallback(() => {
-    clearLongPress();
-  }, [clearLongPress]);
-
+  const handleTouchEnd = useCallback(() => { clearLongPress(); }, [clearLongPress]);
 
   const handleReply = () => {
     if (!ctxMenu) return;
     const { msg } = ctxMenu;
-    setReplyTo({
-      id: msg.id,
-      senderName: msg.isEloria ? "Eloria" : msg.senderName,
-      text: msg.text,
-    });
+    setReplyTo({ id: msg.id, senderName: msg.isEloria ? "Eloria" : msg.senderName, text: msg.text });
     setCtxMenu(null);
     textareaRef.current?.focus();
   };
-
 
   const handleCopyMsg = async () => {
     if (!ctxMenu) return;
     const { msg } = ctxMenu;
     setCtxMenu(null);
-    try {
-      await navigator.clipboard.writeText(msg.text || "");
-    } catch (err) {
-      console.error("Copy error:", err);
-    }
+    try { await navigator.clipboard.writeText(msg.text || ""); }
+    catch (err) { console.error("Copy error:", err); }
   };
-
 
   const handleDeleteMsg = async () => {
     if (!ctxMenu) return;
     const { msg } = ctxMenu;
     setCtxMenu(null);
-    try {
-      await deleteGroupMessage(group.id, msg.id);
-    } catch (err) {
-      console.error("Delete error:", err);
-    }
-  };
-
-  // ── @mention detection ─────────────────────────────────────
-  const memberEmailList = group.memberEmails || [];
-  const memberNamesMap  = group.memberNames  || {};
-
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setInput(val);
-
-    // detect "@" followed by partial email/name
-    const cursor = e.target.selectionStart;
-    const textBefore = val.slice(0, cursor);
-    const match = textBefore.match(/@([^\s@]*)$/);
-    if (match) {
-      setMentionQuery(match[1].toLowerCase());
-      setMentionCursor(0);
-    } else {
-      setMentionQuery(null);
-    }
-  };
-
-  const mentionSuggestions = mentionQuery !== null
-    ? Object.entries(memberNamesMap)
-        .filter(([uid, name]) => {
-          if (uid === user?.uid) return false;
-          const email = memberEmailList.find(e => e) || "";
-          return (
-            name.toLowerCase().includes(mentionQuery) ||
-            email.toLowerCase().includes(mentionQuery)
-          );
-        })
-        .slice(0, 5)
-    : [];
-
-  // Build suggestions with email from group data
-  const memberRows = (group.members || []).map(uid => ({
-    uid,
-    name: memberNamesMap[uid] || "Unknown",
-    email: group.memberEmailMap?.[uid] || "",
-  })).filter(m => m.uid !== user?.uid);
-
-  const emailSuggestions = mentionQuery !== null
-    ? memberRows.filter(m =>
-        m.name.toLowerCase().includes(mentionQuery) ||
-        m.email.toLowerCase().includes(mentionQuery)
-      ).slice(0, 5)
-    : [];
-
-  const insertMention = (email, name) => {
-    const cursor = textareaRef.current?.selectionStart || input.length;
-    const textBefore = input.slice(0, cursor);
-    const textAfter  = input.slice(cursor);
-    const replaced = textBefore.replace(/@([^\s@]*)$/, `@${email} `);
-    setInput(replaced + textAfter);
-    setMentionQuery(null);
-    setTimeout(() => textareaRef.current?.focus(), 0);
+    try { await deleteGroupMessage(group.id, msg.id); }
+    catch (err) { console.error("Delete error:", err); }
   };
 
   const handleSend = async () => {
     const text = input.trim();
     if (!text || sending) return;
     setInput("");
-    setMentionQuery(null);
+    setMentionResults([]);
     const currentReply = replyTo;
     setReplyTo(null);
     setSending(true);
-
     try {
       await sendGroupMessage(group.id, user, text, currentReply || null);
-
       if (text.toLowerCase().includes("@eloria")) {
         const question = text.replace(/@eloria/gi, "").trim();
         setEloriaTyping(true);
@@ -855,63 +823,54 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   };
 
   const callEloriaReply = async (question) => {
-  try {
-    const token = await auth.currentUser.getIdToken();
-    const res = await fetch("https://eloria-trial.onrender.com/api/group-chat/reply", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        groupId: group.id,
-        question,
-        history: messages.slice(-20),
-      }),
-    });
-
-    if (!res.ok) { setEloriaTyping(false); return; }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n\n");
-      buffer = lines.pop(); // keep incomplete chunk
-
-      for (const line of lines) {
-        if (!line.startsWith("data:")) continue;
-        try {
-          const parsed = JSON.parse(line.slice(5).trim());
-          if (parsed.done) {
-            setEloriaTyping(false); // ✅ hide typing indicator
-          }
-          // parsed.text chunks are intentionally ignored here —
-          // the server saves the full reply to Firestore on "end",
-          // and subscribeToMessages will pick it up automatically.
-        } catch {}
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch("https://eloria-trial.onrender.com/api/group-chat/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ groupId: group.id, question, history: messages.slice(-20) }),
+      });
+      if (!res.ok) { setEloriaTyping(false); return; }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          try {
+            const parsed = JSON.parse(line.slice(5).trim());
+            if (parsed.done) setEloriaTyping(false);
+          } catch {}
+        }
       }
+    } catch (err) {
+      console.error("Eloria reply error:", err);
+      setEloriaTyping(false);
     }
-  } catch (err) {
-    console.error("Eloria reply error:", err);
-    setEloriaTyping(false);
-  }
-};
+  };
 
-  // On touch devices, the on-screen keyboard's Enter/Return key is the
-  // only easy way to add a newline (no convenient Shift key), so don't
-  // hijack it for sending — let people use the Send button instead.
   const isCoarsePointer =
-    typeof window !== "undefined" &&
-    window.matchMedia &&
+    typeof window !== "undefined" && window.matchMedia &&
     window.matchMedia("(pointer: coarse)").matches;
 
   const handleKeyDown = (e) => {
+    // Navigate mention dropdown
+    if (mentionResults.length > 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setMentionActive(i => Math.min(i + 1, mentionResults.length - 1)); return; }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setMentionActive(i => Math.max(i - 1, 0)); return; }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        const idx = mentionActive >= 0 ? mentionActive : 0;
+        insertMention(mentionResults[idx]);
+        return;
+      }
+      if (e.key === "Escape") { setMentionResults([]); return; }
+    }
     if (e.key === "Enter" && !e.shiftKey && !isCoarsePointer) {
       e.preventDefault();
       handleSend();
@@ -927,9 +886,9 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
       setInviteFeedback({ msg: `Invite sent to ${inviteEmail.trim()}!`, ok: true });
       setInviteEmail("");
     } catch (err) {
-      // Show group-full errors as a proper modal instead of browser alert
-      if (err.message && err.message.toLowerCase().includes("full")) {
-        setLimitModal({ title: "Group Member Limit Reached", message: err.message });
+      // Show limit errors as modal popup, other errors inline
+      if (err.message.toLowerCase().includes("full") || err.message.toLowerCase().includes("max")) {
+        setLimitModal({ message: err.message });
       } else {
         setInviteFeedback({ msg: err.message, ok: false });
       }
@@ -950,10 +909,15 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     catch (err) { alert(err.message); }
   };
 
+  // FIX 5: After delete, call onBack() so user goes to normal chat, not blank screen
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${group.name}"? This is permanent.`)) return;
-    try { await deleteGroup(group.id); onBack(); }
-    catch (err) { alert(err.message); }
+    try {
+      await deleteGroup(group.id);
+      onBack(); // ← navigates back to normal chat / group list
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const handleRename = async () => {
@@ -961,7 +925,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     try { await renameGroup(group.id, renameVal.trim()); }
     catch (err) { alert(err.message); }
   };
-
 
   const grouped = [];
   let lastDay = null;
@@ -973,10 +936,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     }
     grouped.push({ type: "msg", msg, key: msg.id || i });
   });
-
-  const memberNames  = group.memberNames  || {};
-  const memberEmails = group.memberEmails || [];
-
 
   const ctxStyle = ctxMenu ? (() => {
     const menuW = 160, menuH = 110;
@@ -994,9 +953,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </button>
-        <div className="gc-header-avatar">
-          {group.name?.[0]?.toUpperCase() || "G"}
-        </div>
+        <div className="gc-header-avatar">{group.name?.[0]?.toUpperCase() || "G"}</div>
         <div className="gc-header-info">
           <div className="gc-header-name">{group.name}</div>
           <div className="gc-header-members">
@@ -1025,16 +982,11 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
         ) : (
           grouped.map(item => {
             if (item.type === "divider") {
-              return (
-                <div key={item.key} className="gc-day-divider">
-                  <span>{item.day}</span>
-                </div>
-              );
+              return <div key={item.key} className="gc-day-divider"><span>{item.day}</span></div>;
             }
             const { msg } = item;
             const isSelf   = msg.senderId === uid;
             const isEloria = msg.isEloria;
-
             return (
               <div
                 key={item.key}
@@ -1052,29 +1004,17 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
                 )}
                 <div className="gc-msg-content">
                   {!isSelf && (
-                    <div className="gc-sender-name">
-                      {isEloria ? "Eloria" : msg.senderName}
-                    </div>
+                    <div className="gc-sender-name">{isEloria ? "Eloria" : msg.senderName}</div>
                   )}
                   <div className={`gc-bubble${isSelf ? " self" : isEloria ? " eloria" : " other"}${msg.deleted ? " deleted" : ""}`}>
                     {isEloria && !msg.deleted && <div className="eloria-tag">Eloria AI</div>}
-
-                    {/* Reply quote */}
                     {!msg.deleted && msg.replyTo && (
                       <div className="gc-reply-quote">
-                        <span className="gc-reply-quote-name">
-                          {msg.replyTo.senderName}
-                        </span>
-                        <span className="gc-reply-quote-text">
-                          {msg.replyTo.text}
-                        </span>
+                        <span className="gc-reply-quote-name">{msg.replyTo.senderName}</span>
+                        <span className="gc-reply-quote-text">{msg.replyTo.text}</span>
                       </div>
                     )}
-
-                    {msg.deleted
-                      ? "This message was deleted"
-                      : msg.text
-                    }
+                    {msg.deleted ? "This message was deleted" : renderTextWithMentions(msg.text)}
                   </div>
                   <div className="gc-msg-time">{formatTime(msg.timestamp)}</div>
                 </div>
@@ -1083,8 +1023,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
             );
           })
         )}
-
-        {/* Eloria typing indicator */}
         {eloriaTyping && (
           <div className="gc-msg-row">
             <div className="gc-msg-avatar eloria-av">E</div>
@@ -1092,16 +1030,13 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
               <div className="gc-sender-name">Eloria</div>
               <div className="gc-bubble eloria">
                 <div className="gc-typing">
-                  <div className="gc-typing-dots">
-                    <span/><span/><span/>
-                  </div>
+                  <div className="gc-typing-dots"><span/><span/><span/></div>
                   <div className="gc-typing-label">Eloria is thinking…</div>
                 </div>
               </div>
             </div>
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
@@ -1123,24 +1058,37 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
 
       {/* Input */}
       <div className="gc-input-bar">
+        {/* @mention dropdown */}
+        {mentionResults.length > 0 && (
+          <div className="gc-mention-dropdown">
+            {mentionResults.map((email, i) => (
+              <div
+                key={email}
+                className={`gc-mention-item${i === mentionActive ? " active" : ""}`}
+                onMouseDown={(e) => { e.preventDefault(); insertMention(email); }}
+              >
+                <div className="gc-mention-av">{email[0].toUpperCase()}</div>
+                <div>
+                  <div>{email}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="gc-eloria-note">
-          Type <code>@eloria</code> in any message to get an AI reply
+          Type <code>@eloria</code> to get an AI reply · Type <code>@email</code> to mention someone
         </div>
         <div className="gc-input-row">
           <textarea
             ref={textareaRef}
             className="gc-textarea"
-            placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Message the group… (type @ to mention)"}
+            placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Message the group…"}
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             rows={1}
           />
-          <button
-            className="gc-send-btn"
-            onClick={handleSend}
-            disabled={!input.trim() || sending}
-          >
+          <button className="gc-send-btn" onClick={handleSend} disabled={!input.trim() || sending}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/>
               <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -1149,14 +1097,12 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
         </div>
       </div>
 
-      {/* ── CONTEXT MENU ── */}
+      {/* Context menu */}
       {ctxMenu && (
         <>
           <div className="gc-ctx-backdrop" onClick={() => setCtxMenu(null)} />
           <div className="gc-ctx-menu" style={ctxStyle} ref={ctxRef}>
             <div className="gc-sheet-handle" />
-
-            {/* Reply — available on any non-deleted message */}
             <button className="gc-ctx-item" onClick={handleReply}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 17 4 12 9 7"/>
@@ -1164,8 +1110,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
               </svg>
               Reply
             </button>
-
-            {/* Copy — available on any non-deleted message */}
             <button className="gc-ctx-item" onClick={handleCopyMsg}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -1173,8 +1117,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
               </svg>
               Copy
             </button>
-
-            {/* Delete — only own messages, only if not already deleted */}
             {ctxMenu.msg.senderId === uid && !ctxMenu.msg.deleted && (
               <>
                 <div className="gc-ctx-divider" />
@@ -1193,7 +1135,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
         </>
       )}
 
-      {/* Info / Settings panel */}
+      {/* Info panel */}
       {showInfo && (
         <div className="gc-info-backdrop" onClick={() => setShowInfo(false)}>
           <div className="gc-info-panel" onClick={e => e.stopPropagation()}>
@@ -1202,8 +1144,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
               <h3>Group Info</h3>
               <button className="gc-info-close" onClick={() => setShowInfo(false)}>✕</button>
             </div>
-
-            {/* Rename (creator only) */}
             {isCreator && (
               <div className="gc-info-section">
                 <div className="gc-info-label">Group Name</div>
@@ -1219,8 +1159,6 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
                 </div>
               </div>
             )}
-
-            {/* Members */}
             <div className="gc-info-section">
               <div className="gc-info-label">Members ({group.members?.length || 0})</div>
               {(group.members || []).map(memberUid => {
@@ -1234,16 +1172,12 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
                     <div className="gc-member-name">{name} {isMe ? "(you)" : ""}</div>
                     {isOwner && <div className="gc-member-tag">Creator</div>}
                     {isCreator && !isMe && !isOwner && (
-                      <button className="gc-kick-btn" onClick={() => handleKick(memberUid, email, name)}>
-                        Remove
-                      </button>
+                      <button className="gc-kick-btn" onClick={() => handleKick(memberUid, email, name)}>Remove</button>
                     )}
                   </div>
                 );
               })}
             </div>
-
-            {/* Invite */}
             <div className="gc-info-section">
               <div className="gc-info-label">Invite by Email</div>
               <div className="gc-invite-row">
@@ -1255,11 +1189,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
                   onChange={e => setInviteEmail(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleInvite()}
                 />
-                <button
-                  className="gc-invite-btn"
-                  onClick={handleInvite}
-                  disabled={!inviteEmail.trim() || inviting}
-                >
+                <button className="gc-invite-btn" onClick={handleInvite} disabled={!inviteEmail.trim() || inviting}>
                   {inviting ? "…" : "Invite"}
                 </button>
               </div>
@@ -1272,16 +1202,22 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
                 They'll see a notification next time they open Eloria.
               </div>
             </div>
-
-            {/* Leave / Delete */}
             <div className="gc-info-section">
-              {!isCreator && (
-                <button className="gc-danger-btn" onClick={handleLeave}>Leave Group</button>
-              )}
-              {isCreator && (
-                <button className="gc-danger-btn" onClick={handleDelete}>Delete Group</button>
-              )}
+              {!isCreator && <button className="gc-danger-btn" onClick={handleLeave}>Leave Group</button>}
+              {isCreator  && <button className="gc-danger-btn" onClick={handleDelete}>Delete Group</button>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LIMIT MODAL (replaces browser alert for group/member limits) ── */}
+      {limitModal && (
+        <div className="gc-limit-backdrop" onClick={() => setLimitModal(null)}>
+          <div className="gc-limit-modal" onClick={e => e.stopPropagation()}>
+            <div className="gc-limit-icon"></div>
+            <div className="gc-limit-title">Limit Reached</div>
+            <div className="gc-limit-msg">{limitModal.message}</div>
+            <button className="gc-limit-close" onClick={() => setLimitModal(null)}>Got it</button>
           </div>
         </div>
       )}
