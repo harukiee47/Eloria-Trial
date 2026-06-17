@@ -98,15 +98,16 @@ export async function sendFriendRequest(fromUid, toEmail) {
   await updateDoc(targetRef, { pendingFriendRequests: arrayUnion(fromUid) });
 
   // Also write a notification doc for them
-  await addDoc(collection(db, "notifications"), {
-    type: "friend_request",
-    fromUid,
-    fromEmail: me.email,
-    fromUsername: me.username || me.email,
-    toUid: target.uid,
-    read: false,
-    createdAt: serverTimestamp(),
-  });
+// ✅
+await addDoc(collection(db, "notifications"), {
+  type: "mention",
+  fromUid,
+  fromUsername,
+  toUid,
+  read: false,
+  createdAt: serverTimestamp(),
+  payload: { groupId, groupName, messageText: messageText.slice(0, 80) },
+});
 
   return { autoAccepted: false };
 }

@@ -167,14 +167,15 @@ export async function inviteToGroup(groupId, inviterName, targetEmail, userPlan)
     pendingInvites: arrayUnion(targetEmail),
   });
 
-  await addDoc(collection(db, "invites"), {
-    toEmail: targetEmail,
-    groupId,
-    groupName: group.name,
-    inviterName,
-    createdAt: serverTimestamp(),
-    read: false,
-  });
+await addDoc(collection(db, "invites"), {
+  fromUid: currentUser.uid,      // ← add this (need to pass user into inviteToGroup)
+  fromEmail: currentUser.email,  // ← add this
+  toEmail: targetEmail,
+  groupId,
+  groupName: group.name,
+  createdAt: serverTimestamp(),
+  status: "pending",             // ← replace read:false with status
+});
 }
 
 // ── Subscribe to pending invites for a user ──────────────────────────────────
