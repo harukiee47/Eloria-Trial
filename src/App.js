@@ -14,7 +14,8 @@ import SharedChatViewer from "./components/SharedChatViewer";
 import { loadShared } from "./services/shareService";
 import GroupChat from "./components/GroupChat";
 import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
-import { subscribeToMyProfile, subscribeToNotifications, setOnlineStatus } from "./services/userService";
+import { subscribeToMyProfile, setOnlineStatus } from "./services/userService";
+import { subscribeToNotifications } from "./services/notificationService";
 import NotificationsPanel, { FloatingBadge } from "./components/NotificationsPanel";
 import { subscribeToFriendsData } from "./services/friendService";
 import DMWindow from "./components/DMWindow";
@@ -98,7 +99,7 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.uid) return;
-  const unsub = subscribeToNotifications(user.uid, user.email, setNotifications);
+const unsub = subscribeToNotifications(user.uid, setNotifications);
   return () => unsub();
 }, [user]);
 

@@ -151,20 +151,6 @@ export async function declineFriendRequest(myUid, fromUid) {
   snap.docs.forEach(d => updateDoc(d.ref, { read: true }));
 }
 
-// ── Subscribe to notifications ───────────────────────────────────────────────
-export function subscribeToNotifications(uid, userEmail, callback) {
-  const q = query(
-    collection(db, "notifications"),
-    where("toUid", "==", uid),
-    where("read", "==", false)
-  );
-  return onSnapshot(
-    q,
-    (snap) => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-    (err) => console.error("❌ subscribeToNotifications:", err.message)
-  );
-}
-
 // ── Write a mention notification ─────────────────────────────────────────────
 export async function writeMentionNotification(groupId, groupName, fromUid, fromUsername, toUid, messageText) {
   if (fromUid === toUid) return;

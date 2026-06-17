@@ -1,64 +1,50 @@
 // src/services/notificationService.js
 import { db } from "./firebase";
 import {
-  collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp,
+  collection, addDoc, updateDoc, doc,
+  query, where, onSnapshot, serverTimestamp,
 } from "firebase/firestore";
 
-const READ_KEY = "eloria_read_notifs";
-
-function getReadSet() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(READ_KEY) || "[]"));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveReadSet(set) {
-  localStorage.setItem(READ_KEY, JSON.stringify([...set]));
-}
-
-export function markRead(notifId) {
-  const set = getReadSet();
-  set.add(notifId);
-  saveReadSet(set);
-}
-
-export function markAllRead(notifIds) {
-  const set = getReadSet();
-  notifIds.forEach(id => set.add(id));
-  saveReadSet(set);
-}
-
-export function isRead(notifId) {
-  return getReadSet().has(notifId);
-}
-
-// type: "friend_request" | "friend_accepted" | "mention" | "group_invite"
-export async function writeNotification(toUid, type, payload) {
-  await addDoc(collection(db, "notifications"), {
+// type must be one of the values your Firestore rules allow
+export async function writeNotification(toUid, type, { fromUid, fromUsername, payload } = {}) {
+  const data = {
     toUid,
-    type,
-    ...payload,
+    type,          // "friendRequest" | "friendAccepted" | "mention" | "groupInvite"
+    fromUid,
+    fromUsername: fromUsername || "",
+    read: false,
     createdAt: serverTimestamp(),
-  });
+  };
+
+  if (payload) data.payload = payload;
+
+  await addDoc(collection(db, "notifications"), data);
 }
 
-// Live subscription to all notifications for this user, newest first.
-// Read/unread is computed client-side from localStorage.
+export async function markRead(notifId) {
+  await updateDoc(doc(db, "notifications", notifId), { read: true });
+}
+
+export async function markAllRead(notifIds) {
+  const promises = notifIds.map(id =>
+    updateDoc(doc(db, "notifications", id), { read: true })
+  );
+  await Promise.all(promises);
+}
+
 export function subscribeToNotifications(uid, callback) {
   const q = query(
     collection(db, "notifications"),
     where("toUid", "==", uid),
-    orderBy("createdAt", "desc")
+    where("read", "==", false)
   );
-  return onSnapshot(q, (snap) => {
-    const readSet = getReadSet();
-    const notifs = snap.docs.map(d => ({
-      id: d.id,
-      ...d.data(),
-      read: readSet.has(d.id),
-    }));
-    callback(notifs);
-  });
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    (err) => console.error("❌ subscribeToNotifications:", err.message)
+  );
+}
+
+export async function markNotificationRead(notifId) {
+  await updateDoc(doc(db, "notifications", notifId), { read: true });
 }
