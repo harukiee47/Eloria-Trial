@@ -51,10 +51,11 @@ export function subscribeToGroups(uid, callback) {
     collection(db, "groups"),
     where("members", "array-contains", uid)
   );
-  return onSnapshot(q, (snap) => {
-    const groups = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(groups);
-  });
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    (err) => console.error("❌ subscribeToGroups:", err.message)
+  );
 }
 
 // ── Subscribe to messages in a group ─────────────────────────────────────────
@@ -178,10 +179,11 @@ export function subscribeToInvites(userEmail, callback) {
     where("toEmail", "==", userEmail),
     where("status", "==", "pending")
   );
-  return onSnapshot(q, (snap) => {
-    const invites = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(invites);
-  });
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    (err) => console.error("❌ subscribeToInvites:", err.message)
+  );
 }
 
 // ── Accept an invite ──────────────────────────────────────────────────────────

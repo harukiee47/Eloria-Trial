@@ -48,9 +48,11 @@ export async function getUserByEmail(email) {
 
 // ── Subscribe to own profile (for username, friend lists) ───────────────────
 export function subscribeToMyProfile(uid, callback) {
-  return onSnapshot(doc(db, "users", uid), (snap) => {
-    if (snap.exists()) callback({ id: snap.id, ...snap.data() });
-  });
+  return onSnapshot(
+    doc(db, "users", uid),
+    (snap) => { if (snap.exists()) callback({ id: snap.id, ...snap.data() }); },
+    (err) => console.error("❌ subscribeToMyProfile:", err.message)
+  );
 }
 
 // ── Set online / offline ─────────────────────────────────────────────────────
@@ -156,9 +158,11 @@ export function subscribeToNotifications(uid, userEmail, callback) {
     where("toUid", "==", uid),
     where("read", "==", false)
   );
-  return onSnapshot(q, snap => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    (err) => console.error("❌ subscribeToNotifications:", err.message)
+  );
 }
 
 // ── Write a mention notification ─────────────────────────────────────────────
