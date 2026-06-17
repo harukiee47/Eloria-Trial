@@ -1,8 +1,7 @@
-// src/services/dmService.js
 import { db } from "./firebase";
 import {
   doc, getDoc, setDoc, collection, addDoc, query, orderBy,
-  onSnapshot, serverTimestamp, where,
+  onSnapshot, serverTimestamp, where, updateDoc, deleteDoc,
 } from "firebase/firestore";
 
 // Deterministic dmId so both users always land in the same thread,
@@ -25,21 +24,31 @@ export async function getOrCreateDM(uid1, uid2) {
   return dmId;
 }
 
-export async function sendDM(dmId, fromUid, text, file = null) {
+export async function sendDM(dmId, fromUid, text, file = null, replyTo = null) {
   const msgData = {
     senderId: fromUid,
     createdAt: serverTimestamp(),
   };
 
   if (file) {
-    msgData.fileType = file.type;       // "image" or "file"
+    msgData.fileType = file.type;
     msgData.fileUrl = file.url;
     msgData.fileName = file.name;
     msgData.fileSize = file.size;
     msgData.fileMimeType = file.mimeType;
-    msgData.text = null;
+    msgData.text = "";
   } else {
     msgData.text = text?.trim() || "";
+  }
+
+  if (replyTo) {
+    msgData.replyTo = {
+      id: replyTo.id,
+      senderId: replyTo.senderId,
+      text: replyTo.fileType
+        ? (replyTo.fileType === "image" ? "📷 Photo" : `📎 ${replyTo.fileName}`)
+        : (replyTo.text || ""),
+    };
   }
 
   await addDoc(collection(db, "dms", dmId, "messages"), msgData);
@@ -51,6 +60,20 @@ export async function sendDM(dmId, fromUid, text, file = null) {
       at: serverTimestamp(),
     },
   }, { merge: true });
+}
+
+export async function editDM(dmId, messageId, newText) {
+  const ref = doc(db, "dms", dmId, "messages", messageId);
+  await updateDoc(ref, {
+    text: newText.trim(),
+    edited: true,
+    editedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteDM(dmId, messageId) {
+  const ref = doc(db, "dms", dmId, "messages", messageId);
+  await deleteDoc(ref);
 }
 
 export function subscribeToDMMessages(dmId, callback) {

@@ -1,6 +1,6 @@
 // src/components/DMWindow.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { getOrCreateDM, sendDM, subscribeToDMMessages } from "../services/dmService";
+import { getOrCreateDM, sendDM, subscribeToDMMessages, editDM, deleteDM } from "../services/dmService";
 import { formatLastSeen } from "../services/friendService";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { getApp } from "firebase/app"; // ← FIX: import getApp to pass the initialized instance
@@ -665,6 +665,10 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
   const [showAttach, setShowAttach]         = useState(false);
   const [lightboxSrc, setLightboxSrc]       = useState(null);
   const [searchQuery, setSearchQuery]       = useState("");
+  const [sendError, setSendError] = useState(null);
+  const [contextMenu, setContextMenu]       = useState(null);
+const [editingId, setEditingId]           = useState(null);
+const [replyTarget, setReplyTarget]       = useState(null);
 
   const bottomRef     = useRef(null);
   const unsubRef      = useRef(() => {});
@@ -730,12 +734,29 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // Escape closes lightbox
+  // Close right-click context menu on any click/scroll elsewhere
   useEffect(() => {
-    const h = (e) => { if (e.key === "Escape") setLightboxSrc(null); };
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    document.addEventListener("click", close);
+    document.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
+
+// Escape closes lightbox / cancels edit / cancels reply
+  useEffect(() => {
+    const h = (e) => {
+      if (e.key !== "Escape") return;
+      if (lightboxSrc) return setLightboxSrc(null);
+      if (editingId) { setEditingId(null); setInput(""); return; }
+      if (replyTarget) return setReplyTarget(null);
+    };
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
-  }, []);
+  }, [lightboxSrc, editingId, replyTarget]);
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
@@ -833,19 +854,79 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
     });
   }, [dmId]);
 
+const isReallyOnline = (f) => {
+    if (!f?.online) return false;
+    if (!f?.lastSeen) return true;
+    const last = f.lastSeen?.toDate ? f.lastSeen.toDate() : new Date(f.lastSeen);
+    return Date.now() - last.getTime() < 60000; // stale after 60s with no heartbeat
+  };
+
+  const handleContextMenu = (e, m, isMe) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, message: m, isMe });
+  };
+
+  const startEdit = (m) => {
+    setEditingId(m.id);
+    setInput(m.text || "");
+    setReplyTarget(null);
+    setContextMenu(null);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
+  const cancelEdit = () => { setEditingId(null); setInput(""); };
+
+  const handleDelete = async (m) => {
+    setContextMenu(null);
+    if (!window.confirm("Delete this message?")) return;
+    try {
+      await deleteDM(dmId, m.id);
+    } catch (e) {
+      console.error("Delete failed:", e);
+      setSendError("Failed to delete message");
+    }
+  };
+
+  const startReply = (m) => {
+    setReplyTarget(m);
+    setEditingId(null);
+    setContextMenu(null);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
+  const cancelReply = () => setReplyTarget(null);
+
   const handleSend = async () => {
     const text = input.trim();
+
+    if (editingId) {
+      if (!text) return;
+      try {
+        await editDM(dmId, editingId, text);
+      } catch (e) {
+        console.error("Edit failed:", e);
+        setSendError(e?.message || "Failed to edit message");
+      }
+      setEditingId(null);
+      setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "22px";
+      return;
+    }
+
     if ((!text && pendingFiles.length === 0) || !dmId || sending || overLimit) return;
 
     setSending(true);
+    setSendError(null);
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "22px";
 
     const filesToSend = [...pendingFiles];
     setPendingFiles([]);
+    const replyTo = replyTarget;
+    setReplyTarget(null);
 
     try {
-      if (text) await sendDM(dmId, user.uid, text);
+      if (text) await sendDM(dmId, user.uid, text, null, replyTo);
 
       for (const fileEntry of filesToSend) {
         const { url, kind } = await uploadAndSend(fileEntry);
@@ -855,17 +936,16 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
           name: fileEntry.name,
           size: fileEntry.size,
           mimeType: fileEntry.raw?.type || "",
-        });
+        }, replyTo);
       }
     } catch (e) {
       console.error("DM send error:", e);
-      // Put files back so user can retry
+      setSendError(e?.code || e?.message || "Failed to send");
       setPendingFiles(filesToSend);
     } finally {
       setSending(false);
     }
   };
-
   // ── Sub-components ──────────────────────────────────────────────────────────
   const Avatar = ({ name, size = 36, online, style: extraStyle }) => (
     <div style={{
@@ -949,6 +1029,34 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
         </div>
       )}
 
+      {contextMenu && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed", top: contextMenu.y, left: contextMenu.x,
+            background: "#fff", border: "1px solid #e8e6e0", borderRadius: 12,
+            boxShadow: "0 8px 30px rgba(0,0,0,.15)", padding: 5, minWidth: 160, zIndex: 500,
+          }}
+        >
+          {contextMenu.isMe ? (
+            <>
+              {!contextMenu.message.fileType && (
+                <div className="dm-attach-menu-item" onClick={() => startEdit(contextMenu.message)}>
+                  <span></span><span>Edit message</span>
+                </div>
+              )}
+              <div className="dm-attach-menu-item" onClick={() => handleDelete(contextMenu.message)}>
+                <span></span><span style={{ color: "#e05252" }}>Delete message</span>
+              </div>
+            </>
+          ) : (
+            <div className="dm-attach-menu-item" onClick={() => startReply(contextMenu.message)}>
+              <span></span><span>Reply</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={onFileChange} />
 
       {/* ── SIDEBAR ── */}
@@ -1003,11 +1111,11 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
               className={`dm-friend-row${friend?.uid === f.uid ? " active" : ""}`}
               onClick={() => onSelectFriend(f)}
             >
-              <Avatar name={f.username} size={34} online={f.online} />
+<Avatar name={f.username} size={34} online={isReallyOnline(f)} />
               <div style={{ overflow: "hidden", flex: 1, minWidth: 0 }}>
                 <div className="dm-friend-name">@{f.username}</div>
                 <div className="dm-friend-status">
-                  {f.online ? "Active now" : formatLastSeen(f.online, f.lastSeen)}
+                  {isReallyOnline(f) ? "Active now" : formatLastSeen(f.online, f.lastSeen)}
                 </div>
               </div>
               {/* Unread badge placeholder — wire to real unread count if available */}
@@ -1035,33 +1143,15 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
         ) : (
           <>
             {/* Header */}
-            <div className="dm-chat-header">
-              <Avatar name={friend?.username} size={36} online={friend?.online} />
+<Avatar name={friend?.username} size={36} online={isReallyOnline(friend)} />
               <div className="dm-header-info">
                 <div className="dm-header-name">@{friend?.username}</div>
                 <div className="dm-header-status">
                   <span className="dm-header-status-dot"
-                    style={{ background: friend?.online ? "#22c55e" : "#9ca3af" }} />
-                  {friend?.online ? "Active now" : formatLastSeen(friend?.online, friend?.lastSeen)}
+                    style={{ background: isReallyOnline(friend) ? "#22c55e" : "#9ca3af" }} />
+                  {isReallyOnline(friend) ? "Active now" : formatLastSeen(friend?.online, friend?.lastSeen)}
                 </div>
               </div>
-              <div className="dm-header-actions">
-                {/* Placeholder actions — wire as needed */}
-                <button className="dm-header-btn" title="Search in conversation">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
-                </button>
-                <button className="dm-header-btn" title="View profile">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
 
             {/* Messages */}
             <div className="dm-messages">
@@ -1103,7 +1193,10 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
                       </div>
                     )}
 
-                    <div className={`dm-msg-row${isMe ? " mine" : ""}${isFirstInGroup ? " new-group" : ""}`}>
+                    <div
+                      className={`dm-msg-row${isMe ? " mine" : ""}${isFirstInGroup ? " new-group" : ""}`}
+                      onContextMenu={(e) => handleContextMenu(e, m, isMe)}
+                    >
                       <MsgAvatar name={senderName} hidden={!isLastInGroup} />
 
                       <div className={`dm-bubble-stack ${isMe ? "mine" : "theirs"}`}>
@@ -1121,8 +1214,19 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
                               <span className={`dm-bubble-time ${isMe ? "mine" : "theirs"}`}>
                                 {time}
                               </span>
-                              <div className={`dm-bubble ${isMe ? "mine" : "theirs"}`}>
+                            <div className={`dm-bubble ${isMe ? "mine" : "theirs"}`}>
+                                {m.replyTo && (
+                                  <div style={{
+                                    fontSize: 11.5, opacity: .75, marginBottom: 5,
+                                    paddingLeft: 7, borderLeft: "2px solid currentColor",
+                                  }}>
+                                    {m.replyTo.text}
+                                  </div>
+                                )}
                                 {m.text}
+                                {m.edited && (
+                                  <span style={{ fontSize: 10, opacity: .6, marginLeft: 6 }}>(edited)</span>
+                                )}
                                 {isMe && isLastInGroup && (
                                   <span className="dm-receipt">✓✓</span>
                                 )}
@@ -1152,6 +1256,32 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
               </div>
             )}
 
+            {(replyTarget || editingId) && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 16px 0", maxWidth: 720, margin: "0 auto", width: "100%",
+              }}>
+                <div style={{
+                  flex: 1, fontSize: 12, color: "var(--t2)",
+                  background: "var(--bg-panel)", border: "1px solid var(--border)",
+                  borderRadius: 8, padding: "6px 10px", overflow: "hidden",
+                  whiteSpace: "nowrap", textOverflow: "ellipsis",
+                }}>
+                  {editingId ? "Editing message" : (
+                    `Replying to ${replyTarget.senderId === user.uid ? "yourself" : "@" + friend?.username}: ${
+                      replyTarget.fileType
+                        ? (replyTarget.fileType === "image" ? "📷 Photo" : `📎 ${replyTarget.fileName}`)
+                        : replyTarget.text
+                    }`
+                  )}
+                </div>
+                <button
+                  onClick={editingId ? cancelEdit : cancelReply}
+                  style={{ border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 14 }}
+                >✕</button>
+              </div>
+            )}
+
             {/* Pending chips */}
             {pendingFiles.length > 0 && (
               <div style={{ background: "var(--bg-chat)", borderTop: "1px solid var(--border)", paddingTop: 2 }}>
@@ -1170,6 +1300,12 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
               </div>
             )}
 
+            {sendError && (
+  <div style={{ color: "#e05252", fontSize: 12, padding: "4px 16px", textAlign: "center" }}>
+    ⚠ {sendError}
+  </div>
+)}
+
             {/* Input */}
             <div className="dm-input-wrap">
               <div className="dm-input-box">
@@ -1181,7 +1317,7 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
                       className={`dm-attach-btn${pendingFiles.length > 0 ? " has-files" : ""}`}
                       onClick={() => setShowAttach((v) => !v)}
                       title="Attach file"
-                      disabled={!dmId}
+                      disabled={!dmId || !!editingId}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                         strokeLinecap="round" strokeLinejoin="round">
@@ -1234,10 +1370,12 @@ export default function DMWindow({ user, friend, friends = [], onSelectFriend, o
                         handleSend();
                       }
                     }}
-                    placeholder={
-                      pendingFiles.length > 0
-                        ? "Add a caption…"
-                        : `Message @${friend?.username}…`
+               placeholder={
+                      editingId
+                        ? "Edit your message…"
+                        : pendingFiles.length > 0
+                          ? "Add a caption…"
+                          : `Message @${friend?.username}…`
                     }
                     rows={1}
                     maxLength={MAX_CHARS + 50} // soft limit in UI, hard-stop in handleSend

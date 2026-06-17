@@ -105,9 +105,16 @@ useEffect(() => {
 useEffect(() => {
   if (!user?.uid) return;
   setOnlineStatus(user.uid, true).catch(console.error);
+
+  // Heartbeat: refreshes lastSeen every 30s while the tab is open
+  const heartbeat = setInterval(() => {
+    setOnlineStatus(user.uid, true).catch(() => {});
+  }, 30000);
+
   const handleUnload = () => setOnlineStatus(user.uid, false).catch(() => {});
   window.addEventListener("beforeunload", handleUnload);
   return () => {
+    clearInterval(heartbeat);
     window.removeEventListener("beforeunload", handleUnload);
     setOnlineStatus(user.uid, false).catch(() => {});
   };
