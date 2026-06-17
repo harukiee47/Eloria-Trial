@@ -16,14 +16,13 @@ export async function upsertUserProfile(user, username) {
       email: user.email,
       username: username || user.displayName || user.email.split("@")[0],
       friends: [],
-      pendingFriendRequests: [], // uids who sent ME a request
-      sentFriendRequests: [],    // uids I sent a request to
+      pendingFriendRequests: [],
+      sentFriendRequests: [],
       online: true,
       lastSeen: serverTimestamp(),
       createdAt: serverTimestamp(),
     });
   } else {
-    // Update online status and email (may have changed)
     await updateDoc(ref, {
       online: true,
       lastSeen: serverTimestamp(),
@@ -65,7 +64,6 @@ export async function setOnlineStatus(uid, online) {
 // ── Subscribe to a list of users by uid (for friends panel) ─────────────────
 export function subscribeToUsers(uids, callback) {
   if (!uids || uids.length === 0) { callback([]); return () => {}; }
-  // Firestore 'in' supports up to 30 items — fine for friends lists
   const q = query(collection(db, "users"), where("uid", "in", uids));
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -74,7 +72,6 @@ export function subscribeToUsers(uids, callback) {
 
 // ── Send a friend request ────────────────────────────────────────────────────
 export async function sendFriendRequest(fromUid, toEmail) {
-  // Look up target user
   const target = await getUserByEmail(toEmail);
   if (!target) throw new Error("No user found with that email.");
   if (target.uid === fromUid) throw new Error("You can't add yourself.");
@@ -88,26 +85,21 @@ export async function sendFriendRequest(fromUid, toEmail) {
   if (me.friends?.includes(target.uid)) throw new Error("Already friends.");
   if (me.sentFriendRequests?.includes(target.uid)) throw new Error("Request already sent.");
   if (me.pendingFriendRequests?.includes(target.uid)) {
-    // They already sent me one — auto-accept
     await acceptFriendRequest(fromUid, target.uid);
     return { autoAccepted: true };
   }
 
-  // Add to my sentFriendRequests and their pendingFriendRequests
   await updateDoc(myRef, { sentFriendRequests: arrayUnion(target.uid) });
   await updateDoc(targetRef, { pendingFriendRequests: arrayUnion(fromUid) });
 
-  // Also write a notification doc for them
-// ✅
-await addDoc(collection(db, "notifications"), {
-  type: "mention",
-  fromUid,
-  fromUsername,
-  toUid,
-  read: false,
-  createdAt: serverTimestamp(),
-  payload: { groupId, groupName, messageText: messageText.slice(0, 80) },
-});
+  await addDoc(collection(db, "notifications"), {
+    type: "friendRequest",
+    fromUid,
+    fromUsername: me.username || me.email,
+    toUid: target.uid,
+    read: false,
+    createdAt: serverTimestamp(),
+  });
 
   return { autoAccepted: false };
 }
@@ -126,10 +118,10 @@ export async function acceptFriendRequest(myUid, fromUid) {
     sentFriendRequests: arrayRemove(myUid),
   });
 
-  // Mark the notification as read
+  // Mark the original friend request notification as read
   const q = query(
     collection(db, "notifications"),
-    where("type", "==", "friend_request"),
+    where("type", "==", "friendRequest"),
     where("fromUid", "==", fromUid),
     where("toUid", "==", myUid),
     where("read", "==", false)
@@ -148,7 +140,7 @@ export async function declineFriendRequest(myUid, fromUid) {
 
   const q = query(
     collection(db, "notifications"),
-    where("type", "==", "friend_request"),
+    where("type", "==", "friendRequest"),
     where("fromUid", "==", fromUid),
     where("toUid", "==", myUid),
     where("read", "==", false)
@@ -157,9 +149,8 @@ export async function declineFriendRequest(myUid, fromUid) {
   snap.docs.forEach(d => updateDoc(d.ref, { read: true }));
 }
 
-// ── Subscribe to notifications (group invites + friend requests + mentions) ──
+// ── Subscribe to notifications ───────────────────────────────────────────────
 export function subscribeToNotifications(uid, userEmail, callback) {
-  // Listen to unread notifications for this user
   const q = query(
     collection(db, "notifications"),
     where("toUid", "==", uid),
@@ -172,18 +163,15 @@ export function subscribeToNotifications(uid, userEmail, callback) {
 
 // ── Write a mention notification ─────────────────────────────────────────────
 export async function writeMentionNotification(groupId, groupName, fromUid, fromUsername, toUid, messageText) {
-  // Don't notify yourself
   if (fromUid === toUid) return;
   await addDoc(collection(db, "notifications"), {
     type: "mention",
-    groupId,
-    groupName,
     fromUid,
     fromUsername,
     toUid,
-    messageText: messageText.slice(0, 80),
     read: false,
     createdAt: serverTimestamp(),
+    payload: { groupId, groupName, messageText: messageText.slice(0, 80) },
   });
 }
 

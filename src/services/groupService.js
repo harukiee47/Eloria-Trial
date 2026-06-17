@@ -6,13 +6,11 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-
-
 // ── Plan limits ──────────────────────────────────────────────────────────────
 export const GROUP_LIMITS = {
-  free: { maxGroups: 2, maxMembers: 4 },
-  pro:  { maxGroups: 4, maxMembers: 6 },
-  admin:{ maxGroups: 99, maxMembers: 99 },
+  free:  { maxGroups: 2, maxMembers: 4 },
+  pro:   { maxGroups: 4, maxMembers: 6 },
+  admin: { maxGroups: 99, maxMembers: 99 },
 };
 
 // ── Create a group ───────────────────────────────────────────────────────────
@@ -35,7 +33,6 @@ export async function createGroup(user, groupName, userPlan) {
     members: [user.uid],
     memberEmails: [user.email],
     memberNames: { [user.uid]: user.displayName || user.email },
-    // Store creator's join time as ISO string — consistent with acceptInvite
     memberJoinedAt: { [user.uid]: new Date().toISOString() },
     pendingInvites: [],
     createdAt: serverTimestamp(),
@@ -69,12 +66,10 @@ export function subscribeToMessages(groupId, joinedAtISO, callback) {
   return onSnapshot(q, (snap) => {
     const messages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // Only filter if we have a valid join date
     const userJoinedAt = joinedAtISO ? new Date(joinedAtISO) : null;
     const filtered = messages.filter(msg => {
       if (!userJoinedAt || isNaN(userJoinedAt.getTime())) return true;
       if (!msg.timestamp) return true;
-      // Handle both Firestore Timestamps and plain Date objects
       const msgTime = msg.timestamp?.toDate
         ? msg.timestamp.toDate()
         : new Date(msg.timestamp);
@@ -97,7 +92,6 @@ export async function sendGroupMessage(groupId, user, text, replyTo = null) {
     timestamp: serverTimestamp(),
   };
 
-  // Attach reply metadata if replying to a message
   if (replyTo) {
     msgData.replyTo = {
       id: replyTo.id,
@@ -111,7 +105,6 @@ export async function sendGroupMessage(groupId, user, text, replyTo = null) {
     msgData
   );
 
-  // Update group's lastMessage + bump unread for others
   const groupSnap = await getDoc(doc(db, "groups", groupId));
   const group = groupSnap.data();
   const unreadCounts = { ...(group.unreadCounts || {}) };
@@ -147,7 +140,7 @@ export async function clearUnread(groupId, uid) {
 }
 
 // ── Invite a user by email ────────────────────────────────────────────────────
-export async function inviteToGroup(groupId, inviterName, targetEmail, userPlan) {
+export async function inviteToGroup(groupId, user, targetEmail, userPlan) {
   const groupSnap = await getDoc(doc(db, "groups", groupId));
   if (!groupSnap.exists()) throw new Error("Group not found.");
   const group = groupSnap.data();
@@ -167,15 +160,15 @@ export async function inviteToGroup(groupId, inviterName, targetEmail, userPlan)
     pendingInvites: arrayUnion(targetEmail),
   });
 
-await addDoc(collection(db, "invites"), {
-  fromUid: currentUser.uid,      // ← add this (need to pass user into inviteToGroup)
-  fromEmail: currentUser.email,  // ← add this
-  toEmail: targetEmail,
-  groupId,
-  groupName: group.name,
-  createdAt: serverTimestamp(),
-  status: "pending",             // ← replace read:false with status
-});
+  await addDoc(collection(db, "invites"), {
+    fromUid: user.uid,
+    fromEmail: user.email,
+    toEmail: targetEmail,
+    groupId,
+    groupName: group.name,
+    createdAt: serverTimestamp(),
+    status: "pending",
+  });
 }
 
 // ── Subscribe to pending invites for a user ──────────────────────────────────
@@ -183,7 +176,7 @@ export function subscribeToInvites(userEmail, callback) {
   const q = query(
     collection(db, "invites"),
     where("toEmail", "==", userEmail),
-    where("read", "==", false)
+    where("status", "==", "pending")
   );
   return onSnapshot(q, (snap) => {
     const invites = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -201,10 +194,6 @@ export async function acceptInvite(inviteId, user) {
   if (!groupSnap.exists()) throw new Error("Group no longer exists.");
 
   const batch = writeBatch(db);
-
-  // Store joinedAt as ISO string — NOT a Date object or Timestamp.
-  // This way reading it back from Firestore is always a plain string,
-  // no toDate() conversion needed, no Invalid Date risk.
   const joinedAtISO = new Date().toISOString();
 
   batch.update(doc(db, "groups", invite.groupId), {
@@ -217,7 +206,7 @@ export async function acceptInvite(inviteId, user) {
   });
 
   batch.update(doc(db, "invites", inviteId), {
-    read: true,
+    status: "accepted",
     acceptedAt: serverTimestamp(),
   });
 
@@ -234,7 +223,7 @@ export async function declineInvite(inviteId, userEmail) {
   await updateDoc(doc(db, "groups", invite.groupId), {
     pendingInvites: arrayRemove(userEmail),
   });
-  await updateDoc(doc(db, "invites", inviteId), { read: true });
+  await updateDoc(doc(db, "invites", inviteId), { status: "declined" });
 }
 
 // ── Leave a group ─────────────────────────────────────────────────────────────
