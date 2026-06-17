@@ -1142,16 +1142,18 @@ const isReallyOnline = (f) => {
           </div>
         ) : (
           <>
-            {/* Header */}
-<Avatar name={friend?.username} size={36} online={isReallyOnline(friend)} />
+{/* Header */}
+            <div className="dm-chat-header">
+              <Avatar name={friend?.username} size={36} online={isReallyOnline(friend)} />
               <div className="dm-header-info">
                 <div className="dm-header-name">@{friend?.username}</div>
                 <div className="dm-header-status">
                   <span className="dm-header-status-dot"
-                    style={{ background: isReallyOnline(friend) ? "#22c55e" : "#9ca3af" }} />
+                    style={{ background: isReallyOnline(friend) ? "#082b1c" : "#9ca3af" }} />
                   {isReallyOnline(friend) ? "Active now" : formatLastSeen(friend?.online, friend?.lastSeen)}
                 </div>
               </div>
+            </div>
 
             {/* Messages */}
             <div className="dm-messages">
