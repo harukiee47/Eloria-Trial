@@ -45,6 +45,8 @@ export const checkAuth = (setUser) => {
   return onAuthStateChanged(auth, async (firebaseUser) => {
     if (firebaseUser) {
       try {
+        await firebaseUser.getIdToken(); // ← add this line right here
+
         const ref  = doc(db, "users", firebaseUser.uid);
         const snap = await getDoc(ref);
         const data = snap.exists() ? snap.data() : {};
