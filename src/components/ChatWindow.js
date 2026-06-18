@@ -69,19 +69,47 @@ function docIcon(ext) {
   return map[ext] || { bg: "#f5f5f0", color: "#888", char: ext.slice(0,3) };
 }
 
-// ── Voice state config ────────────────────────────────────────────────────────
-const VOICE_STATES = {
-  idle:       { inner: "#6C5CE7", outer: "#2d2b55", label: "Tap orb to speak"  },
-  listening:  { inner: "#6C5CE7", outer: "#3b1f8c", label: "Listening…"        },
-  processing: { inner: "#8888aa", outer: "#2a2a3a", label: "Thinking…"         },
-  speaking:   { inner: "#00D9C0", outer: "#003d38", label: "Speaking…"         },
+// ── Voice state config (molecule orb) ────────────────────────────────────────
+const VOICE_STATE_CFG = {
+  idle:       { label: "idle",       dotColor: "rgba(255,255,255,0.2)", colors: ["#2d2b55","#3b2d6b","#1e1b4b","#312e81","#2d2b55","#1e1b4b","#3b2d6b"] },
+  listening:  { label: "listening",  dotColor: "#00ff88",               colors: ["#6C5CE7","#a78bfa","#4c3fa0","#8b5cf6","#7c3aed","#5b21b6","#4338ca"] },
+  processing: { label: "thinking…",  dotColor: "#f59e0b",               colors: ["#6b7280","#9ca3af","#4b5563","#d1d5db","#6b7280","#374151","#9ca3af"] },
+  speaking:   { label: "speaking",   dotColor: "#00D9C0",               colors: ["#00D9C0","#06b6d4","#0891b2","#22d3ee","#0e7490","#00b4d8","#48cae4"] },
 };
 
-function hexToRgba(hex, alpha) {
-  const r = parseInt(hex.slice(1,3), 16);
-  const g = parseInt(hex.slice(3,5), 16);
-  const b = parseInt(hex.slice(5,7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
+function hexToRgb(hex) {
+  return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
+}
+function lerpC(a, b, t) { return { r: a.r+(b.r-a.r)*t, g: a.g+(b.g-a.g)*t, b: a.b+(b.b-a.b)*t }; }
+function rgbaStr(c, a) { return `rgba(${Math.round(c.r)},${Math.round(c.g)},${Math.round(c.b)},${a})`; }
+
+const NUM_MOLS = 52;
+function buildMolecules() {
+  const mols = [];
+  for (let i = 0; i < NUM_MOLS; i++) {
+    mols.push({
+      angle:      Math.random() * Math.PI * 2,
+      baseRadius: 20 + Math.random() * 115,
+      size:       2.5 + Math.random() * 4.5,
+      speed:      (0.003 + Math.random() * 0.009) * (Math.random() > 0.5 ? 1 : -1),
+      phaseOff:   Math.random() * Math.PI * 2,
+      pSpeed:     0.02 + Math.random() * 0.05,
+      colorIdx:   Math.floor(Math.random() * 7),
+      bondTo:     [],
+    });
+  }
+  // pre-compute bonds
+  for (let i = 0; i < mols.length; i++) {
+    for (let j = i+1; j < mols.length; j++) {
+      if (mols[i].bondTo.length >= 3 || mols[j].bondTo.length >= 3) continue;
+      const xi = Math.cos(mols[i].angle)*mols[i].baseRadius;
+      const yi = Math.sin(mols[i].angle)*mols[i].baseRadius;
+      const xj = Math.cos(mols[j].angle)*mols[j].baseRadius;
+      const yj = Math.sin(mols[j].angle)*mols[j].baseRadius;
+      if (Math.hypot(xj-xi, yj-yi) < 55) mols[i].bondTo.push(j);
+    }
+  }
+  return mols;
 }
 
 function getSupportedMimeType() {
@@ -90,223 +118,217 @@ function getSupportedMimeType() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Voice Modal Component
+// Voice Modal — full-screen molecule orb design
 // ─────────────────────────────────────────────────────────────────────────────
 function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
-  const canvasRef      = useRef(null);
-  const analyserRef    = useRef(null);
-  const animIdRef      = useRef(null);
-  const recorderRef    = useRef(null);
-  const streamRef      = useRef(null);
-  const audioRef       = useRef(null);
-  const synthPhaseRef  = useRef(0);
-  const chunksRef      = useRef([]);
+  const canvasRef     = useRef(null);
+  const miniCanvasRef = useRef(null);
+  const animIdRef     = useRef(null);
+  const analyserRef   = useRef(null);
+  const recorderRef   = useRef(null);
+  const streamRef     = useRef(null);
+  const audioRef      = useRef(null);
+  const chunksRef     = useRef([]);
+  const molsRef       = useRef(buildMolecules());
+  const phaseRef      = useRef(0);
+  const curColorsRef  = useRef(VOICE_STATE_CFG.idle.colors.map(hexToRgb));
+  const tgtColorsRef  = useRef(VOICE_STATE_CFG.idle.colors.map(hexToRgb));
+  const voiceStateRef = useRef("idle");
+  const timerRef      = useRef(null);
 
-  const [voiceState,   setVoiceState]   = useState("idle");
-  const [statusLabel,  setStatusLabel]  = useState("Tap orb to speak");
-  const [transcript,   setTranscript]   = useState("");
-  const [errorMsg,     setErrorMsg]     = useState("");
+  const [voiceState,  setVoiceState]  = useState("idle");
+  const [transcript,  setTranscript]  = useState("");
+  const [errorMsg,    setErrorMsg]    = useState("");
+  const [micMuted,    setMicMuted]    = useState(false);
+  const [minimized,   setMinimized]   = useState(false);
+  const [timerSecs,   setTimerSecs]   = useState(0);
 
-  const setState = useCallback((state) => {
-    setVoiceState(state);
-    setStatusLabel(VOICE_STATES[state]?.label || "");
+  const setState = useCallback((s) => {
+    voiceStateRef.current = s;
+    setVoiceState(s);
+    tgtColorsRef.current = VOICE_STATE_CFG[s].colors.map(hexToRgb);
   }, []);
 
-  // ── Canvas drawing ──────────────────────────────────────────────────────────
-  const drawOrb = useCallback((state, volume = 0) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+  // ── draw molecule orb ───────────────────────────────────────────────────────
+  const drawOrb = useCallback((canvasEl, ctxEl) => {
+    if (!canvasEl) return;
+    const W = canvasEl.width, H = canvasEl.height;
+    const cx = W/2, cy = H/2;
+    const scale = W / 320;
+    const state = voiceStateRef.current;
+    const cols  = curColorsRef.current;
+    const phase = phaseRef.current;
 
-    const cfg   = VOICE_STATES[state] || VOICE_STATES.idle;
-    const cx    = w / 2;
-    const cy    = h / 2;
-    const baseR = Math.min(w, h) * 0.28;
-    const pulse =
-      state === "listening" || state === "speaking"
-        ? baseR * 0.22 * volume
-        : state === "processing"
-          ? baseR * 0.06 * Math.sin(synthPhaseRef.current * 1.5)
-          : 0;
-    const r = baseR + pulse;
+    ctxEl.clearRect(0, 0, W, H);
 
-    // Outer glow rings
-    [2.2, 1.7, 1.3].forEach((mult, i) => {
-      const alpha = [0.05, 0.09, 0.15][i];
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * mult);
-      grad.addColorStop(0, hexToRgba(cfg.inner, alpha));
-      grad.addColorStop(1, hexToRgba(cfg.inner, 0));
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * mult, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-    });
+    // background glow
+    const glowA = state === "speaking" ? 0.12 + 0.05*Math.sin(phase*2)
+                : state === "listening" ? 0.08 + 0.04*Math.sin(phase*1.5)
+                : state === "processing" ? 0.04 + 0.03*Math.sin(phase*0.8) : 0.02;
+    const bg = ctxEl.createRadialGradient(cx, cy, 0, cx, cy, 130*scale);
+    bg.addColorStop(0, rgbaStr(cols[0], glowA));
+    bg.addColorStop(1, "transparent");
+    ctxEl.fillStyle = bg;
+    ctxEl.fillRect(0, 0, W, H);
 
-    // Core orb
-    const orbGrad = ctx.createRadialGradient(cx - r * 0.22, cy - r * 0.22, r * 0.08, cx, cy, r);
-    orbGrad.addColorStop(0,   hexToRgba(cfg.inner, 0.95));
-    orbGrad.addColorStop(0.6, hexToRgba(cfg.inner, 0.78));
-    orbGrad.addColorStop(1,   hexToRgba(cfg.outer, 0.92));
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = orbGrad;
-    ctx.fill();
+    const speed = state === "speaking" ? 1.8 : state === "listening" ? 1.2 : state === "processing" ? 0.5 : 0.15;
+    const mols  = molsRef.current;
+    const positions = [];
 
-    // Waveform bars
-    if ((state === "listening" || state === "speaking") && volume > 0.02) {
-      const bars   = 28;
-      const barMax = r * 0.55;
-      ctx.save();
-      ctx.translate(cx, cy + r + 14);
-      for (let i = 0; i < bars; i++) {
-        const bh = barMax * volume * (0.35 + 0.65 * Math.abs(Math.sin(synthPhaseRef.current * 3 + i)));
-        const x  = (i - bars / 2) * 5.5;
-        const bg = ctx.createLinearGradient(0, 0, 0, -bh);
-        bg.addColorStop(0, hexToRgba(cfg.inner, 0.85));
-        bg.addColorStop(1, hexToRgba(cfg.inner, 0));
-        ctx.fillStyle = bg;
-        ctx.fillRect(x, 0, 3, -bh);
-      }
-      ctx.restore();
+    for (let i = 0; i < mols.length; i++) {
+      mols[i].angle += mols[i].speed * speed;
+      const breathe = 1 + 0.12*Math.sin(phase * mols[i].pSpeed * 20 + mols[i].phaseOff);
+      const r = mols[i].baseRadius * breathe * scale;
+      positions.push({ x: cx + Math.cos(mols[i].angle)*r, y: cy + Math.sin(mols[i].angle)*r });
     }
 
-    synthPhaseRef.current += 0.04;
+    // bonds
+    for (let i = 0; i < mols.length; i++) {
+      for (const j of mols[i].bondTo) {
+        const pi = positions[i], pj = positions[j];
+        const dist = Math.hypot(pj.x-pi.x, pj.y-pi.y);
+        const alpha = Math.max(0, 1 - dist/(55*scale)) * 0.32;
+        const c = cols[mols[i].colorIdx % cols.length];
+        ctxEl.beginPath();
+        ctxEl.moveTo(pi.x, pi.y);
+        ctxEl.lineTo(pj.x, pj.y);
+        ctxEl.strokeStyle = rgbaStr(c, alpha);
+        ctxEl.lineWidth = 0.8 * scale;
+        ctxEl.stroke();
+      }
+    }
+
+    // molecules
+    const idleA = state === "idle" ? 0.35 : 0.88;
+    for (let i = 0; i < mols.length; i++) {
+      const m = mols[i], pos = positions[i];
+      const sz = m.size * (1 + 0.15*Math.sin(phase * m.pSpeed * 25 + m.phaseOff)) * scale;
+      const c  = cols[m.colorIdx % cols.length];
+      ctxEl.beginPath();
+      ctxEl.arc(pos.x, pos.y, sz, 0, Math.PI*2);
+      ctxEl.fillStyle = rgbaStr(c, idleA);
+      ctxEl.fill();
+      ctxEl.beginPath();
+      ctxEl.arc(pos.x - sz*0.25, pos.y - sz*0.25, sz*0.35, 0, Math.PI*2);
+      ctxEl.fillStyle = "rgba(255,255,255,0.22)";
+      ctxEl.fill();
+    }
+
+    // core glow
+    const cg = ctxEl.createRadialGradient(cx, cy, 0, cx, cy, 28*scale);
+    cg.addColorStop(0, rgbaStr(cols[0], state === "idle" ? 0.12 : 0.4));
+    cg.addColorStop(1, "transparent");
+    ctxEl.fillStyle = cg;
+    ctxEl.fillRect(0, 0, W, H);
   }, []);
 
-  const getVolume = useCallback(() => {
-    if (!analyserRef.current) return 0;
-    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(data);
-    const sum = data.reduce((a, b) => a + b, 0);
-    return Math.min(1, (sum / data.length) / 80);
-  }, []);
-
-  // ── Animation loop ──────────────────────────────────────────────────────────
-  const startAnimation = useCallback((stateRef) => {
+  // ── animation loop ──────────────────────────────────────────────────────────
+  const startAnimation = useCallback(() => {
     if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
     const loop = () => {
-      drawOrb(stateRef.current, getVolume());
+      phaseRef.current += 0.018;
+      // interpolate colors
+      const cc = curColorsRef.current, tc = tgtColorsRef.current;
+      for (let i = 0; i < cc.length; i++) cc[i] = lerpC(cc[i], tc[i], 0.04);
+
+      const c = canvasRef.current;
+      if (c) drawOrb(c, c.getContext("2d"));
+      if (minimized) {
+        const mc = miniCanvasRef.current;
+        if (mc) drawOrb(mc, mc.getContext("2d"));
+      }
       animIdRef.current = requestAnimationFrame(loop);
     };
     loop();
-  }, [drawOrb, getVolume]);
+  }, [drawOrb, minimized]);
 
   const stopAnimation = useCallback(() => {
     if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
     animIdRef.current = null;
-    const canvas = canvasRef.current;
-    if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
-  // ── Resize canvas ───────────────────────────────────────────────────────────
+  // ── canvas resize ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     const resize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width  = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+      const c = canvasRef.current;
+      if (!c) return;
+      c.width  = c.offsetWidth;
+      c.height = c.offsetHeight;
     };
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, [isOpen]);
 
-  // ── Use a ref so drawOrb always reads latest voiceState inside rAF ──────────
-  const voiceStateRef = useRef("idle");
-  useEffect(() => { voiceStateRef.current = voiceState; }, [voiceState]);
-
-  // ── Open / close ────────────────────────────────────────────────────────────
+  // ── open / close ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
       setState("idle");
-      setTranscript("");
-      setErrorMsg("");
-      startAnimation(voiceStateRef);
+      setTranscript(""); setErrorMsg(""); setMicMuted(false);
+      setMinimized(false); setTimerSecs(0);
+      molsRef.current = buildMolecules();
+      timerRef.current = setInterval(() => setTimerSecs(s => s + 1), 1000);
+      startAnimation();
       setTimeout(startListening, 350);
     } else {
       stopAll();
       stopAnimation();
       setState("idle");
+      clearInterval(timerRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // ── Stop everything ─────────────────────────────────────────────────────────
+  useEffect(() => { startAnimation(); }, [minimized, startAnimation]);
+
+  // ── stop all audio/mic ──────────────────────────────────────────────────────
   const stopAll = useCallback(() => {
-    if (recorderRef.current && recorderRef.current.state !== "inactive") {
-      recorderRef.current.stop();
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
+    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
+    if (audioRef.current)  { audioRef.current.pause(); audioRef.current = null; }
     analyserRef.current = null;
   }, []);
 
-  // ── Silence detection ───────────────────────────────────────────────────────
+  // ── silence detection ───────────────────────────────────────────────────────
   const setupSilenceDetection = useCallback((audioCtx, micStream) => {
-    const sa = audioCtx.createAnalyser();
-    sa.fftSize = 512;
+    const sa = audioCtx.createAnalyser(); sa.fftSize = 512;
     audioCtx.createMediaStreamSource(micStream).connect(sa);
     let silenceStart = null;
-    const THRESHOLD = 8;
-    const SILENCE_MS = 2000;
-    const MAX_MS     = 30000;
     const t0 = Date.now();
     const check = () => {
       if (!recorderRef.current || recorderRef.current.state === "inactive") return;
-      if (Date.now() - t0 > MAX_MS) { recorderRef.current.stop(); return; }
+      if (Date.now() - t0 > 30000) { recorderRef.current.stop(); return; }
       const d = new Uint8Array(sa.frequencyBinCount);
       sa.getByteFrequencyData(d);
-      const avg = d.reduce((a, b) => a + b, 0) / d.length;
-      if (avg < THRESHOLD) {
-        if (!silenceStart) silenceStart = Date.now();
-        else if (Date.now() - silenceStart > SILENCE_MS) { recorderRef.current.stop(); return; }
-      } else { silenceStart = null; }
+      const avg = d.reduce((a,b)=>a+b,0)/d.length;
+      if (avg < 8) { if (!silenceStart) silenceStart = Date.now(); else if (Date.now()-silenceStart > 2000) { recorderRef.current.stop(); return; } }
+      else silenceStart = null;
       setTimeout(check, 100);
     };
     setTimeout(check, 800);
   }, []);
 
-  // ── Start listening ─────────────────────────────────────────────────────────
+  // ── start listening ─────────────────────────────────────────────────────────
   const startListening = useCallback(async () => {
     if (voiceStateRef.current !== "idle" && voiceStateRef.current !== "speaking") return;
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-
     let micStream;
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setErrorMsg("Microphone access denied.");
-      return;
-    }
+    try { micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { setErrorMsg("Microphone access denied."); return; }
     streamRef.current = micStream;
-
     const audioCtx = new AudioContext();
-    const an = audioCtx.createAnalyser();
-    an.fftSize = 256;
+    const an = audioCtx.createAnalyser(); an.fftSize = 256;
     audioCtx.createMediaStreamSource(micStream).connect(an);
     analyserRef.current = an;
-
-    setState("listening");
-    setErrorMsg("");
+    setState("listening"); setErrorMsg("");
     chunksRef.current = [];
-
     const mimeType = getSupportedMimeType();
     const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
     recorderRef.current = recorder;
-
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     recorder.onstop = () => {
-      if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
+      if (streamRef.current) { streamRef.current.getTracks().forEach(t=>t.stop()); streamRef.current = null; }
       analyserRef.current = null;
       submitAudio(mimeType);
     };
@@ -315,197 +337,229 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setupSilenceDetection]);
 
-  // ── Submit audio ────────────────────────────────────────────────────────────
+  // ── submit audio ────────────────────────────────────────────────────────────
   const submitAudio = useCallback(async (mimeType) => {
     if (chunksRef.current.length === 0) { setState("idle"); return; }
-
     setState("processing");
-
-    const blob     = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
+    const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
     const formData = new FormData();
     formData.append("audio", blob, "recording.webm");
     formData.append("messages", JSON.stringify(getMessages()));
-
     let token;
     try { token = await getAuthToken(); }
-    catch { setErrorMsg("Auth error. Please refresh."); setState("idle"); return; }
-
+    catch { setErrorMsg("Auth error."); setState("idle"); return; }
     let data;
     try {
       const res = await fetch(`${apiBase}/api/voice/turn`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        method:"POST", headers:{ Authorization:`Bearer ${token}` }, body:formData,
       });
-
-      if (res.status === 429) {
-        setErrorMsg("Daily voice limit reached.");
-        setState("idle");
-        return;
-      }
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Server error ${res.status}`);
-      }
+      if (res.status === 429) { setErrorMsg("Daily voice limit reached."); setState("idle"); return; }
+      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error||`Error ${res.status}`); }
       data = await res.json();
-    } catch (err) {
-      setErrorMsg(err.message || "Something went wrong.");
-      setState("idle");
-      return;
-    }
-
-    if (data.transcript) {
-      setTranscript(`"${data.transcript}"`);
-      if (onTranscript) onTranscript(data.transcript);
-    }
+    } catch(err) { setErrorMsg(err.message||"Something went wrong."); setState("idle"); return; }
+    if (data.transcript) { setTranscript(`"${data.transcript}"`); if (onTranscript) onTranscript(data.transcript); }
     if (data.replyText && onReply) onReply(data.replyText);
-
-    if (data.audioBase64) {
-      playAudio(data.audioBase64);
-    } else {
-      setState("idle");
-    }
+    if (data.audioBase64) playAudio(data.audioBase64); else setState("idle");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAuthToken, getMessages, onTranscript, onReply, apiBase]);
 
-  // ── Play TTS audio ──────────────────────────────────────────────────────────
+  // ── play TTS ────────────────────────────────────────────────────────────────
   const playAudio = useCallback((base64) => {
     setState("speaking");
     const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
     audioRef.current = audio;
-
     try {
       const actx = new AudioContext();
-      const an   = actx.createAnalyser();
-      an.fftSize = 256;
-      const src  = actx.createMediaElementSource(audio);
-      src.connect(an);
-      an.connect(actx.destination);
+      const an = actx.createAnalyser(); an.fftSize = 256;
+      const src = actx.createMediaElementSource(audio);
+      src.connect(an); an.connect(actx.destination);
       analyserRef.current = an;
-    } catch {
-      // AudioContext may fail on some browsers — still play without visualisation
-    }
-
-    audio.onended = () => {
-      analyserRef.current = null;
-      audioRef.current    = null;
-      setState("idle");
-      setTimeout(startListening, 400);
-    };
-    audio.onerror = () => {
-      analyserRef.current = null;
-      audioRef.current    = null;
-      setState("idle");
-    };
+    } catch {}
+    audio.onended = () => { analyserRef.current = null; audioRef.current = null; setState("idle"); setTimeout(startListening, 400); };
+    audio.onerror = () => { analyserRef.current = null; audioRef.current = null; setState("idle"); };
     audio.play().catch(() => setState("idle"));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startListening]);
 
-  const handleOrbClick = () => {
-    if (voiceState === "idle")     startListening();
-    else if (voiceState === "listening") {
-      if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
-    }
-  };
+  // ── stop AI reply ───────────────────────────────────────────────────────────
+  const stopAI = useCallback(() => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    analyserRef.current = null;
+    setState("idle");
+    setTimeout(startListening, 400);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startListening]);
+
+  // ── toggle mic mute ─────────────────────────────────────────────────────────
+  const toggleMic = useCallback(() => {
+    setMicMuted(m => {
+      const next = !m;
+      if (streamRef.current) streamRef.current.getAudioTracks().forEach(t => { t.enabled = !next; });
+      return next;
+    });
+  }, []);
+
+  // ── end call ────────────────────────────────────────────────────────────────
+  const endCall = useCallback(() => {
+    stopAll(); stopAnimation();
+    clearInterval(timerRef.current);
+    setState("idle");
+    onClose();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stopAll, stopAnimation, onClose]);
+
+  const formatTime = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+  const cfg = VOICE_STATE_CFG[voiceState] || VOICE_STATE_CFG.idle;
 
   if (!isOpen) return null;
 
+  // ── minimized floating bubble ───────────────────────────────────────────────
+  if (minimized) {
+    return (
+      <div
+        onClick={() => setMinimized(false)}
+        title="Tap to restore"
+        style={{
+          position:"fixed", bottom:90, right:20, zIndex:9999,
+          width:72, height:72, borderRadius:"50%",
+          background:"#0d1117",
+          border:`1.5px solid ${cfg.dotColor}40`,
+          boxShadow:`0 8px 32px rgba(0,0,0,0.6), 0 0 0 4px ${cfg.dotColor}15`,
+          cursor:"pointer", overflow:"hidden",
+          animation:"evFadeIn .2s ease",
+        }}
+      >
+        <canvas ref={miniCanvasRef} width={72} height={72} style={{ width:"100%", height:"100%" }} />
+      </div>
+    );
+  }
+
+  // ── full screen ─────────────────────────────────────────────────────────────
   return (
-    <div
-      style={{
-        position:"fixed", inset:0, zIndex:9999,
-        background:"rgba(5,5,10,0.84)",
-        backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
-        display:"flex", alignItems:"center", justifyContent:"center",
-        animation:"evOverlayIn .18s ease",
-      }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
+    <div style={{
+      position:"fixed", inset:0, zIndex:9999,
+      background:"#080a10",
+      display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"space-between",
+      padding:"32px 0 40px",
+      fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+      animation:"evFadeIn .2s ease",
+    }}>
       <style>{`
-        @keyframes evOverlayIn { from { opacity:0 } to { opacity:1 } }
-        @keyframes evModalIn   { from { opacity:0; transform:translateY(18px) scale(.97) } to { opacity:1; transform:none } }
+        @keyframes evFadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes evPulse  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
       `}</style>
-      <div style={{
-        position:"relative",
-        display:"flex", flexDirection:"column", alignItems:"center", gap:20,
-        padding:"44px 36px 36px",
-        background:"rgba(12,12,20,0.96)",
-        border:"1px solid rgba(108,92,231,0.22)",
-        borderRadius:28,
-        boxShadow:"0 0 90px rgba(108,92,231,0.12), 0 28px 64px rgba(0,0,0,0.65)",
-        width:"min(400px, 90vw)",
-        animation:"evModalIn .22s ease",
-      }}>
-        {/* Close */}
-        <button
-          onClick={onClose}
-          style={{
-            position:"absolute", top:14, right:14,
-            width:30, height:30, borderRadius:"50%",
-            background:"rgba(255,255,255,0.07)", border:"none",
-            color:"rgba(255,255,255,0.55)", fontSize:14,
-            cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
-            transition:"background .15s",
-          }}
-          onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.14)"}
-          onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.07)"}
-          aria-label="Close voice mode"
-        >✕</button>
 
-        {/* Orb canvas */}
-        <div
-          onClick={handleOrbClick}
-          style={{ width:200, height:200, cursor:"pointer", flexShrink:0 }}
-          title={voiceState === "idle" ? "Tap to speak" : voiceState === "listening" ? "Tap to stop" : ""}
-        >
-          <canvas
-            ref={canvasRef}
-            style={{ width:"100%", height:"100%", display:"block" }}
-          />
+      {/* ── top bar ── */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"0 28px", boxSizing:"border-box" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:8, height:8, borderRadius:"50%", background:cfg.dotColor, boxShadow:`0 0 8px ${cfg.dotColor}`, flexShrink:0 }} />
+          <span style={{ color:"rgba(255,255,255,0.5)", fontSize:13, letterSpacing:"0.04em" }}>{formatTime(timerSecs)}</span>
         </div>
+        <span style={{ color:"rgba(255,255,255,0.3)", fontSize:12, letterSpacing:"0.08em" }}>{cfg.label}</span>
+        {/* minimize button */}
+        <button
+          onClick={() => setMinimized(true)}
+          title="Minimize"
+          style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.55)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </button>
+      </div>
 
-        {/* Status */}
-        <p style={{
-          margin:0,
-          fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-          fontSize:14, fontWeight:500, letterSpacing:"0.07em",
-          textTransform:"lowercase",
-          color: voiceState === "listening"  ? "#a78bfa"
-               : voiceState === "speaking"   ? "#00D9C0"
-               : voiceState === "processing" ? "rgba(200,200,220,0.55)"
-               : "rgba(255,255,255,0.4)",
-          transition:"color .35s",
-        }}>{statusLabel}</p>
+      {/* ── orb ── */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:20, width:"100%" }}>
+        <canvas
+          ref={canvasRef}
+          style={{ width:"min(320px, 80vw)", height:"min(320px, 80vw)", cursor:"pointer", display:"block" }}
+          onClick={() => {
+            if (voiceState === "idle") startListening();
+            else if (voiceState === "listening" && recorderRef.current?.state !== "inactive") recorderRef.current.stop();
+          }}
+          title={voiceState === "idle" ? "Tap to speak" : voiceState === "listening" ? "Tap to stop" : ""}
+        />
+        <div style={{ textAlign:"center", minHeight:36, padding:"0 32px" }}>
+          {errorMsg ? (
+            <p style={{ margin:0, color:"rgba(230,100,100,0.85)", fontSize:13 }}>{errorMsg}</p>
+          ) : transcript ? (
+            <p style={{ margin:0, color:"rgba(255,255,255,0.3)", fontSize:13, fontStyle:"italic", lineHeight:1.5 }}>{transcript}</p>
+          ) : (
+            <p style={{ margin:0, color:"rgba(255,255,255,0.15)", fontSize:12, letterSpacing:"0.05em" }}>
+              {voiceState === "idle" ? "tap the orb to speak" : voiceState === "listening" ? "tap orb to stop early" : ""}
+            </p>
+          )}
+        </div>
+      </div>
 
-        {/* Transcript */}
-        {transcript && !errorMsg && (
-          <p style={{
-            margin:0,
-            fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            fontSize:12.5, color:"rgba(255,255,255,0.32)",
-            textAlign:"center", fontStyle:"italic",
-            maxWidth:300, lineHeight:1.55,
-          }}>{transcript}</p>
-        )}
+      {/* ── controls ── */}
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:24, width:"100%" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:28 }}>
 
-        {/* Error */}
-        {errorMsg && (
-          <p style={{
-            margin:0,
-            fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            fontSize:12.5, color:"rgba(230,100,100,0.85)",
-            textAlign:"center",
-          }}>{errorMsg}</p>
-        )}
+          {/* mute */}
+          <button
+            onClick={toggleMic}
+            title={micMuted ? "Unmute" : "Mute"}
+            style={{
+              width:54, height:54, borderRadius:"50%",
+              background: micMuted ? "rgba(229,62,62,0.15)" : "rgba(255,255,255,0.07)",
+              border: `1.5px solid ${micMuted ? "rgba(229,62,62,0.4)" : "rgba(255,255,255,0.13)"}`,
+              color: micMuted ? "#fc8181" : "rgba(255,255,255,0.7)",
+              cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s",
+            }}
+          >
+            {micMuted ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <line x1="1" y1="1" x2="23" y2="23"/>
+                <path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/>
+                <path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23"/>
+                <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            )}
+          </button>
 
-        {/* Hint */}
-        <p style={{
-          margin:0,
-          fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-          fontSize:11, color:"rgba(255,255,255,0.18)", textAlign:"center",
-        }}>
-          {voiceState === "idle" ? "tap the orb · then speak" : voiceState === "listening" ? "tap orb to stop early" : ""}
-        </p>
+          {/* end call */}
+          <button
+            onClick={endCall}
+            title="End call"
+            style={{
+              width:70, height:70, borderRadius:"50%",
+              background:"#e53e3e", border:"none", color:"#fff",
+              cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+              boxShadow:"0 0 0 10px rgba(229,62,62,0.13)", transition:"all .2s",
+            }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" transform="rotate(135 12 12)"/>
+            </svg>
+          </button>
+
+          {/* stop AI */}
+          <button
+            onClick={stopAI}
+            title="Stop AI reply"
+            style={{
+              width:54, height:54, borderRadius:"50%",
+              background: voiceState === "speaking" ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.07)",
+              border: `1.5px solid ${voiceState === "speaking" ? "rgba(245,158,11,0.45)" : "rgba(255,255,255,0.13)"}`,
+              color: voiceState === "speaking" ? "#fbbf24" : "rgba(255,255,255,0.7)",
+              cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="3"/>
+            </svg>
+          </button>
+
+        </div>
       </div>
     </div>
   );
