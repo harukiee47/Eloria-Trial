@@ -1,7 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 /* =========================
-   ROOT
+   PALETTE
+   --c-deep-teal:  #0d3a35  (page stage, dark text on light)
+   --c-ivory:      #fbf6f0  (card surface, light text on dark)
+   --c-sage:       #b1b7ab  (structural: borders, placeholders, dividers)
+   --c-forest:     #276152  (accent: buttons, focus, links)
 ========================= */
 .login-root {
   display: flex;
@@ -9,7 +13,7 @@
   align-items: center;
   min-height: 100dvh;
   min-height: 100vh;
-  background: #0b0f17;
+  background: #0d3a35;
   font-family: 'DM Sans', system-ui, sans-serif;
   position: relative;
   overflow: hidden;
@@ -17,53 +21,108 @@
 }
 
 /* =========================
-   AMBIENT BACKGROUND
-   One risk: a slow-rotating conic gradient instead of
-   the standard radial orbs — feels alive without being loud
+   OVERLAY
+   Soft scrim that sits above the orbs but below the card,
+   keeps the orb glow from reading as too saturated/dark
 ========================= */
-.login-root::before {
-  content: "";
+.login-overlay {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 60% 40% at 30% 20%, rgba(193,127,42,0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 50% at 75% 80%, rgba(193,127,42,0.06) 0%, transparent 65%);
+  background: rgba(13, 58, 53, 0.35);
+  -webkit-backdrop-filter: blur(60px);
+  backdrop-filter: blur(60px);
   pointer-events: none;
   z-index: 0;
 }
 
-/* subtle grid — same as chat-main */
+/* faint hairline grid, barely present, sits above overlay */
 .login-root::after {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    linear-gradient(rgba(251,246,240,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(251,246,240,0.02) 1px, transparent 1px);
   background-size: 72px 72px;
-  opacity: 0.18;
+  opacity: 0.14;
   pointer-events: none;
   z-index: 0;
 }
 
 /* =========================
+   ORBS
+   Three slow-drifting soft blobs in light, premium tones —
+   sage and ivory-tinted glow, never going murky/dark
+========================= */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+}
+
+.orb-1 {
+  width: 380px;
+  height: 380px;
+  top: -8%;
+  left: -6%;
+  background: radial-gradient(circle, rgba(177,183,171,0.55) 0%, rgba(177,183,171,0) 72%);
+  animation: orbDrift1 22s ease-in-out infinite;
+}
+
+.orb-2 {
+  width: 320px;
+  height: 320px;
+  bottom: -10%;
+  right: -8%;
+  background: radial-gradient(circle, rgba(251,246,240,0.30) 0%, rgba(251,246,240,0) 72%);
+  animation: orbDrift2 26s ease-in-out infinite;
+}
+
+.orb-3 {
+  width: 260px;
+  height: 260px;
+  top: 38%;
+  right: 12%;
+  background: radial-gradient(circle, rgba(39,97,82,0.40) 0%, rgba(39,97,82,0) 72%);
+  animation: orbDrift3 30s ease-in-out infinite;
+}
+
+@keyframes orbDrift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, 30px) scale(1.08); }
+}
+
+@keyframes orbDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-30px, -36px) scale(1.06); }
+}
+
+@keyframes orbDrift3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-24px, 26px) scale(0.94); }
+}
+
+/* =========================
    CARD
+   Flat ivory surface, soft lift instead of glass blur —
+   paper, not screen
 ========================= */
 .login-card {
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: 400px;
-  padding: 40px 36px 36px;
-  border-radius: 24px;
-  background: rgba(16, 19, 28, 0.82);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(193,127,42,0.15);
+  padding: 40px 38px 36px;
+  border-radius: 18px;
+  background: #fbf6f0;
+  border: 1px solid rgba(13,58,53,0.06);
   box-shadow:
-    0 0 0 1px rgba(255,255,255,0.04) inset,
-    0 24px 64px rgba(0,0,0,0.55),
-    0 0 40px rgba(193,127,42,0.07);
+    0 1px 0 rgba(255,255,255,0.6) inset,
+    0 28px 60px rgba(6,24,21,0.35),
+    0 4px 14px rgba(6,24,21,0.12);
   opacity: 0;
   transform: translateY(20px);
   animation: cardIn 0.45s cubic-bezier(.22,1,.36,1) 0.1s forwards;
@@ -83,56 +142,60 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
   gap: 12px;
 }
 
 .login-logo {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 4px 16px rgba(193,127,42,0.30));
+  filter: drop-shadow(0 4px 14px rgba(13,58,53,0.18));
 }
 
-/* THE SIGNATURE ELEMENT: gold underline that draws itself */
+/* THE SIGNATURE ELEMENT: a thin sage rule that draws itself
+   beneath a serif wordmark — letterpress, not loading-bar */
 .login-wordmark {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
 }
 
 .login-wordmark h1 {
   margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: #f0ece4;
-  letter-spacing: -0.03em;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 25px;
+  font-weight: 600;
+  color: #0d3a35;
+  letter-spacing: 0.01em;
   line-height: 1;
 }
 
 .login-wordmark-line {
-  height: 2px;
+  height: 1.5px;
   width: 0;
-  background: linear-gradient(90deg, #c17f2a, #e8a84a);
-  border-radius: 2px;
+  background: #b1b7ab;
+  border-radius: 1px;
   animation: lineGrow 0.55s cubic-bezier(.22,1,.36,1) 0.5s forwards;
 }
 
 @keyframes lineGrow {
-  to { width: 100%; }
+  to { width: 60px; }
 }
 
 .login-wordmark sub {
-  font-size: 11px;
-  color: rgba(255,255,255,0.35);
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 10.5px;
+  color: rgba(13,58,53,0.45);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   display: block;
   text-align: center;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 /* =========================
@@ -140,22 +203,23 @@
 ========================= */
 .login-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 26px;
 }
 
 .login-header h2 {
-  margin: 0 0 6px;
+  margin: 0 0 7px;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 20px;
   font-weight: 600;
-  color: #f0ece4;
-  letter-spacing: -0.02em;
+  color: #0d3a35;
+  letter-spacing: 0;
 }
 
 .login-header p {
   margin: 0;
   font-size: 13.5px;
-  color: rgba(255,255,255,0.40);
-  line-height: 1.5;
+  color: rgba(13,58,53,0.50);
+  line-height: 1.55;
 }
 
 /* =========================
@@ -164,17 +228,17 @@
 .login-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
 }
 
 .login-body input {
   width: 100%;
   height: 48px;
   padding: 0 16px;
-  border-radius: 12px;
-  border: 1.5px solid rgba(255,255,255,0.07);
-  background: rgba(255,255,255,0.04);
-  color: #f0ece4;
+  border-radius: 10px;
+  border: 1.5px solid rgba(177,183,171,0.55);
+  background: rgba(13,58,53,0.025);
+  color: #0d3a35;
   font-size: 14px;
   font-family: 'DM Sans', system-ui, sans-serif;
   outline: none;
@@ -183,13 +247,13 @@
 }
 
 .login-body input::placeholder {
-  color: rgba(255,255,255,0.28);
+  color: rgba(13,58,53,0.34);
 }
 
 .login-body input:focus {
-  border-color: rgba(193,127,42,0.55);
-  background: rgba(255,255,255,0.06);
-  box-shadow: 0 0 0 3px rgba(193,127,42,0.10);
+  border-color: #276152;
+  background: rgba(13,58,53,0.04);
+  box-shadow: 0 0 0 3px rgba(39,97,82,0.12);
 }
 
 /* =========================
@@ -199,28 +263,28 @@
   width: 100%;
   height: 48px;
   border: none;
-  border-radius: 12px;
-  margin-top: 6px;
+  border-radius: 10px;
+  margin-top: 8px;
   cursor: pointer;
   font-size: 14.5px;
   font-weight: 600;
   font-family: 'DM Sans', system-ui, sans-serif;
-  color: #fff;
-  background: linear-gradient(135deg, #c17f2a 0%, #e8a84a 100%);
-  box-shadow: 0 4px 20px rgba(193,127,42,0.30);
-  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  color: #fbf6f0;
+  background: #276152;
+  box-shadow: 0 6px 20px rgba(39,97,82,0.28);
+  transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
   letter-spacing: 0.01em;
 }
 
 .submit-btn:hover {
-  opacity: 0.90;
+  background: #1f4f43;
   transform: translateY(-1px);
-  box-shadow: 0 6px 26px rgba(193,127,42,0.40);
+  box-shadow: 0 8px 24px rgba(39,97,82,0.34);
 }
 
 .submit-btn:active {
   transform: translateY(0);
-  opacity: 1;
+  background: #1a4338;
 }
 
 /* divider */
@@ -228,7 +292,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 4px 0;
+  margin: 6px 0;
 }
 
 .login-divider::before,
@@ -236,23 +300,24 @@
   content: "";
   flex: 1;
   height: 1px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(177,183,171,0.45);
 }
 
 .login-divider span {
   font-size: 11px;
-  color: rgba(255,255,255,0.25);
+  color: rgba(13,58,53,0.40);
   white-space: nowrap;
   font-family: 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0.03em;
 }
 
 .google-btn {
   width: 100%;
   height: 48px;
-  border: 1.5px solid rgba(255,255,255,0.09);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.80);
+  border: 1.5px solid rgba(177,183,171,0.6);
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(13,58,53,0.78);
   font-size: 14px;
   font-weight: 500;
   font-family: 'DM Sans', system-ui, sans-serif;
@@ -262,6 +327,7 @@
   justify-content: center;
   gap: 10px;
   transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  margin-top: 4px;
 }
 
 .google-btn img {
@@ -272,8 +338,8 @@
 }
 
 .google-btn:hover {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.15);
+  background: rgba(13,58,53,0.04);
+  border-color: rgba(13,58,53,0.22);
   transform: translateY(-1px);
 }
 
@@ -282,7 +348,7 @@
 ========================= */
 .error-msg {
   font-size: 12.5px;
-  color: #e07070;
+  color: #a8453a;
   text-align: center;
   margin-top: 2px;
   font-family: 'DM Sans', system-ui, sans-serif;
@@ -291,28 +357,29 @@
 /* =========================
    TOGGLE
 ========================= */
+/* Note: the JSX renders this as one plain string ("Don't have an
+   account? Sign Up"), not split into a wrapping <span> for the action
+   word — so unlike the original gold-accent version, there's no nested
+   element to color separately. Whole-line color + underline-on-hover
+   gives the same "this is clickable" signal without needing a JSX
+   change. If you'd rather have just "Sign Up" / "Login" in forest
+   green, wrap that word in a <span> in Login.jsx and I'll add a
+   .toggle-login span rule to match. */
 .toggle-login {
-  margin-top: 20px;
+  margin-top: 18px;
   text-align: center;
   font-size: 13px;
-  color: rgba(255,255,255,0.35);
+  color: #276152;
+  font-weight: 500;
   cursor: pointer;
-  transition: color 0.15s;
+  transition: color 0.15s, opacity 0.15s;
   font-family: 'DM Sans', system-ui, sans-serif;
   line-height: 1.5;
 }
 
-.toggle-login span {
-  color: #c17f2a;
-  font-weight: 600;
-}
-
 .toggle-login:hover {
-  color: rgba(255,255,255,0.65);
-}
-
-.toggle-login:hover span {
-  color: #e8a84a;
+  color: #1a4338;
+  opacity: 0.85;
 }
 
 /* =========================
@@ -343,12 +410,20 @@
   }
 
   .login-card {
-    padding: 32px 22px 28px;
-    border-radius: 20px;
+    padding: 32px 24px 28px;
+    border-radius: 16px;
+  }
+
+  .login-wordmark h1 {
+    font-size: 22px;
   }
 
   .login-header h2 {
     font-size: 18px;
+  }
+
+  .orb-1, .orb-2, .orb-3 {
+    filter: blur(36px);
   }
 
   .login-body input,

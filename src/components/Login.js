@@ -52,11 +52,18 @@ export default function Login({ onLogin }) {
 <div className="orb orb-3"></div>
       <div className={`login-card ${animating ? "fade-slide-out" : "fade-slide-in"}`}>
         <div className="login-header">
-        <img
-  src="/logo.png"
-  alt="Eloria"
-  className="login-logo"
-/>
+          <div className="login-logo-wrap">
+            <img
+              src="/logo.png"
+              alt="Eloria"
+              className="login-logo"
+            />
+            <div className="login-wordmark">
+              <h1>Eloria</h1>
+              <div className="login-wordmark-line"></div>
+              <sub>AI Assistant</sub>
+            </div>
+          </div>
           <h2>{isSignup ? "Create Account" : "Welcome Back"}</h2>
           <p>{isSignup ? "Sign up to continue" : "Login to your account"}</p>
         </div>
