@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 /* =========================
    CLOUD CHAT STORAGE
@@ -18,7 +18,7 @@ export async function loadChats(uid) {
 export async function saveChats(uid, chats) {
   const ref = doc(db, "users", uid);
 
-  await setDoc(ref, {
+  await updateDoc(ref, {
     chats: chats
-  }, { merge: true });
+  });
 }

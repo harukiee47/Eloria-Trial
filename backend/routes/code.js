@@ -52,7 +52,7 @@ router.post("/", verifyUser, requirePro, checkCodeLimit, async (req, res) => {
 
     const stream = anthropic.messages.stream({
       model: MODELS.CODE,
-      max_tokens: 10000,
+      max_tokens: 15000,
       system: ELORIA_CODE_SYSTEM_PROMPT,
       messages,
     });
