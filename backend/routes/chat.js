@@ -4,6 +4,7 @@ import { checkMessageLimit } from "../middleware/rateLimit.js";
 import { incrementUsage } from "../services/usageTracker.js";
 import { anthropic } from "../services/anthropic.js";
 import { MODELS } from "../config/models.js";
+import { buildAnthropicMessages } from "../utils/anthropicMessages.js"; // ← moved to shared util
 
 const router = express.Router();
 
@@ -178,84 +179,12 @@ STRUCTURE:
 
 You are not just answering questions.
 
-You are heping people learn, build, create, improve, and succeed through accurate information, practical guidance, honest feedback, and genuine support.
+You are helping people learn, build, create, improve, and succeed through accurate information, practical guidance, honest feedback, and genuine support.
 
 `;
 
-
-function buildAnthropicMessages(messages) {
-  return messages.map((msg) => {
-
-    if (!msg.files || msg.files.length === 0) {
-      return { role: msg.role, content: msg.content };
-    }
-
-
-    const contentParts = [];
-
-    for (const file of msg.files) {
-      if (file.kind === "image" && file.previewUrl) {
-
-        const matches = file.previewUrl.match(/^data:(.+);base64,(.+)$/);
-        if (matches) {
-          const mediaType = matches[1]; 
-          const base64Data = matches[2];
-          contentParts.push({
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mediaType,
-              data: base64Data,
-            },
-          });
-        }
-      } else if (file.kind === "document") {
-        if (file.base64) {
-
-          const matches = file.base64.match(/^data:(.+);base64,(.+)$/);
-          if (matches) {
-            const mediaType = matches[1];
-            const base64Data = matches[2];
-
-            if (mediaType === "application/pdf") {
-
-              contentParts.push({
-                type: "document",
-                source: {
-                  type: "base64",
-                  media_type: "application/pdf",
-                  data: base64Data,
-                },
-              });
-            } else {
-
-              contentParts.push({
-                type: "text",
-                text: `[Document attached: ${file.name} (${mediaType}) — binary format, cannot extract text directly. Let the user know you received it but need a plain text or PDF version to read the contents.]`,
-              });
-            }
-          }
-        } else if (file.textContent) {
-
-          contentParts.push({
-            type: "text",
-            text: `[Document: ${file.name}]\n\n${file.textContent}`,
-          });
-        }
-      }
-    }
-
-
-    if (msg.content && msg.content.trim()) {
-      contentParts.push({ type: "text", text: msg.content });
-    } else if (contentParts.length > 0) {
-
-      contentParts.push({ type: "text", text: "Please analyze the above." });
-    }
-
-    return { role: msg.role, content: contentParts };
-  });
-}
+// NOTE: buildAnthropicMessages has been moved to utils/anthropicMessages.js
+// and is now imported above. No other changes to this file.
 
 /**
  * POST /api/chat
@@ -278,21 +207,21 @@ router.post("/", verifyUser, checkMessageLimit, async (req, res) => {
     const anthropicMessages = buildAnthropicMessages(messages);
 
     const stream = anthropic.messages.stream({
-  model: MODELS.CHAT,
-  max_tokens: 2048,
-  system: ELORIA_SYSTEM_PROMPT,
-  messages: anthropicMessages,
-  tools: [
-    {
-      type: "web_search_20250305",
-      name: "web_search",
-    }
-  ],
-});
+      model: MODELS.CHAT,
+      max_tokens: 2048,
+      system: ELORIA_SYSTEM_PROMPT,
+      messages: anthropicMessages,
+      tools: [
+        {
+          type: "web_search_20250305",
+          name: "web_search",
+        },
+      ],
+    });
 
-stream.on("message", (msg) => {
-  console.log("FULL MESSAGE:", JSON.stringify(msg, null, 2));
-});
+    stream.on("message", (msg) => {
+      console.log("FULL MESSAGE:", JSON.stringify(msg, null, 2));
+    });
 
     stream.on("text", (text) => {
       res.write(`data: ${JSON.stringify({ text })}\n\n`);

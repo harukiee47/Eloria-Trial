@@ -3,7 +3,7 @@ import { getLimitsForUser } from "../services/limits.js";
 
 /**
  * Generic factory: checks whether the user has remaining quota
- * for a given usage type (messages, codeRequests, imageRequests).
+ * for a given usage type (messages, codeRequests, imageRequests, voiceTurns).
  * Attaches `req.userData` and `req.limits` for downstream handlers
  * so they don't need to re-fetch from Firestore.
  */
@@ -19,7 +19,6 @@ function makeLimitChecker(usageType, errorMessage) {
         });
       }
 
-      // Cache for the route handler so it doesn't refetch
       req.userData = user;
       req.limits = limits;
 
@@ -44,6 +43,11 @@ export const checkCodeLimit = makeLimitChecker(
 export const checkImageLimit = makeLimitChecker(
   "imageRequests",
   "Daily image limit reached."
+);
+
+export const checkVoiceLimit = makeLimitChecker(
+  "voiceTurns",
+  "Daily voice limit reached."
 );
 
 /**

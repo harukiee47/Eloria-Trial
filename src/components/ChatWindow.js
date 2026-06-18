@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import logo from "../assets/logo.png";
 import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
@@ -61,12 +61,468 @@ function formatBytes(bytes) {
 
 function docIcon(ext) {
   const map = {
-    PDF: { bg: "#fff1f1", color: "#e53e3e", char: "PDF" },
-    TXT: { bg: "#f0f4ff", color: "#4a6cf7", char: "TXT" },
-    DOC: { bg: "#eff6ff", color: "#2563eb", char: "DOC" },
+    PDF:  { bg: "#fff1f1", color: "#e53e3e", char: "PDF" },
+    TXT:  { bg: "#f0f4ff", color: "#4a6cf7", char: "TXT" },
+    DOC:  { bg: "#eff6ff", color: "#2563eb", char: "DOC" },
     DOCX: { bg: "#eff6ff", color: "#2563eb", char: "DOC" },
   };
   return map[ext] || { bg: "#f5f5f0", color: "#888", char: ext.slice(0,3) };
+}
+
+// ── Voice state config ────────────────────────────────────────────────────────
+const VOICE_STATES = {
+  idle:       { inner: "#6C5CE7", outer: "#2d2b55", label: "Tap orb to speak"  },
+  listening:  { inner: "#6C5CE7", outer: "#3b1f8c", label: "Listening…"        },
+  processing: { inner: "#8888aa", outer: "#2a2a3a", label: "Thinking…"         },
+  speaking:   { inner: "#00D9C0", outer: "#003d38", label: "Speaking…"         },
+};
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function getSupportedMimeType() {
+  const types = ["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus","audio/mp4"];
+  return types.find(t => MediaRecorder.isTypeSupported(t)) || "";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Voice Modal Component
+// ─────────────────────────────────────────────────────────────────────────────
+function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
+  const canvasRef      = useRef(null);
+  const analyserRef    = useRef(null);
+  const animIdRef      = useRef(null);
+  const recorderRef    = useRef(null);
+  const streamRef      = useRef(null);
+  const audioRef       = useRef(null);
+  const synthPhaseRef  = useRef(0);
+  const chunksRef      = useRef([]);
+
+  const [voiceState,   setVoiceState]   = useState("idle");
+  const [statusLabel,  setStatusLabel]  = useState("Tap orb to speak");
+  const [transcript,   setTranscript]   = useState("");
+  const [errorMsg,     setErrorMsg]     = useState("");
+
+  const setState = useCallback((state) => {
+    setVoiceState(state);
+    setStatusLabel(VOICE_STATES[state]?.label || "");
+  }, []);
+
+  // ── Canvas drawing ──────────────────────────────────────────────────────────
+  const drawOrb = useCallback((state, volume = 0) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const cfg   = VOICE_STATES[state] || VOICE_STATES.idle;
+    const cx    = w / 2;
+    const cy    = h / 2;
+    const baseR = Math.min(w, h) * 0.28;
+    const pulse =
+      state === "listening" || state === "speaking"
+        ? baseR * 0.22 * volume
+        : state === "processing"
+          ? baseR * 0.06 * Math.sin(synthPhaseRef.current * 1.5)
+          : 0;
+    const r = baseR + pulse;
+
+    // Outer glow rings
+    [2.2, 1.7, 1.3].forEach((mult, i) => {
+      const alpha = [0.05, 0.09, 0.15][i];
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * mult);
+      grad.addColorStop(0, hexToRgba(cfg.inner, alpha));
+      grad.addColorStop(1, hexToRgba(cfg.inner, 0));
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * mult, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    });
+
+    // Core orb
+    const orbGrad = ctx.createRadialGradient(cx - r * 0.22, cy - r * 0.22, r * 0.08, cx, cy, r);
+    orbGrad.addColorStop(0,   hexToRgba(cfg.inner, 0.95));
+    orbGrad.addColorStop(0.6, hexToRgba(cfg.inner, 0.78));
+    orbGrad.addColorStop(1,   hexToRgba(cfg.outer, 0.92));
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = orbGrad;
+    ctx.fill();
+
+    // Waveform bars
+    if ((state === "listening" || state === "speaking") && volume > 0.02) {
+      const bars   = 28;
+      const barMax = r * 0.55;
+      ctx.save();
+      ctx.translate(cx, cy + r + 14);
+      for (let i = 0; i < bars; i++) {
+        const bh = barMax * volume * (0.35 + 0.65 * Math.abs(Math.sin(synthPhaseRef.current * 3 + i)));
+        const x  = (i - bars / 2) * 5.5;
+        const bg = ctx.createLinearGradient(0, 0, 0, -bh);
+        bg.addColorStop(0, hexToRgba(cfg.inner, 0.85));
+        bg.addColorStop(1, hexToRgba(cfg.inner, 0));
+        ctx.fillStyle = bg;
+        ctx.fillRect(x, 0, 3, -bh);
+      }
+      ctx.restore();
+    }
+
+    synthPhaseRef.current += 0.04;
+  }, []);
+
+  const getVolume = useCallback(() => {
+    if (!analyserRef.current) return 0;
+    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteFrequencyData(data);
+    const sum = data.reduce((a, b) => a + b, 0);
+    return Math.min(1, (sum / data.length) / 80);
+  }, []);
+
+  // ── Animation loop ──────────────────────────────────────────────────────────
+  const startAnimation = useCallback((stateRef) => {
+    if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
+    const loop = () => {
+      drawOrb(stateRef.current, getVolume());
+      animIdRef.current = requestAnimationFrame(loop);
+    };
+    loop();
+  }, [drawOrb, getVolume]);
+
+  const stopAnimation = useCallback(() => {
+    if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
+    animIdRef.current = null;
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+  }, []);
+
+  // ── Resize canvas ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isOpen) return;
+    const resize = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      canvas.width  = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [isOpen]);
+
+  // ── Use a ref so drawOrb always reads latest voiceState inside rAF ──────────
+  const voiceStateRef = useRef("idle");
+  useEffect(() => { voiceStateRef.current = voiceState; }, [voiceState]);
+
+  // ── Open / close ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isOpen) {
+      setState("idle");
+      setTranscript("");
+      setErrorMsg("");
+      startAnimation(voiceStateRef);
+      setTimeout(startListening, 350);
+    } else {
+      stopAll();
+      stopAnimation();
+      setState("idle");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // ── Stop everything ─────────────────────────────────────────────────────────
+  const stopAll = useCallback(() => {
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    analyserRef.current = null;
+  }, []);
+
+  // ── Silence detection ───────────────────────────────────────────────────────
+  const setupSilenceDetection = useCallback((audioCtx, micStream) => {
+    const sa = audioCtx.createAnalyser();
+    sa.fftSize = 512;
+    audioCtx.createMediaStreamSource(micStream).connect(sa);
+    let silenceStart = null;
+    const THRESHOLD = 8;
+    const SILENCE_MS = 2000;
+    const MAX_MS     = 30000;
+    const t0 = Date.now();
+    const check = () => {
+      if (!recorderRef.current || recorderRef.current.state === "inactive") return;
+      if (Date.now() - t0 > MAX_MS) { recorderRef.current.stop(); return; }
+      const d = new Uint8Array(sa.frequencyBinCount);
+      sa.getByteFrequencyData(d);
+      const avg = d.reduce((a, b) => a + b, 0) / d.length;
+      if (avg < THRESHOLD) {
+        if (!silenceStart) silenceStart = Date.now();
+        else if (Date.now() - silenceStart > SILENCE_MS) { recorderRef.current.stop(); return; }
+      } else { silenceStart = null; }
+      setTimeout(check, 100);
+    };
+    setTimeout(check, 800);
+  }, []);
+
+  // ── Start listening ─────────────────────────────────────────────────────────
+  const startListening = useCallback(async () => {
+    if (voiceStateRef.current !== "idle" && voiceStateRef.current !== "speaking") return;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+
+    let micStream;
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setErrorMsg("Microphone access denied.");
+      return;
+    }
+    streamRef.current = micStream;
+
+    const audioCtx = new AudioContext();
+    const an = audioCtx.createAnalyser();
+    an.fftSize = 256;
+    audioCtx.createMediaStreamSource(micStream).connect(an);
+    analyserRef.current = an;
+
+    setState("listening");
+    setErrorMsg("");
+    chunksRef.current = [];
+
+    const mimeType = getSupportedMimeType();
+    const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
+    recorderRef.current = recorder;
+
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+    recorder.onstop = () => {
+      if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
+      analyserRef.current = null;
+      submitAudio(mimeType);
+    };
+    recorder.start();
+    setupSilenceDetection(audioCtx, micStream);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setupSilenceDetection]);
+
+  // ── Submit audio ────────────────────────────────────────────────────────────
+  const submitAudio = useCallback(async (mimeType) => {
+    if (chunksRef.current.length === 0) { setState("idle"); return; }
+
+    setState("processing");
+
+    const blob     = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
+    const formData = new FormData();
+    formData.append("audio", blob, "recording.webm");
+    formData.append("messages", JSON.stringify(getMessages()));
+
+    let token;
+    try { token = await getAuthToken(); }
+    catch { setErrorMsg("Auth error. Please refresh."); setState("idle"); return; }
+
+    let data;
+    try {
+      const res = await fetch(`${apiBase}/api/voice/turn`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (res.status === 429) {
+        setErrorMsg("Daily voice limit reached.");
+        setState("idle");
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
+      data = await res.json();
+    } catch (err) {
+      setErrorMsg(err.message || "Something went wrong.");
+      setState("idle");
+      return;
+    }
+
+    if (data.transcript) {
+      setTranscript(`"${data.transcript}"`);
+      if (onTranscript) onTranscript(data.transcript);
+    }
+    if (data.replyText && onReply) onReply(data.replyText);
+
+    if (data.audioBase64) {
+      playAudio(data.audioBase64);
+    } else {
+      setState("idle");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getAuthToken, getMessages, onTranscript, onReply, apiBase]);
+
+  // ── Play TTS audio ──────────────────────────────────────────────────────────
+  const playAudio = useCallback((base64) => {
+    setState("speaking");
+    const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
+    audioRef.current = audio;
+
+    try {
+      const actx = new AudioContext();
+      const an   = actx.createAnalyser();
+      an.fftSize = 256;
+      const src  = actx.createMediaElementSource(audio);
+      src.connect(an);
+      an.connect(actx.destination);
+      analyserRef.current = an;
+    } catch {
+      // AudioContext may fail on some browsers — still play without visualisation
+    }
+
+    audio.onended = () => {
+      analyserRef.current = null;
+      audioRef.current    = null;
+      setState("idle");
+      setTimeout(startListening, 400);
+    };
+    audio.onerror = () => {
+      analyserRef.current = null;
+      audioRef.current    = null;
+      setState("idle");
+    };
+    audio.play().catch(() => setState("idle"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startListening]);
+
+  const handleOrbClick = () => {
+    if (voiceState === "idle")     startListening();
+    else if (voiceState === "listening") {
+      if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      style={{
+        position:"fixed", inset:0, zIndex:9999,
+        background:"rgba(5,5,10,0.84)",
+        backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        animation:"evOverlayIn .18s ease",
+      }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <style>{`
+        @keyframes evOverlayIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes evModalIn   { from { opacity:0; transform:translateY(18px) scale(.97) } to { opacity:1; transform:none } }
+      `}</style>
+      <div style={{
+        position:"relative",
+        display:"flex", flexDirection:"column", alignItems:"center", gap:20,
+        padding:"44px 36px 36px",
+        background:"rgba(12,12,20,0.96)",
+        border:"1px solid rgba(108,92,231,0.22)",
+        borderRadius:28,
+        boxShadow:"0 0 90px rgba(108,92,231,0.12), 0 28px 64px rgba(0,0,0,0.65)",
+        width:"min(400px, 90vw)",
+        animation:"evModalIn .22s ease",
+      }}>
+        {/* Close */}
+        <button
+          onClick={onClose}
+          style={{
+            position:"absolute", top:14, right:14,
+            width:30, height:30, borderRadius:"50%",
+            background:"rgba(255,255,255,0.07)", border:"none",
+            color:"rgba(255,255,255,0.55)", fontSize:14,
+            cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+            transition:"background .15s",
+          }}
+          onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.14)"}
+          onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.07)"}
+          aria-label="Close voice mode"
+        >✕</button>
+
+        {/* Orb canvas */}
+        <div
+          onClick={handleOrbClick}
+          style={{ width:200, height:200, cursor:"pointer", flexShrink:0 }}
+          title={voiceState === "idle" ? "Tap to speak" : voiceState === "listening" ? "Tap to stop" : ""}
+        >
+          <canvas
+            ref={canvasRef}
+            style={{ width:"100%", height:"100%", display:"block" }}
+          />
+        </div>
+
+        {/* Status */}
+        <p style={{
+          margin:0,
+          fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize:14, fontWeight:500, letterSpacing:"0.07em",
+          textTransform:"lowercase",
+          color: voiceState === "listening"  ? "#a78bfa"
+               : voiceState === "speaking"   ? "#00D9C0"
+               : voiceState === "processing" ? "rgba(200,200,220,0.55)"
+               : "rgba(255,255,255,0.4)",
+          transition:"color .35s",
+        }}>{statusLabel}</p>
+
+        {/* Transcript */}
+        {transcript && !errorMsg && (
+          <p style={{
+            margin:0,
+            fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            fontSize:12.5, color:"rgba(255,255,255,0.32)",
+            textAlign:"center", fontStyle:"italic",
+            maxWidth:300, lineHeight:1.55,
+          }}>{transcript}</p>
+        )}
+
+        {/* Error */}
+        {errorMsg && (
+          <p style={{
+            margin:0,
+            fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            fontSize:12.5, color:"rgba(230,100,100,0.85)",
+            textAlign:"center",
+          }}>{errorMsg}</p>
+        )}
+
+        {/* Hint */}
+        <p style={{
+          margin:0,
+          fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize:11, color:"rgba(255,255,255,0.18)", textAlign:"center",
+        }}>
+          {voiceState === "idle" ? "tap the orb · then speak" : voiceState === "listening" ? "tap orb to stop early" : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mic button SVG
+// ─────────────────────────────────────────────────────────────────────────────
+function MicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width:16, height:16 }}>
+      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+      <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+      <line x1="8"  y1="23" x2="16" y2="23"/>
+    </svg>
+  );
 }
 
 
@@ -240,7 +696,6 @@ const CW_STYLE = `
     .cw-msg-row.ai { gap: 6px; }
   }
 
-  /* AI avatar */
   .cw-ai-avatar {
     width: 28px; height: 28px; border-radius: 8px; overflow: hidden;
     flex-shrink: 0; border: 1.5px solid rgba(193,127,42,.2);
@@ -251,7 +706,6 @@ const CW_STYLE = `
     .cw-ai-avatar { width: 24px; height: 24px; border-radius: 6px; }
   }
 
-  /* Bubble wrapper */
   .cw-bubble-stack {
     display: flex; flex-direction: column; gap: 4px;
     max-width: min(88%, 720px);
@@ -262,7 +716,6 @@ const CW_STYLE = `
     .cw-bubble-stack { max-width: min(92%, 100%); }
   }
 
-  /* Text bubble */
   .cw-bubble {
     padding: 10px 15px;
     font-size: 13px; line-height: 1.5;
@@ -287,7 +740,6 @@ const CW_STYLE = `
     box-shadow: 0 1px 6px rgba(0,0,0,.06);
   }
 
-  /* Timestamp */
   .cw-msg-time {
     font-size: 10px; color: var(--t3);
     padding: 0 4px;
@@ -295,7 +747,6 @@ const CW_STYLE = `
   }
   .cw-msg-row.user .cw-msg-time { text-align: right; }
 
-  /* AI message divider row */
   .cw-msg-divider {
     display: flex; align-items: center; gap: 8px;
     margin: 6px 0 2px; max-width: 100%;
@@ -469,10 +920,9 @@ const CW_STYLE = `
   }
   .cw-textarea::placeholder { color:var(--t3); }
   @media(max-width: 640px) {
-    .cw-textarea { font-size: 16px; } /* prevents iOS zoom */
+    .cw-textarea { font-size: 16px; }
   }
 
-  /* attach button */
   .cw-attach { position:relative; flex-shrink:0; }
   .cw-attach-btn {
     width:32px; height:32px; border:none; border-radius:50%;
@@ -484,7 +934,6 @@ const CW_STYLE = `
   .cw-attach-btn.has-files { color: var(--accent); }
   .cw-attach-btn svg  { width:17px; height:17px; }
 
-  /* attach dropdown — opens upward, stays in viewport on mobile */
   .cw-attach-menu {
     position:absolute; bottom:calc(100% + 8px); left:0;
     background:#fff; border:1px solid #e8e6e0;
@@ -524,7 +973,25 @@ const CW_STYLE = `
   .cw-send:disabled { opacity:.3; cursor:default; }
   .cw-send svg { width:15px; height:15px; }
   @media(max-width: 640px) {
-    .cw-send { width: 36px; height: 36px; } /* bigger tap target */
+    .cw-send { width: 36px; height: 36px; }
+  }
+
+  /* ── MIC BUTTON ──────────────────────────────────────── */
+  .cw-mic-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--t3); flex-shrink: 0;
+    transition: background .12s, color .12s, transform .12s;
+  }
+  .cw-mic-btn:hover {
+    background: rgba(108,92,231,0.1);
+    color: #6C5CE7;
+    transform: scale(1.08);
+  }
+  .cw-mic-btn.active {
+    color: #6C5CE7;
+    background: rgba(108,92,231,0.12);
   }
 
   .cw-hint {
@@ -667,7 +1134,6 @@ function PendingChip({ file, onRemove }) {
   );
 }
 
-
 function AttachBubble({ file, sender, onImageClick }) {
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
@@ -704,6 +1170,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [lightboxSrc,    setLightboxSrc]    = useState(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [selectionBtn,   setSelectionBtn]   = useState(null);
+  const [voiceOpen,      setVoiceOpen]      = useState(false); // ← new
 
   const fileInputRef       = useRef(null);
   const fileAcceptRef      = useRef("");
@@ -713,9 +1180,14 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const messagesEndRef     = useRef(null);
   const abortControllerRef = useRef(null);
 
+  // Keep a ref to current messages for the voice modal to read without stale closure
+  const messagesRef = useRef([]);
+
   const messages  = useMemo(() => chat?.messages || [], [chat]);
   const showIntro = messages.length === 0;
   const canAddMore = pendingFiles.length < 2;
+
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   useEffect(() => {
     if (!document.getElementById("eloria-cw-v3")) {
@@ -756,39 +1228,21 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       setTimeout(() => {
         const selection = window.getSelection();
         const text = selection?.toString().trim();
-
-        if (!text || text.length < 2) {
-          setSelectionBtn(null);
-          return;
-        }
-
+        if (!text || text.length < 2) { setSelectionBtn(null); return; }
         const range = selection.getRangeAt(0);
         const container = range.commonAncestorContainer;
         const bubble = container.nodeType === 3
           ? container.parentElement?.closest(".cw-bubble")
           : container.closest?.(".cw-bubble");
-
         const msgRow = bubble?.closest(".cw-msg-row");
-        if (!bubble || !msgRow?.classList.contains("ai")) {
-          setSelectionBtn(null);
-          return;
-        }
-
+        if (!bubble || !msgRow?.classList.contains("ai")) { setSelectionBtn(null); return; }
         const rect = range.getBoundingClientRect();
-        setSelectionBtn({
-          x: rect.left + rect.width / 2,
-          y: rect.top - 8,
-          text,
-        });
+        setSelectionBtn({ x: rect.left + rect.width / 2, y: rect.top - 8, text });
       }, 10);
     };
-
     const handleMouseDown = (e) => {
-      if (!e.target.closest(".cw-selection-btn")) {
-        setSelectionBtn(null);
-      }
+      if (!e.target.closest(".cw-selection-btn")) setSelectionBtn(null);
     };
-
     document.addEventListener("mouseup", handleMouseUp);
     document.addEventListener("mousedown", handleMouseDown);
     return () => {
@@ -820,37 +1274,23 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     const files = Array.from(e.target.files || []);
     const slots = 2 - pendingFiles.length;
     const toAdd = files.slice(0, slots);
-
     toAdd.forEach(f => {
       const kind = getAttachKind(f);
       if (!kind) return;
-
       const maxSize = kind === "image" ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
       if (f.size > maxSize) {
         alert(`"${f.name}" is too large. Max size is ${kind === "image" ? "5MB for images" : "10MB for documents"}.`);
         return;
       }
-
       const reader = new FileReader();
-
       if (kind === "image") {
         reader.onload = (ev) => {
-          setPendingFiles(prev => [...prev, {
-            id: Date.now() + Math.random(),
-            name: f.name, size: f.size, kind,
-            previewUrl: ev.target.result,
-          }]);
+          setPendingFiles(prev => [...prev, { id: Date.now() + Math.random(), name: f.name, size: f.size, kind, previewUrl: ev.target.result }]);
         };
         reader.readAsDataURL(f);
       } else {
         reader.onload = (ev) => {
-          setPendingFiles(prev => [...prev, {
-            id: Date.now() + Math.random(),
-            name: f.name, size: f.size, kind,
-            previewUrl: null,
-            base64: ev.target.result,
-            textContent: null,
-          }]);
+          setPendingFiles(prev => [...prev, { id: Date.now() + Math.random(), name: f.name, size: f.size, kind, previewUrl: null, base64: ev.target.result, textContent: null }]);
         };
         reader.readAsDataURL(f);
       }
@@ -859,10 +1299,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
 
   const handleQuoteReply = () => {
     if (!selectionBtn) return;
-    const quoted = selectionBtn.text
-      .split("\n")
-      .map(line => `> ${line}`)
-      .join("\n");
+    const quoted = selectionBtn.text.split("\n").map(line => `> ${line}`).join("\n");
     setInput(prev => prev ? `${quoted}\n\n${prev}` : `${quoted}\n\n`);
     setSelectionBtn(null);
     window.getSelection()?.removeAllRanges();
@@ -1052,6 +1489,37 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     } catch { setIsThinking(false); }
   };
 
+  // ── Voice helpers ─────────────────────────────────────────────────────────────
+  // Convert current chat messages to the API format the voice route expects
+  const getVoiceMessages = () =>
+    messagesRef.current.map(m => ({
+      role: m.sender === "user" ? "user" : "assistant",
+      content: m.text || "",
+    }));
+
+  // When voice produces a transcript + reply, add both to the chat as normal messages
+  const handleVoiceTranscript = (text) => {
+    const userMsg = { id: Date.now(), sender: "user", text, files: [], time: getTimestamp() };
+    setChats(prev => prev.map(c => {
+      if (c.id !== chat.id) return c;
+      const first = !c.messages || c.messages.length === 0;
+      return {
+        ...c,
+        messages: sanitizeForFirestore([...(c.messages || []), userMsg]),
+        title: first ? generateChatTitle(text) : c.title,
+      };
+    }));
+  };
+
+  const handleVoiceReply = (text) => {
+    const aiMsg = { id: Date.now() + 1, sender: "ai", text, files: [], time: getTimestamp() };
+    setChats(prev => prev.map(c =>
+      c.id === chat.id
+        ? { ...c, messages: sanitizeForFirestore([...(c.messages || []), aiMsg]) }
+        : c
+    ));
+  };
+
   const renderMessage = (msg) => {
     const isUser = msg.sender === "user";
     return (
@@ -1095,6 +1563,17 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   return (
     <main className="cw-root">
       <input ref={fileInputRef} type="file" style={{ display:"none" }} onChange={onFileChange} />
+
+      {/* ── Voice Modal ───────────────────────────────────────────────────────── */}
+      <VoiceModal
+        isOpen={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        getAuthToken={() => auth.currentUser.getIdToken()}
+        getMessages={getVoiceMessages}
+        onTranscript={handleVoiceTranscript}
+        onReply={handleVoiceReply}
+        apiBase="https://eloria-trial.onrender.com"
+      />
 
       {selectionBtn && (
         <button
@@ -1275,6 +1754,8 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       <div className="cw-input-wrap">
         <div className="cw-input-box">
           <div className="cw-textarea-row">
+
+            {/* Attach button */}
             <div className="cw-attach" ref={attachRef}>
               <button
                 className={`cw-attach-btn${pendingFiles.length > 0 ? " has-files" : ""}`}
@@ -1313,6 +1794,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
               )}
             </div>
 
+            {/* Text input */}
             <textarea
               ref={textareaRef}
               className="cw-textarea"
@@ -1323,6 +1805,17 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
             />
 
+            {/* 🎤 Mic button — NEW */}
+            <button
+              className={`cw-mic-btn${voiceOpen ? " active" : ""}`}
+              onClick={() => setVoiceOpen(true)}
+              title="Voice mode"
+              aria-label="Open voice mode"
+            >
+              <MicIcon />
+            </button>
+
+            {/* Send / stop button */}
             <button
               className="cw-send"
               onClick={isThinking ? () => { abortControllerRef.current?.abort(); setIsThinking(false); } : sendMessage}
@@ -1341,6 +1834,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
                 </svg>
               )}
             </button>
+
           </div>
         </div>
         <p className="cw-hint">Eloria can make mistakes. Verify important information.</p>

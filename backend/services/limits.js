@@ -3,6 +3,7 @@ export const PLANS = {
     messages: 50,
     codeRequests: 10,
     imageRequests: 4,
+    voiceTurns: 10,
     eloriaCodeAccess: false,
   },
 
@@ -10,6 +11,7 @@ export const PLANS = {
     messages: 100,
     codeRequests: 25,
     imageRequests: 12,
+    voiceTurns: 30,
     eloriaCodeAccess: true,
   },
 
@@ -17,6 +19,7 @@ export const PLANS = {
     messages: Infinity,
     codeRequests: Infinity,
     imageRequests: Infinity,
+    voiceTurns: Infinity,
     eloriaCodeAccess: true,
   },
 };

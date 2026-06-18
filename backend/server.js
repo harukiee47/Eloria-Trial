@@ -7,6 +7,8 @@ import codeRoutes from "./routes/code.js";
 import membershipRoutes from "./routes/membership.js";
 import paymentsRoutes from "./routes/payments.js";
 import groupChatRoutes from "./routes/groupChat.js";
+import voiceRoutes from "./routes/voice.js"; // ← new
+
 const app = express();
 
 app.use(cors());
@@ -30,6 +32,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/code", codeRoutes);
 app.use("/api/membership", membershipRoutes);
 app.use("/api/group-chat", groupChatRoutes);
+app.use("/api/voice", voiceRoutes); // ← new
 
 const PORT = process.env.PORT || 5001;
 
