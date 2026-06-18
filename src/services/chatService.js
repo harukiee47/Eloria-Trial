@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 /* =========================
    CLOUD CHAT STORAGE
@@ -18,7 +18,9 @@ export async function loadChats(uid) {
 export async function saveChats(uid, chats) {
   const ref = doc(db, "users", uid);
 
-  await updateDoc(ref, {
-    chats: chats
-  });
+  // Single merge write: only touches the `chats` field, never reads-then-
+  // overwrites the whole doc. This means it can never wipe out role/plan/
+  // usage (or anything else), and removes the redundant double write that
+  // used to fire on every call.
+  await setDoc(ref, { chats }, { merge: true });
 }
