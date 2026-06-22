@@ -63,6 +63,27 @@ function getFileIcon(name) {
   return map[ext] || "◇";
 }
 
+// MIME map for downloads
+function getMime(ext) {
+  const map = {
+    html:"text/html", htm:"text/html", css:"text/css", js:"text/javascript",
+    jsx:"text/javascript", ts:"text/typescript", tsx:"text/typescript",
+    json:"application/json", py:"text/x-python", md:"text/markdown",
+  };
+  return map[ext] || "text/plain";
+}
+
+function downloadFile(filename, code) {
+  if (!code) return;
+  const ext = getExt(filename);
+  const blob = new Blob([code], { type: getMime(ext) + ";charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function timeAgo(ts) {
   if (!ts) return "";
   const diff = Date.now() - new Date(ts).getTime();
@@ -84,15 +105,15 @@ function syntaxHighlight(code, ext) {
   const kwPy = /\b(def|class|import|from|return|if|elif|else|for|while|try|except|with|as|pass|break|continue|True|False|None|and|or|not|in|is|lambda|yield|raise|global|nonlocal)\b/g;
   const kw = jsFamily.includes(ext) ? kwJS : ext === "py" ? kwPy : null;
   // strings
-  html = html.replace(/(&quot;[^&]*?&quot;|&#x27;[^&]*?&#x27;|`[^`]*?`)/g, m => `<span style="color:#a8d8a8">${m}</span>`);
+  html = html.replace(/(&quot;[^&]*?&quot;|&#x27;[^&]*?&#x27;|`[^`]*?`)/g, m => `<span style="color:#c98a7d">${m}</span>`);
   // comments
-  html = html.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g, m => `<span style="color:#636d83;font-style:italic">${m}</span>`);
+  html = html.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g, m => `<span style="color:#6a6a6a;font-style:italic">${m}</span>`);
   // keywords
-  if (kw) html = html.replace(kw, m => `<span style="color:#c792ea">${m}</span>`);
+  if (kw) html = html.replace(kw, m => `<span style="color:#cc9b5e">${m}</span>`);
   // numbers
-  html = html.replace(/\b(\d+\.?\d*)\b/g, m => `<span style="color:#f78c6c">${m}</span>`);
+  html = html.replace(/\b(\d+\.?\d*)\b/g, m => `<span style="color:#9fc88f">${m}</span>`);
   // CSS props
-  if (ext === "css" || ext === "scss") html = html.replace(/([a-z-]+)(\s*:)/g, (_, p, c) => `<span style="color:#89ddff">${p}</span>${c}`);
+  if (ext === "css" || ext === "scss") html = html.replace(/([a-z-]+)(\s*:)/g, (_, p, c) => `<span style="color:#7fb3d5">${p}</span>${c}`);
   return html;
 }
 
@@ -130,90 +151,90 @@ function parseFilesFromAI(text) {
   return files;
 }
 
-// ─── STYLES ───────────────────────────────────────────────────────────────────
+// ─── STYLES (Cursor Desktop theme) ───────────────────────────────────────────
 const EC_STYLE = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   .ec-root {
-    --bg: #16161a; --bg-sidebar: #0f0f12; --bg-panel: #1c1c21;
-    --bg-hi: #242429; --bg-input: #1a1a1f;
-    --border: rgba(255,255,255,.065); --border-hi: rgba(255,255,255,.12);
-    --t1: #e8e8ec; --t2: #8c8c9a; --t3: #4a4a58;
-    --accent: #5b8def; --accent2: #89aaff; --accent-rgb: 91,141,239;
-    --danger: #e05c5c; --success: #4caf82; --warning: #e8a838;
+    /* Cursor-like warm dark palette */
+    --bg: #1a1a1a; --bg-sidebar: #181818; --bg-panel: #202020;
+    --bg-hi: #2a2a2a; --bg-input: #1e1e1e;
+    --border: rgba(255,255,255,.07); --border-hi: rgba(255,255,255,.13);
+    --t1: #e4e4e4; --t2: #9a9a9a; --t3: #6b6b6b;
+    --accent: #d99a4e; --accent2: #e8b06f; --accent-rgb: 217,154,78;
+    --danger: #e0625c; --success: #6cb46c; --warning: #d99a4e;
     --mono: 'SF Mono','JetBrains Mono','Fira Code',Consolas,monospace;
     --ui: var(--font,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif);
-    --radius: 7px; --radius-lg: 10px;
+    --radius: 6px; --radius-lg: 8px;
     display: flex; height: 100dvh; overflow: hidden;
     background: var(--bg); font-family: var(--ui); color: var(--t1); font-size: 13px;
   }
 
   /* PROJECTS SCREEN */
   .ec-projects-screen { flex: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
-  .ec-projects-topbar { height: 48px; display: flex; align-items: center; padding: 0 20px; gap: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .ec-projects-logo { width: 22px; height: 22px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+  .ec-projects-topbar { height: 44px; display: flex; align-items: center; padding: 0 18px; gap: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg-sidebar); }
+  .ec-projects-logo { width: 20px; height: 20px; border-radius: 5px; overflow: hidden; flex-shrink: 0; }
   .ec-projects-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .ec-projects-appname { font-size: 13px; font-weight: 600; color: var(--t1); letter-spacing: -.01em; }
+  .ec-projects-appname { font-size: 12.5px; font-weight: 600; color: var(--t1); letter-spacing: -.01em; }
   .ec-projects-spacer { flex: 1; }
-  .ec-projects-new-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius); background: rgba(var(--accent-rgb),.12); border: 1px solid rgba(var(--accent-rgb),.22); font-size: 12px; font-weight: 500; color: var(--accent2); cursor: pointer; transition: all .12s; font-family: var(--ui); }
-  .ec-projects-new-btn:hover { background: rgba(var(--accent-rgb),.2); }
-  .ec-projects-body { flex: 1; overflow-y: auto; padding: 32px 40px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.07) transparent; }
-  .ec-projects-heading { font-size: 18px; font-weight: 600; color: var(--t1); margin-bottom: 4px; letter-spacing: -.02em; }
-  .ec-projects-subheading { font-size: 12px; color: var(--t3); margin-bottom: 28px; }
-  .ec-projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-  .ec-project-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; cursor: pointer; transition: all .14s; display: flex; flex-direction: column; gap: 10px; position: relative; }
-  .ec-project-card:hover { border-color: var(--border-hi); background: var(--bg-hi); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,.3); }
-  .ec-project-card-icon { width: 36px; height: 36px; border-radius: 9px; background: rgba(var(--accent-rgb),.1); display: flex; align-items: center; justify-content: center; font-size: 16px; }
-  .ec-project-card-title { font-size: 13px; font-weight: 600; color: var(--t1); }
-  .ec-project-card-meta { font-size: 11px; color: var(--t3); display: flex; gap: 8px; align-items: center; }
+  .ec-projects-new-btn { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: var(--radius); background: var(--accent); border: none; font-size: 12px; font-weight: 600; color: #1a1208; cursor: pointer; transition: all .12s; font-family: var(--ui); }
+  .ec-projects-new-btn:hover { background: var(--accent2); }
+  .ec-projects-body { flex: 1; overflow-y: auto; padding: 28px 36px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.07) transparent; }
+  .ec-projects-heading { font-size: 17px; font-weight: 600; color: var(--t1); margin-bottom: 4px; letter-spacing: -.02em; }
+  .ec-projects-subheading { font-size: 12px; color: var(--t3); margin-bottom: 26px; }
+  .ec-projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .ec-project-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; cursor: pointer; transition: all .14s; display: flex; flex-direction: column; gap: 9px; position: relative; }
+  .ec-project-card:hover { border-color: var(--border-hi); background: var(--bg-hi); }
+  .ec-project-card-icon { width: 32px; height: 32px; border-radius: 7px; background: rgba(var(--accent-rgb),.12); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--accent2); }
+  .ec-project-card-title { font-size: 12.5px; font-weight: 600; color: var(--t1); }
+  .ec-project-card-meta { font-size: 10.5px; color: var(--t3); display: flex; gap: 8px; align-items: center; }
   .ec-project-file-chip { font-size: 9.5px; font-family: var(--mono); padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,.05); color: var(--t3); }
-  .ec-project-card-del { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 5px; background: none; border: none; color: var(--t3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; opacity: 0; transition: opacity .1s, color .1s; }
+  .ec-project-card-del { position: absolute; top: 9px; right: 9px; width: 20px; height: 20px; border-radius: 5px; background: none; border: none; color: var(--t3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; opacity: 0; transition: opacity .1s, color .1s; }
   .ec-project-card:hover .ec-project-card-del { opacity: 1; }
   .ec-project-card-del:hover { color: var(--danger); }
-  .ec-projects-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 80px 24px; text-align: center; }
-  .ec-projects-empty-icon { font-size: 32px; opacity: .3; }
-  .ec-projects-empty-text { font-size: 13px; color: var(--t3); line-height: 1.7; }
+  .ec-projects-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 70px 24px; text-align: center; }
+  .ec-projects-empty-icon { font-size: 28px; opacity: .3; }
+  .ec-projects-empty-text { font-size: 12.5px; color: var(--t3); line-height: 1.7; }
 
   /* WORKSPACE */
   .ec-workspace { flex: 1; display: flex; overflow: hidden; }
 
-  /* LEFT 240px */
-  .ec-sidebar { width: 240px; min-width: 240px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-  .ec-sidebar-top { padding: 0 10px 0 12px; height: 48px; min-height: 48px; display: flex; align-items: center; gap: 7px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .ec-back-btn { width: 24px; height: 24px; border-radius: 5px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--t3); transition: color .1s, background .1s; flex-shrink: 0; }
+  /* LEFT — Cursor task list panel (~260px) */
+  .ec-sidebar { width: 260px; min-width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .ec-sidebar-top { padding: 0 8px 0 12px; height: 44px; min-height: 44px; display: flex; align-items: center; gap: 7px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .ec-back-btn { width: 22px; height: 22px; border-radius: 5px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--t3); transition: color .1s, background .1s; flex-shrink: 0; }
   .ec-back-btn:hover { background: var(--bg-hi); color: var(--t1); }
-  .ec-sidebar-project-name { font-size: 12.5px; font-weight: 600; color: var(--t1); letter-spacing: -.01em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ec-new-file-btn { width: 24px; height: 24px; border-radius: 6px; background: rgba(var(--accent-rgb),.12); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--accent2); flex-shrink: 0; transition: background .12s; }
+  .ec-sidebar-project-name { font-size: 12px; font-weight: 600; color: var(--t1); letter-spacing: -.01em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ec-new-file-btn { width: 22px; height: 22px; border-radius: 5px; background: rgba(var(--accent-rgb),.12); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--accent2); flex-shrink: 0; transition: background .12s; }
   .ec-new-file-btn:hover { background: rgba(var(--accent-rgb),.22); }
-  .ec-sidebar-section-label { padding: 12px 12px 4px; font-size: 9.5px; color: var(--t3); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
-  .ec-sidebar-section-label .ec-count { background: rgba(255,255,255,.05); border-radius: 8px; padding: 0 5px; font-size: 9px; color: var(--t3); }
-  .ec-file-list { flex: 1; overflow-y: auto; padding: 0 5px 10px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.06) transparent; }
+  .ec-sidebar-section-label { padding: 12px 14px 6px; font-size: 10px; color: var(--t3); letter-spacing: .07em; text-transform: uppercase; font-weight: 700; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+  .ec-sidebar-section-label .ec-count { background: rgba(255,255,255,.06); border-radius: 8px; padding: 0 5px; font-size: 9px; color: var(--t3); }
+  .ec-file-list { flex: 1; overflow-y: auto; padding: 2px 6px 10px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.06) transparent; }
   .ec-file-list::-webkit-scrollbar { width: 3px; }
   .ec-file-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.07); border-radius: 2px; }
-  .ec-file-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: var(--radius); cursor: pointer; transition: background .1s; margin-bottom: 1px; position: relative; }
+  .ec-file-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px; border-radius: var(--radius); cursor: pointer; transition: background .1s; margin-bottom: 1px; position: relative; }
   .ec-file-item:hover { background: var(--bg-panel); }
-  .ec-file-item.active { background: rgba(var(--accent-rgb),.09); }
-  .ec-file-item.active::before { content: ''; position: absolute; left: 0; top: 5px; bottom: 5px; width: 2px; border-radius: 2px; background: var(--accent); }
-  .ec-file-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .ec-file-status-dot.done { background: var(--success); box-shadow: 0 0 0 2px rgba(76,175,130,.15); }
-  .ec-file-status-dot.pending { background: var(--t3); }
-  .ec-file-status-dot.in_progress { background: var(--warning); box-shadow: 0 0 0 2px rgba(232,168,56,.15); }
-  .ec-file-icon { font-size: 11px; color: var(--accent2); flex-shrink: 0; }
+  .ec-file-item.active { background: var(--bg-hi); }
+  .ec-file-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .ec-file-status-dot.done { background: var(--success); }
+  .ec-file-status-dot.pending { border: 1.5px solid var(--t3); background: transparent; }
+  .ec-file-status-dot.in_progress { background: var(--warning); box-shadow: 0 0 0 2px rgba(217,154,78,.18); }
+  .ec-file-icon { font-size: 11px; color: var(--accent2); flex-shrink: 0; margin-top: 1px; }
   .ec-file-info { flex: 1; min-width: 0; }
   .ec-file-name { font-size: 12px; font-weight: 500; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); }
-  .ec-file-item.pending .ec-file-name { color: var(--t3); }
-  .ec-file-sub { font-size: 10px; color: var(--t3); margin-top: 1px; }
-  .ec-file-del { width: 16px; height: 16px; border: none; background: none; border-radius: 3px; cursor: pointer; color: var(--t3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .1s, color .1s; flex-shrink: 0; font-size: 9px; padding: 0; }
+  .ec-file-item.pending .ec-file-name { color: var(--t2); }
+  .ec-file-sub { font-size: 10px; color: var(--t3); margin-top: 2px; }
+  .ec-file-del { width: 16px; height: 16px; border: none; background: none; border-radius: 3px; cursor: pointer; color: var(--t3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .1s, color .1s; flex-shrink: 0; font-size: 9px; padding: 0; margin-top: 2px; }
   .ec-file-item:hover .ec-file-del { opacity: 1; }
   .ec-file-del:hover { color: var(--danger); }
   .ec-sidebar-bottom { border-top: 1px solid var(--border); padding: 10px; flex-shrink: 0; }
   .ec-ask-eloria-btn { width: 100%; display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: var(--radius); background: rgba(var(--accent-rgb),.08); border: 1px solid rgba(var(--accent-rgb),.18); font-size: 12px; color: var(--accent2); cursor: pointer; font-family: var(--ui); transition: all .12s; font-weight: 500; }
   .ec-ask-eloria-btn:hover { background: rgba(var(--accent-rgb),.15); }
 
-  /* MIDDLE */
+  /* MIDDLE — Cursor plan / chat panel */
   .ec-chat { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); overflow: hidden; }
-  .ec-chat-header { height: 48px; min-height: 48px; display: flex; align-items: center; padding: 0 16px; gap: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .ec-chat-header { height: 44px; min-height: 44px; display: flex; align-items: center; padding: 0 16px; gap: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .ec-chat-file-icon { font-size: 13px; flex-shrink: 0; }
-  .ec-chat-header-title { font-size: 13px; font-weight: 500; color: var(--t1); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); }
+  .ec-chat-header-title { font-size: 13px; font-weight: 600; color: var(--t1); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); }
   .ec-status-btn { display: flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 6px; background: none; border: 1px solid var(--border); font-size: 11px; color: var(--t2); cursor: pointer; transition: all .12s; flex-shrink: 0; font-family: var(--ui); }
   .ec-status-btn:hover { background: var(--bg-hi); border-color: var(--border-hi); color: var(--t1); }
   .ec-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.06) transparent; }
@@ -225,20 +246,20 @@ const EC_STYLE = `
   /* File ready card */
   .ec-file-view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 28px; gap: 20px; animation: ecFadeUp .2s ease; }
   .ec-file-ready-card { width: 100%; max-width: 520px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-  .ec-file-ready-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(76,175,130,.04); }
-  .ec-file-ready-icon-wrap { width: 32px; height: 32px; border-radius: 8px; background: rgba(76,175,130,.12); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .ec-file-ready-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(108,180,108,.05); }
+  .ec-file-ready-icon-wrap { width: 32px; height: 32px; border-radius: 8px; background: rgba(108,180,108,.12); display: flex; align-items: center; justify-content: center; font-size: 14px; }
   .ec-file-ready-info { flex: 1; }
   .ec-file-ready-name { font-size: 13px; font-weight: 600; color: var(--t1); font-family: var(--mono); }
   .ec-file-ready-meta { font-size: 10.5px; color: var(--t3); margin-top: 2px; }
-  .ec-file-ready-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: rgba(76,175,130,.12); color: var(--success); }
+  .ec-file-ready-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: rgba(108,180,108,.12); color: var(--success); }
   .ec-file-code-preview { padding: 14px 16px; max-height: 220px; overflow: hidden; position: relative; }
   .ec-file-code-preview pre { font-family: var(--mono); font-size: 11px; line-height: 1.6; color: var(--t2); overflow: hidden; }
   .ec-file-code-preview::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 60px; background: linear-gradient(transparent, var(--bg-panel)); }
   .ec-file-actions { display: flex; gap: 8px; padding: 11px 16px; border-top: 1px solid var(--border); }
   .ec-file-action-btn { display: flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: var(--radius); font-size: 11.5px; font-weight: 500; cursor: pointer; font-family: var(--ui); transition: all .12s; border: 1px solid var(--border); background: none; color: var(--t2); }
   .ec-file-action-btn:hover { background: var(--bg-hi); color: var(--t1); }
-  .ec-file-action-btn.primary { background: rgba(var(--accent-rgb),.12); border-color: rgba(var(--accent-rgb),.25); color: var(--accent2); }
-  .ec-file-action-btn.primary:hover { background: rgba(var(--accent-rgb),.2); }
+  .ec-file-action-btn.primary { background: var(--accent); border-color: var(--accent); color: #1a1208; font-weight: 600; }
+  .ec-file-action-btn.primary:hover { background: var(--accent2); }
 
   /* Pending view */
   .ec-pending-view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; gap: 14px; animation: ecFadeUp .2s ease; }
@@ -256,12 +277,12 @@ const EC_STYLE = `
   .ec-msg-wrap.ai { justify-content: flex-start; align-items: flex-start; gap: 8px; }
   .ec-ai-avatar { width: 20px; height: 20px; border-radius: 5px; overflow: hidden; flex-shrink: 0; margin-top: 4px; }
   .ec-ai-avatar img { width: 100%; height: 100%; object-fit: contain; }
-  .ec-bubble { max-width: 88%; padding: 7px 12px; font-size: 13px; line-height: 1.55; word-break: break-word; border-radius: 9px; }
+  .ec-bubble { max-width: 88%; padding: 7px 12px; font-size: 13px; line-height: 1.55; word-break: break-word; border-radius: 8px; }
   .ec-msg-wrap.user .ec-bubble { background: rgba(var(--accent-rgb),.13); color: var(--t1); border: 1px solid rgba(var(--accent-rgb),.2); border-bottom-right-radius: 3px; }
   .ec-msg-wrap.ai .ec-bubble { background: var(--bg-panel); border: 1px solid var(--border); color: var(--t1); border-bottom-left-radius: 3px; }
 
   /* Attach */
-  .ec-attach-bubble-solo { max-width: 78%; background: rgba(var(--accent-rgb),.09); border: 1px solid rgba(var(--accent-rgb),.17); border-radius: 9px; overflow: hidden; border-bottom-right-radius: 3px; }
+  .ec-attach-bubble-solo { max-width: 78%; background: rgba(var(--accent-rgb),.09); border: 1px solid rgba(var(--accent-rgb),.17); border-radius: 8px; overflow: hidden; border-bottom-right-radius: 3px; }
   .ec-attach-header { display: flex; align-items: center; gap: 7px; padding: 8px 11px 7px; border-bottom: 1px solid rgba(var(--accent-rgb),.1); }
   .ec-attach-header-icon { width: 22px; height: 22px; background: rgba(var(--accent-rgb),.13); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
   .ec-attach-header-info { flex: 1; min-width: 0; }
@@ -295,7 +316,7 @@ const EC_STYLE = `
   /* Input */
   .ec-input-wrap { flex-shrink: 0; padding: 8px 14px 12px; background: var(--bg); }
   .ec-input-box { max-width: 720px; margin: 0 auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; transition: border-color .15s, box-shadow .15s; }
-  .ec-input-box:focus-within { border-color: rgba(var(--accent-rgb),.38); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.06); }
+  .ec-input-box:focus-within { border-color: rgba(var(--accent-rgb),.45); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.08); }
   .ec-input-toolbar { display: flex; align-items: center; gap: 4px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
   .ec-toolbar-btn { display: flex; align-items: center; gap: 5px; padding: 3px 7px; background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-size: 11px; color: var(--t3); transition: all .12s; font-family: var(--ui); }
   .ec-toolbar-btn:hover { background: var(--bg-hi); border-color: var(--border); color: var(--t1); }
@@ -306,17 +327,17 @@ const EC_STYLE = `
   .ec-input-prefix { font-family: var(--mono); font-size: 12px; color: var(--t3); flex-shrink: 0; user-select: none; line-height: 22px; }
   .ec-textarea { flex: 1; border: none; background: none; outline: none; font-family: var(--ui); font-size: 13px; color: var(--t1); resize: none; min-height: 22px; max-height: 140px; line-height: 1.55; overflow-y: auto; scrollbar-width: thin; caret-color: var(--accent2); }
   .ec-textarea::placeholder { color: var(--t3); }
-  .ec-send { width: 26px; height: 26px; border-radius: 6px; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; transition: opacity .13s, background .13s; }
+  .ec-send { width: 26px; height: 26px; border-radius: 6px; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #1a1208; transition: opacity .13s, background .13s; }
   .ec-send:hover:not(:disabled) { background: var(--accent2); }
   .ec-send:disabled { opacity: .22; cursor: default; }
   .ec-send svg { width: 12px; height: 12px; }
   .ec-hint { text-align: center; font-size: 10px; color: var(--t3); margin-top: 5px; max-width: 720px; margin-left: auto; margin-right: auto; opacity: .65; }
 
-  /* RIGHT 320px */
-  .ec-right { width: 320px; min-width: 320px; background: var(--bg-sidebar); display: flex; flex-direction: column; overflow: hidden; }
-  .ec-right-header { height: 48px; min-height: 48px; display: flex; align-items: stretch; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  /* RIGHT — Cursor file/code/preview panel (~400px) */
+  .ec-right { width: 400px; min-width: 400px; background: var(--bg-sidebar); display: flex; flex-direction: column; overflow: hidden; }
+  .ec-right-header { height: 44px; min-height: 44px; display: flex; align-items: stretch; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .ec-right-tabs { display: flex; flex: 1; }
-  .ec-right-tab { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 500; color: var(--t3); cursor: pointer; border-bottom: 2px solid transparent; transition: all .12s; background: none; border-top: none; border-left: none; border-right: none; border-bottom: 2px solid transparent; font-family: var(--ui); }
+  .ec-right-tab { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 500; color: var(--t3); cursor: pointer; border-bottom: 2px solid transparent; transition: all .12s; background: none; border-top: none; border-left: none; border-right: none; font-family: var(--ui); }
   .ec-right-tab:hover { color: var(--t2); }
   .ec-right-tab.active { color: var(--t1); border-bottom-color: var(--accent); }
   .ec-right-body { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.06) transparent; display: flex; flex-direction: column; }
@@ -334,7 +355,9 @@ const EC_STYLE = `
   .ec-code-filename { font-size: 11px; font-family: var(--mono); color: var(--t2); flex: 1; }
   .ec-copy-btn { display: flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 5px; background: var(--bg-panel); border: 1px solid var(--border); font-size: 10.5px; color: var(--t2); cursor: pointer; transition: all .12s; font-family: var(--ui); }
   .ec-copy-btn:hover { border-color: var(--border-hi); color: var(--t1); }
-  .ec-copy-btn.copied { color: var(--success); border-color: rgba(76,175,130,.35); }
+  .ec-copy-btn.copied { color: var(--success); border-color: rgba(108,180,108,.35); }
+  .ec-download-btn { display: flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 5px; background: rgba(var(--accent-rgb),.12); border: 1px solid rgba(var(--accent-rgb),.25); font-size: 10.5px; color: var(--accent2); cursor: pointer; transition: all .12s; font-family: var(--ui); }
+  .ec-download-btn:hover { background: rgba(var(--accent-rgb),.22); }
   .ec-line-nums { display: flex; flex: 1; overflow: auto; }
   .ec-line-num-col { padding: 14px 10px 14px 14px; font-size: 11px; line-height: 1.65; color: var(--t3); font-family: var(--mono); text-align: right; user-select: none; border-right: 1px solid var(--border); flex-shrink: 0; min-width: 36px; }
   .ec-code-main { flex: 1; padding: 14px 14px; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; color: var(--t2); overflow-x: auto; white-space: pre; }
@@ -350,9 +373,11 @@ const EC_STYLE = `
   .ec-files-tab-name { font-size: 11.5px; font-weight: 500; color: var(--t1); font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ec-files-tab-meta { font-size: 10px; color: var(--t3); margin-top: 2px; }
   .ec-files-tab-status { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 10px; flex-shrink: 0; }
-  .ec-files-tab-status.done { background: rgba(76,175,130,.12); color: var(--success); }
+  .ec-files-tab-status.done { background: rgba(108,180,108,.12); color: var(--success); }
   .ec-files-tab-status.pending { background: rgba(107,114,128,.1); color: var(--t3); }
-  .ec-files-tab-status.in_progress { background: rgba(232,168,56,.12); color: var(--warning); }
+  .ec-files-tab-status.in_progress { background: rgba(217,154,78,.14); color: var(--warning); }
+  .ec-files-tab-dl { width: 22px; height: 22px; border-radius: 5px; background: none; border: 1px solid var(--border); color: var(--t3); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .12s; }
+  .ec-files-tab-dl:hover { color: var(--accent2); border-color: rgba(var(--accent-rgb),.3); }
 
   /* Empty states */
   .ec-no-content { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 10px; padding: 40px 16px; text-align: center; }
@@ -360,7 +385,7 @@ const EC_STYLE = `
   .ec-no-content-text { font-size: 11.5px; color: var(--t3); line-height: 1.65; }
 
   /* Status dropdown */
-  .ec-status-dropdown { position: absolute; top: calc(100% + 5px); right: 0; background: var(--bg-panel); border: 1px solid var(--border-hi); border-radius: var(--radius-lg); padding: 4px; width: 190px; z-index: 200; box-shadow: 0 12px 36px rgba(0,0,0,.45); animation: ecFadeUp .14s ease; }
+  .ec-status-dropdown { position: absolute; top: calc(100% + 5px); right: 0; background: var(--bg-panel); border: 1px solid var(--border-hi); border-radius: var(--radius-lg); padding: 4px; width: 190px; z-index: 200; box-shadow: 0 12px 36px rgba(0,0,0,.5); animation: ecFadeUp .14s ease; }
   .ec-status-option { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 11.5px; color: var(--t2); transition: all .1s; background: none; border: none; width: 100%; text-align: left; font-family: var(--ui); }
   .ec-status-option:hover { background: var(--bg-hi); color: var(--t1); }
 
@@ -380,11 +405,11 @@ const EC_STYLE = `
   .ec-modal-label { font-size: 9.5px; color: var(--t3); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
   .ec-modal-input { padding: 8px 10px; font-size: 12.5px; color: var(--t1); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; outline: none; transition: border-color .15s; font-family: var(--ui); }
   .ec-modal-input::placeholder { color: var(--t3); }
-  .ec-modal-input:focus { border-color: rgba(var(--accent-rgb),.38); }
+  .ec-modal-input:focus { border-color: rgba(var(--accent-rgb),.45); }
   .ec-modal-actions { display: flex; gap: 7px; justify-content: flex-end; }
   .ec-modal-cancel { padding: 7px 12px; background: none; border: 1px solid var(--border); border-radius: 7px; font-size: 12px; color: var(--t2); cursor: pointer; transition: background .12s; font-family: var(--ui); }
   .ec-modal-cancel:hover { background: var(--bg-hi); }
-  .ec-modal-create { padding: 7px 14px; background: var(--accent); border: none; border-radius: 7px; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; transition: opacity .12s; font-family: var(--ui); }
+  .ec-modal-create { padding: 7px 14px; background: var(--accent); border: none; border-radius: 7px; font-size: 12px; font-weight: 700; color: #1a1208; cursor: pointer; transition: opacity .12s; font-family: var(--ui); }
   .ec-modal-create:hover:not(:disabled) { opacity: .88; }
   .ec-modal-create:disabled { opacity: .3; cursor: default; }
 
@@ -402,7 +427,7 @@ const EC_STYLE = `
   .ec-limit-actions { display: flex; gap: 6px; }
   .ec-limit-cancel { flex: 1; padding: 8px; background: none; border: 1px solid var(--border); border-radius: 7px; font-size: 11.5px; color: var(--t2); cursor: pointer; font-weight: 500; font-family: var(--ui); }
   .ec-limit-cancel:hover { background: var(--bg-hi); }
-  .ec-limit-upgrade { flex: 2; padding: 8px; background: var(--accent); border: none; border-radius: 7px; font-size: 11.5px; font-weight: 600; color: #fff; cursor: pointer; font-family: var(--ui); }
+  .ec-limit-upgrade { flex: 2; padding: 8px; background: var(--accent); border: none; border-radius: 7px; font-size: 11.5px; font-weight: 700; color: #1a1208; cursor: pointer; font-family: var(--ui); }
   .ec-limit-upgrade:hover { opacity: .88; }
 `;
 
@@ -474,6 +499,10 @@ function CodeViewer({ code, filename }) {
     <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
       <div className="ec-code-header">
         <span className="ec-code-filename">{filename || "code"}</span>
+        <button className="ec-download-btn" onClick={() => downloadFile(filename, code)} title="Download file">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
         <button className={`ec-copy-btn${copied ? " copied" : ""}`} onClick={copy}>{copied ? "✓ Copied" : "Copy"}</button>
       </div>
       <div className="ec-line-nums" style={{ flex:1 }}>
@@ -530,13 +559,13 @@ export default function EloriaCode() {
 
   // Styles
   useEffect(() => {
-    if (!document.getElementById("eloria-ec-v4")) {
+    if (!document.getElementById("eloria-ec-v5")) {
       const tag = document.createElement("style");
-      tag.id = "eloria-ec-v4";
+      tag.id = "eloria-ec-v5";
       tag.textContent = EC_STYLE;
       document.head.appendChild(tag);
     }
-    ["eloria-ec","eloria-ec-v2","eloria-ec-v3"].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
+    ["eloria-ec","eloria-ec-v2","eloria-ec-v3","eloria-ec-v4"].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
   }, []);
 
   // Auth
@@ -804,13 +833,13 @@ export default function EloriaCode() {
   })();
 
   if (!authReady) return null;
-  if (!uid) return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100dvh", fontFamily:"var(--font,sans-serif)", fontSize:13, color:"#50505a", background:"#16161a" }}>Please log in to use Eloria Code.</div>;
+  if (!uid) return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100dvh", fontFamily:"var(--font,sans-serif)", fontSize:13, color:"#50505a", background:"#1a1a1a" }}>Please log in to use Eloria Code.</div>;
   if (window.innerWidth <= 768) return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100dvh", background:"#16161a", padding:"32px 24px", textAlign:"center", gap:20, fontFamily:"var(--font,sans-serif)" }}>
-      <div style={{ width:56, height:56, borderRadius:15, background:"rgba(91,141,239,.1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>💻</div>
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100dvh", background:"#1a1a1a", padding:"32px 24px", textAlign:"center", gap:20, fontFamily:"var(--font,sans-serif)" }}>
+      <div style={{ width:56, height:56, borderRadius:15, background:"rgba(217,154,78,.1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>💻</div>
       <div>
-        <div style={{ fontSize:18, fontWeight:600, color:"#e8e8ec", marginBottom:8 }}>Desktop only</div>
-        <div style={{ fontSize:13, color:"#8c8c96", lineHeight:1.65, maxWidth:260 }}>Eloria Code is designed for desktop.</div>
+        <div style={{ fontSize:18, fontWeight:600, color:"#e4e4e4", marginBottom:8 }}>Desktop only</div>
+        <div style={{ fontSize:13, color:"#9a9a9a", lineHeight:1.65, maxWidth:260 }}>Eloria Code is designed for desktop.</div>
       </div>
     </div>
   );
@@ -917,8 +946,14 @@ export default function EloriaCode() {
     if (rightTab === "preview") {
       const ext = getExt(activeFile.name);
       if (!activeFile.code) return <div className="ec-preview-placeholder"><div className="ec-preview-placeholder-icon">👁</div><div className="ec-preview-placeholder-text">{activeFile.status === "pending" ? "File hasn't been generated yet." : "No code yet. Ask Eloria to build this file."}</div></div>;
-      if (!["html","htm","css"].includes(ext)) return <div className="ec-preview-placeholder"><div className="ec-preview-placeholder-icon">👁</div><div className="ec-preview-placeholder-text">Live preview is available for HTML and CSS files only.</div></div>;
-      const blob = new Blob([activeFile.code], { type: "text/html" });
+      if (!["html","htm","css"].includes(ext)) return <div className="ec-preview-placeholder"><div className="ec-preview-placeholder-icon">👁</div><div className="ec-preview-placeholder-text">Live preview is available for HTML and CSS files only — other file types can't be rendered in a browser.</div></div>;
+
+      // For a standalone CSS file, wrap it in a minimal HTML doc so something is visible.
+      let previewDoc = activeFile.code;
+      if (ext === "css") {
+        previewDoc = `<!doctype html><html><head><style>${activeFile.code}</style></head><body><div style="padding:24px;font-family:sans-serif;color:#111"><h1>Heading</h1><p>This preview wraps your CSS in a basic page so you can see how the styles render.</p><button>Button</button></div></body></html>`;
+      }
+      const blob = new Blob([previewDoc], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       return <iframe className="ec-preview-frame" src={url} title="Preview" sandbox="allow-scripts allow-same-origin" />;
     }
@@ -941,6 +976,11 @@ export default function EloriaCode() {
                 <div className="ec-files-tab-meta">{f.lines > 0 ? `${f.lines} lines` : "No code"} · {timeAgo(f.updatedAt)}</div>
               </div>
               <span className={`ec-files-tab-status ${f.status}`}>{FILE_STATUS_LABELS[f.status]}</span>
+              {f.code && (
+                <button className="ec-files-tab-dl" title="Download" onClick={(e) => { e.stopPropagation(); downloadFile(f.name, f.code); }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -954,7 +994,7 @@ export default function EloriaCode() {
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
         <div style={{ fontSize:22, opacity:.25 }}>📁</div>
         <div style={{ fontSize:13, color:"var(--t3)", textAlign:"center", lineHeight:1.7 }}>Select a file or add a new one.</div>
-        <button onClick={() => setShowFileModal(true)} style={{ padding:"6px 14px", background:"rgba(91,141,239,.1)", border:"1px solid rgba(91,141,239,.22)", borderRadius:7, fontSize:12, color:"var(--accent2)", cursor:"pointer", fontFamily:"var(--ui)" }}>Add file</button>
+        <button onClick={() => setShowFileModal(true)} style={{ padding:"6px 14px", background:"rgba(217,154,78,.12)", border:"1px solid rgba(217,154,78,.25)", borderRadius:7, fontSize:12, color:"var(--accent2)", cursor:"pointer", fontFamily:"var(--ui)" }}>Add file</button>
       </div>
     );
 
@@ -984,6 +1024,10 @@ export default function EloriaCode() {
           <div className="ec-file-actions">
             <button className="ec-file-action-btn primary" onClick={() => setRightTab("code")}>View full code →</button>
             <button className="ec-file-action-btn" onClick={() => navigator.clipboard.writeText(activeFile.code)}>Copy</button>
+            <button className="ec-file-action-btn" onClick={() => downloadFile(activeFile.name, activeFile.code)}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </button>
           </div>
         </div>
       </div>
@@ -997,7 +1041,7 @@ export default function EloriaCode() {
             {msg.sender === "user" && msg.attachments?.length > 0 ? (
               <div style={{ display:"flex", flexDirection:"column", gap:4, alignItems:"flex-end", maxWidth:"78%" }}>
                 {msg.attachments.map(att => <AttachmentBubble key={att.id} attachment={{ ...att, userText: msg.attachments.length === 1 ? msg.text : undefined }} />)}
-                {msg.attachments.length > 1 && msg.text && <div className="ec-bubble" style={{ background:"rgba(91,141,239,.13)", border:"1px solid rgba(91,141,239,.2)", borderBottomRightRadius:3 }}>{msg.text}</div>}
+                {msg.attachments.length > 1 && msg.text && <div className="ec-bubble" style={{ background:"rgba(217,154,78,.13)", border:"1px solid rgba(217,154,78,.2)", borderBottomRightRadius:3 }}>{msg.text}</div>}
               </div>
             ) : (
               <div className="ec-bubble">{msg.sender === "ai" ? <MarkdownMessage content={msg.text} /> : msg.text}</div>
@@ -1016,7 +1060,7 @@ export default function EloriaCode() {
       {showWelcome && <EloriaCodeWelcome onDismiss={() => setShowWelcome(false)} userName={userName} />}
 
       <div className="ec-workspace">
-        {/* LEFT 240px */}
+        {/* LEFT — task/file list */}
         <aside className="ec-sidebar">
           <div className="ec-sidebar-top">
             <button className="ec-back-btn" onClick={() => { setActiveProject(null); setActiveFileId(null); setMessages([]); }} title="All projects">
@@ -1033,8 +1077,8 @@ export default function EloriaCode() {
               <div style={{ padding:"20px 12px", fontSize:11.5, color:"var(--t3)", textAlign:"center", lineHeight:1.7 }}>No files yet.<br />Add one to get started.</div>
             ) : (
               <>
-                {renderFileSection(doneFiles, "Ready", "done")}
                 {renderFileSection(wipFiles, "In Progress", "in_progress")}
+                {renderFileSection(doneFiles, "Ready", "done")}
                 {renderFileSection(pendFiles, "Pending", "pending")}
               </>
             )}
@@ -1048,7 +1092,7 @@ export default function EloriaCode() {
           </div>
         </aside>
 
-        {/* MIDDLE flex-1 */}
+        {/* MIDDLE — plan / chat */}
         <main className="ec-chat">
           <div className="ec-chat-header">
             {activeFile ? (
@@ -1057,7 +1101,7 @@ export default function EloriaCode() {
                 <span className="ec-chat-header-title">{activeFile.name}</span>
                 <div style={{ position:"relative" }} ref={statusBtnRef}>
                   <button className="ec-status-btn" onClick={() => setShowStatusMenu(v => !v)}>
-                    <span className={`ec-file-status-dot ${activeFile.status}`} style={{ width:5, height:5 }} />
+                    <span className={`ec-file-status-dot ${activeFile.status}`} style={{ width:5, height:5, marginTop:0 }} />
                     {FILE_STATUS_LABELS[activeFile.status]}
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                   </button>
@@ -1065,7 +1109,7 @@ export default function EloriaCode() {
                     <div className="ec-status-dropdown">
                       {Object.entries(FILE_STATUS_LABELS).map(([key, label]) => (
                         <button key={key} className="ec-status-option" onClick={() => updateFileStatus(activeFile.id, key)}>
-                          <span className={`ec-file-status-dot ${key}`} />
+                          <span className={`ec-file-status-dot ${key}`} style={{ marginTop:0 }} />
                           {label}
                           {activeFile.status === key && <svg style={{ marginLeft:"auto", width:10, height:10 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                         </button>
@@ -1073,6 +1117,11 @@ export default function EloriaCode() {
                     </div>
                   )}
                 </div>
+                {activeFile.code && (
+                  <button className="ec-status-btn" onClick={() => downloadFile(activeFile.name, activeFile.code)} title="Download this file">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  </button>
+                )}
               </>
             ) : (
               <span className="ec-chat-header-title" style={{ color:"var(--t3)", fontFamily:"var(--ui)" }}>{activeProject.name}</span>
@@ -1102,7 +1151,7 @@ export default function EloriaCode() {
               <div className="ec-input-toolbar">
                 <button className={`ec-toolbar-btn${!canAddFile || !activeFile ? " disabled" : ""}`} onClick={() => canAddFile && activeFile && fileInputRef.current?.click()}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                  Attach file {fileCount > 0 && <span style={{ background:"rgba(91,141,239,.15)", color:"var(--accent2)", borderRadius:4, padding:"0 4px", fontSize:9.5 }}>{fileCount}/2</span>}
+                  Attach file {fileCount > 0 && <span style={{ background:"rgba(217,154,78,.15)", color:"var(--accent2)", borderRadius:4, padding:"0 4px", fontSize:9.5 }}>{fileCount}/2</span>}
                 </button>
                 <div className="ec-toolbar-sep" />
                 <button className={`ec-toolbar-btn${!canAddFolder || !activeFile ? " disabled" : ""}`} onClick={() => canAddFolder && activeFile && folderInputRef.current?.click()}>
@@ -1151,7 +1200,7 @@ export default function EloriaCode() {
               Eloria Code
             </div>
             {activeProject && <div className="ec-statusbar-item">⚡ {activeProject.name}</div>}
-            {activeFile && <div className="ec-statusbar-item"><span className={`ec-file-status-dot ${activeFile.status}`} style={{ width:5, height:5 }} />{activeFile.name}</div>}
+            {activeFile && <div className="ec-statusbar-item"><span className={`ec-file-status-dot ${activeFile.status}`} style={{ width:5, height:5, marginTop:0 }} />{activeFile.name}</div>}
             <div className="ec-statusbar-right">
               <div className="ec-statusbar-item">{doneFiles.length}/{(activeProject.files || []).length} ready</div>
               <div className="ec-statusbar-item">By Kairox</div>
@@ -1159,7 +1208,7 @@ export default function EloriaCode() {
           </div>
         </main>
 
-        {/* RIGHT 320px */}
+        {/* RIGHT — preview / code / files */}
         <aside className="ec-right">
           <div className="ec-right-header">
             <div className="ec-right-tabs">
