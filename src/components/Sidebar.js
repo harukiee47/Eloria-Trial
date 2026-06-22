@@ -929,6 +929,7 @@ export default function Sidebar({
   groups = [], activeGroupId, setActiveGroupId,
   pendingInviteCount = 0, setShowGroupNotifs,
   mode, setMode, createGroup, showNotifPanel, setShowNotifPanel, totalBadgeCount,
+friendsData = {}, activeDM, setActiveDM,
 }) {
   const [panel, setPanel]           = useState(null);
   const [search, setSearch]         = useState("");
@@ -956,6 +957,7 @@ export default function Sidebar({
   const desktopAcctRef = useRef(null);
   const mobileAcctRef  = useRef(null);
   const [showCodeLockModal, setShowCodeLockModal] = useState(false);
+  const [showGroupLockModal, setShowGroupLockModal] = useState(false);
   const [shareToast, setShareToast] = useState("");
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -1188,9 +1190,15 @@ export default function Sidebar({
 
         <button
           className={`sb-btn${panel === "groups" ? " active" : ""}`}
-          title="Groups"
-          onClick={() => togglePanel("groups")}
-          style={{ position: "relative" }}
+          title={userPlan === "pro" || userPlan === "admin" ? "Groups" : "Groups — Pro only"}
+          onClick={() => {
+            if (userPlan !== "pro" && userPlan !== "admin") {
+              setShowGroupLockModal(true);
+            } else {
+              togglePanel("groups");
+            }
+          }}
+          style={{ position: "relative", ...(userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}) }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
@@ -1199,6 +1207,26 @@ export default function Sidebar({
             <path d="M16 3.13a4 4 0 010 7.75"/>
           </svg>
           <span>Groups</span>
+        </button>
+
+        <button
+  className={`sb-btn${mode === "dms" ? " active" : ""}`}
+  title="Direct Messages"
+  onClick={() => {
+    const friends = friendsData.friends || [];
+    if (friends.length === 0) {
+      togglePanel("dms");
+    } else {
+      setActiveDM(friends[0]);
+      setMode("dm");
+      setPanel(null);
+    }
+  }}
+>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+          </svg>
+          <span>DMs</span>
         </button>
 
         <button
@@ -1285,8 +1313,15 @@ export default function Sidebar({
 
             <button
               className={`sb-mobile-nav-btn${panel === "groups" ? " active" : ""}`}
-              onClick={() => togglePanel("groups")}
-              style={{ position: "relative" }}
+              onClick={() => {
+                if (userPlan !== "pro" && userPlan !== "admin") {
+                  setPanel(null);
+                  setShowGroupLockModal(true);
+                } else {
+                  togglePanel("groups");
+                }
+              }}
+              style={{ position: "relative", ...(userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}) }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
@@ -1657,6 +1692,38 @@ export default function Sidebar({
 
         </div>
       </div>
+
+
+      {/* GROUP LOCK MODAL */}
+      {showGroupLockModal && (
+        <div className="sb-lock-backdrop" onClick={() => setShowGroupLockModal(false)}>
+          <div className="sb-lock-modal" onClick={e => e.stopPropagation()}>
+            <div className="sb-lock-top">
+              <button className="sb-lock-close" onClick={() => setShowGroupLockModal(false)}>✕</button>
+              <div className="sb-lock-icon">👥</div>
+              <div className="sb-lock-title">Groups</div>
+              <div className="sb-lock-sub">Available on the Pro plan</div>
+            </div>
+            <div className="sb-lock-body">
+              <div className="sb-lock-desc">
+                Create group chats with up to 6 members and 4 groups. Upgrade to Pro to unlock Groups.
+              </div>
+              <div className="sb-lock-actions">
+                <button className="sb-lock-cancel" onClick={() => setShowGroupLockModal(false)}>
+                  Later
+                </button>
+                <button className="sb-lock-upgrade" onClick={() => {
+                  setShowGroupLockModal(false);
+                  setPanel(null);
+                  setShowPricing(true);
+                }}>
+                  Upgrade to Pro →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CODE LOCK MODAL */}
       {showCodeLockModal && (

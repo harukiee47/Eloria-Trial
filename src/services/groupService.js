@@ -8,7 +8,7 @@ import { db } from "./firebase";
 
 // ── Plan limits ──────────────────────────────────────────────────────────────
 export const GROUP_LIMITS = {
-  free:  { maxGroups: 2, maxMembers: 4 },
+  free:  { maxGroups: 0, maxMembers: 0 },
   pro:   { maxGroups: 4, maxMembers: 6 },
   admin: { maxGroups: 99, maxMembers: 99 },
 };
@@ -17,12 +17,16 @@ export const GROUP_LIMITS = {
 export async function createGroup(user, groupName, userPlan) {
   const limits = GROUP_LIMITS[userPlan] || GROUP_LIMITS.free;
 
+  if (userPlan !== "pro" && userPlan !== "admin") {
+    throw new Error("Groups are a Pro feature. Upgrade to create and join groups.");
+  }
+
   const existing = await getDocs(
     query(collection(db, "groups"), where("members", "array-contains", user.uid))
   );
   if (existing.size >= limits.maxGroups) {
     throw new Error(
-      `You can only create ${limits.maxGroups} group${limits.maxGroups > 1 ? "s" : ""} on the ${userPlan} plan.`
+      `You can only be in ${limits.maxGroups} group${limits.maxGroups > 1 ? "s" : ""} on the Pro plan.`
     );
   }
 

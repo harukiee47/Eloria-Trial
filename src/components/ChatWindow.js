@@ -1219,6 +1219,7 @@ function AttachBubble({ file, sender, onImageClick }) {
 export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, userPlan, setShowNotifPanel, totalBadgeCount }) {
   const [input,          setInput]          = useState("");
   const [isThinking,     setIsThinking]     = useState(false);
+  const [isStreaming,    setIsStreaming]    = useState(false);
   const [showAttach,     setShowAttach]     = useState(false);
   const [pendingFiles,   setPendingFiles]   = useState([]);
   const [lightboxSrc,    setLightboxSrc]    = useState(null);
@@ -1444,6 +1445,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
         )
       );
       setIsThinking(false);
+      setIsStreaming(true);
 
       while (true) {
         if (signal.aborted) break;
@@ -1470,6 +1472,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
           } catch {}
         }
       }
+      setIsStreaming(false);
     } catch (err) {
       if (err.name !== "AbortError") {
         console.error(err);
@@ -1482,6 +1485,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
         );
       }
       setIsThinking(false);
+      setIsStreaming(false);
     }
   };
 
@@ -1668,46 +1672,13 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
           <div style={{
-            padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+            padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
             fontFamily: "var(--font)", letterSpacing: "0.04em", textTransform: "uppercase",
             background: userPlan === "pro" || userPlan === "admin" ? "rgba(39,97,82,0.12)" : "rgba(193,127,42,.1)",
             color: "var(--accent)",
             border: userPlan === "pro" || userPlan === "admin" ? "1px solid rgba(39,97,82,.25)" : "1px solid rgba(193,127,42,.25)",
+            whiteSpace: "nowrap",
           }}>
-
-<button
-  onClick={() => setShowNotifPanel(v => !v)}
-  style={{
-    position: "relative",
-    width: 34, height: 34,
-    background: "none", border: "1px solid var(--border)",
-    borderRadius: "50%", cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    color: "var(--t2)", transition: "background .12s, color .12s",
-    flexShrink: 0,
-  }}
-  onMouseEnter={e => { e.currentTarget.style.background = "var(--accent-bg)"; e.currentTarget.style.color = "var(--accent)"; }}
-  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--t2)"; }}
-  title="Inbox"
->
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
-    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 01-3.46 0"/>
-  </svg>
-  {totalBadgeCount > 0 && (
-    <span style={{
-      position: "absolute", top: -2, right: -2,
-      minWidth: 16, height: 16, borderRadius: 8,
-      background: "#e04040", color: "#fff",
-      fontSize: 9, fontWeight: 700,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "0 3px", border: "1.5px solid var(--bg-chat)",
-    }}>
-      {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
-    </span>
-  )}
-</button>
-
             {userPlan === "admin" ? "Admin" : userPlan === "pro" ? "Pro ✦" : "Free"}
           </div>
           {userPlan !== "pro" && userPlan !== "admin" && (
@@ -1741,13 +1712,30 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
         ) : (
           <div className="cw-messages">
             {messages.map(renderMessage)}
-            {isThinking && (
+            {(isThinking || isStreaming) && (
               <div className="cw-thinking">
                 <div className="cw-ai-avatar" style={{ width:28, height:28, borderRadius:8, overflow:"hidden", border:"1.5px solid rgba(193,127,42,.2)", background:"#faf8f4", flexShrink:0 }}>
                   <img src={logo} alt="Eloria" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                 </div>
-                <div className="cw-thinking-dots"><span/><span/><span/></div>
-                <span className="cw-thinking-label">Eloria is thinking…</span>
+                {isThinking && <><div className="cw-thinking-dots"><span/><span/><span/></div><span className="cw-thinking-label">Eloria is thinking…</span></>}
+                {isStreaming && <span className="cw-thinking-label">Eloria is responding…</span>}
+                <button
+                  onClick={() => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); }}
+                  title="Stop"
+                  style={{
+                    marginLeft: "auto", padding: "4px 10px",
+                    background: "#fdf0f0", border: "1px solid rgba(224,82,82,.3)",
+                    borderRadius: 8, color: "#e05252", fontSize: 11.5,
+                    fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)",
+                    display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+                    transition: "background .12s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#fce8e8"}
+                  onMouseLeave={e => e.currentTarget.style.background = "#fdf0f0"}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                  Stop
+                </button>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -1872,12 +1860,12 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
             {/* Send / stop button */}
             <button
               className="cw-send"
-              onClick={isThinking ? () => { abortControllerRef.current?.abort(); setIsThinking(false); } : sendMessage}
-              disabled={!isThinking && (!input.trim() && pendingFiles.length === 0)}
-              title={isThinking ? "Stop" : "Send"}
-              style={isThinking ? { background: "#e05252" } : {}}
+              onClick={(isThinking || isStreaming) ? () => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); } : sendMessage}
+              disabled={!isThinking && !isStreaming && (!input.trim() && pendingFiles.length === 0)}
+              title={(isThinking || isStreaming) ? "Stop" : "Send"}
+              style={(isThinking || isStreaming) ? { background: "#e05252" } : {}}
             >
-              {isThinking ? (
+              {(isThinking || isStreaming) ? (
                 <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
                   <rect x="4" y="4" width="16" height="16" rx="2"/>
                 </svg>
