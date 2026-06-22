@@ -8,6 +8,8 @@ import membershipRoutes from "./routes/membership.js";
 import paymentsRoutes from "./routes/payments.js";
 import groupChatRoutes from "./routes/groupChat.js";
 import voiceRoutes from "./routes/voice.js"; // ← new
+import fetchUrlRoutes from "./routes/fetchUrl.js";
+app.use("/api/fetch-url", fetchUrlRoutes);
 
 const app = express();
 

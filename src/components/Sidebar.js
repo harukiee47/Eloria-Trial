@@ -1680,7 +1680,7 @@ export default function Sidebar({
           <div className="sb-lock-modal" onClick={e => e.stopPropagation()}>
             <div className="sb-lock-top">
               <button className="sb-lock-close" onClick={() => setShowGroupLockModal(false)}>✕</button>
-              <div className="sb-lock-icon">👥</div>
+              <div className="sb-lock-icon"></div>
               <div className="sb-lock-title">Groups</div>
               <div className="sb-lock-sub">Available on the Pro plan</div>
             </div>

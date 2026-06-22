@@ -69,6 +69,95 @@ function docIcon(ext) {
   return map[ext] || { bg: "#f5f5f0", color: "#888", char: ext.slice(0,3) };
 }
 
+// ── Detect URLs in text ────────────────────────────────────────────────────────
+function extractUrls(text) {
+  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
+  return (text.match(urlRegex) || []).filter(u => {
+    try { new URL(u); return true; } catch { return false; }
+  });
+}
+
+// ── Detect code files in AI response ──────────────────────────────────────────
+function detectCodeBlocks(text) {
+  const blocks = [];
+  const regex = /```(\w+)?\n([\s\S]*?)```/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const lang = match[1] || "txt";
+    const code = match[2];
+    if (code.trim().length > 50) {
+      const extMap = {
+        javascript: "js", js: "js", typescript: "ts", ts: "ts",
+        python: "py", py: "py", css: "css", html: "html",
+        jsx: "jsx", tsx: "tsx", json: "json", bash: "sh",
+        sh: "sh", sql: "sql", java: "java", cpp: "cpp", c: "c",
+      };
+      blocks.push({ lang, code, ext: extMap[lang.toLowerCase()] || "txt" });
+    }
+  }
+  return blocks;
+}
+
+// ── Activity status messages ───────────────────────────────────────────────────
+const ACTIVITY_STEPS = [
+  { icon: "", text: "Thinking…" },
+  { icon: "", text: "Searching the web…" },
+  { icon: "", text: "Reading results…" },
+  { icon: "",  text: "Writing response…" },
+];
+
+function ActivityBar({ step }) {
+  const s = ACTIVITY_STEPS[step] || ACTIVITY_STEPS[0];
+  return (
+    <div className="cw-activity-bar">
+      <span className="cw-activity-icon">{s.icon}</span>
+      <span className="cw-activity-text">{s.text}</span>
+      <div className="cw-activity-dots"><span/><span/><span/></div>
+    </div>
+  );
+}
+
+// ── Download button for code files ────────────────────────────────────────────
+function DownloadCodeButton({ text }) {
+  const blocks = detectCodeBlocks(text);
+  if (blocks.length === 0) return null;
+  const { lang, code, ext } = blocks[0];
+  const filename = `eloria-output.${ext}`;
+  const handleDownload = () => {
+    const blob = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <button className="cw-download-btn" onClick={handleDownload} title={`Download ${filename}`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download {lang} file
+    </button>
+  );
+}
+
+// ── URL fetch status chip ──────────────────────────────────────────────────────
+function UrlFetchChip({ url, status }) {
+  const hostname = (() => { try { return new URL(url).hostname.replace("www.", ""); } catch { return url; } })();
+  return (
+    <div className="cw-url-chip">
+      {status === "loading" ? (
+        <><span className="cw-url-spinner"/><span>Reading {hostname}…</span></>
+      ) : status === "done" ? (
+        <><span className="cw-url-ok">✓</span><span>Read {hostname}</span></>
+      ) : (
+        <><span className="cw-url-err">✗</span><span>Couldn't read {hostname}</span></>
+      )}
+    </div>
+  );
+}
+
 // ── Voice state config (molecule orb) ────────────────────────────────────────
 const VOICE_STATE_CFG = {
   idle:       { label: "idle",       dotColor: "rgba(255,255,255,0.2)", colors: ["#2d2b55","#3b2d6b","#1e1b4b","#312e81","#2d2b55","#1e1b4b","#3b2d6b"] },
@@ -98,7 +187,6 @@ function buildMolecules() {
       bondTo:     [],
     });
   }
-  // pre-compute bonds
   for (let i = 0; i < mols.length; i++) {
     for (let j = i+1; j < mols.length; j++) {
       if (mols[i].bondTo.length >= 3 || mols[j].bondTo.length >= 3) continue;
@@ -149,7 +237,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     tgtColorsRef.current = VOICE_STATE_CFG[s].colors.map(hexToRgb);
   }, []);
 
-  // ── draw molecule orb ───────────────────────────────────────────────────────
   const drawOrb = useCallback((canvasEl, ctxEl) => {
     if (!canvasEl) return;
     const W = canvasEl.width, H = canvasEl.height;
@@ -161,7 +248,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
 
     ctxEl.clearRect(0, 0, W, H);
 
-    // background glow
     const glowA = state === "speaking" ? 0.12 + 0.05*Math.sin(phase*2)
                 : state === "listening" ? 0.08 + 0.04*Math.sin(phase*1.5)
                 : state === "processing" ? 0.04 + 0.03*Math.sin(phase*0.8) : 0.02;
@@ -182,7 +268,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
       positions.push({ x: cx + Math.cos(mols[i].angle)*r, y: cy + Math.sin(mols[i].angle)*r });
     }
 
-    // bonds
     for (let i = 0; i < mols.length; i++) {
       for (const j of mols[i].bondTo) {
         const pi = positions[i], pj = positions[j];
@@ -198,7 +283,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
       }
     }
 
-    // molecules
     const idleA = state === "idle" ? 0.35 : 0.88;
     for (let i = 0; i < mols.length; i++) {
       const m = mols[i], pos = positions[i];
@@ -214,7 +298,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
       ctxEl.fill();
     }
 
-    // core glow
     const cg = ctxEl.createRadialGradient(cx, cy, 0, cx, cy, 28*scale);
     cg.addColorStop(0, rgbaStr(cols[0], state === "idle" ? 0.12 : 0.4));
     cg.addColorStop(1, "transparent");
@@ -222,15 +305,12 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     ctxEl.fillRect(0, 0, W, H);
   }, []);
 
-  // ── animation loop ──────────────────────────────────────────────────────────
   const startAnimation = useCallback(() => {
     if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
     const loop = () => {
       phaseRef.current += 0.018;
-      // interpolate colors
       const cc = curColorsRef.current, tc = tgtColorsRef.current;
       for (let i = 0; i < cc.length; i++) cc[i] = lerpC(cc[i], tc[i], 0.04);
-
       const c = canvasRef.current;
       if (c) drawOrb(c, c.getContext("2d"));
       if (minimized) {
@@ -247,7 +327,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     animIdRef.current = null;
   }, []);
 
-  // ── canvas resize ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     const resize = () => {
@@ -261,7 +340,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     return () => window.removeEventListener("resize", resize);
   }, [isOpen]);
 
-  // ── open / close ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
       setState("idle");
@@ -282,7 +360,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
 
   useEffect(() => { startAnimation(); }, [minimized, startAnimation]);
 
-  // ── stop all audio/mic ──────────────────────────────────────────────────────
   const stopAll = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
@@ -290,7 +367,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     analyserRef.current = null;
   }, []);
 
-  // ── silence detection ───────────────────────────────────────────────────────
   const setupSilenceDetection = useCallback((audioCtx, micStream) => {
     const sa = audioCtx.createAnalyser(); sa.fftSize = 512;
     audioCtx.createMediaStreamSource(micStream).connect(sa);
@@ -309,7 +385,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     setTimeout(check, 800);
   }, []);
 
-  // ── start listening ─────────────────────────────────────────────────────────
   const startListening = useCallback(async () => {
     if (voiceStateRef.current !== "idle" && voiceStateRef.current !== "speaking") return;
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
@@ -337,7 +412,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setupSilenceDetection]);
 
-  // ── submit audio ────────────────────────────────────────────────────────────
   const submitAudio = useCallback(async (mimeType) => {
     if (chunksRef.current.length === 0) { setState("idle"); return; }
     setState("processing");
@@ -363,7 +437,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAuthToken, getMessages, onTranscript, onReply, apiBase]);
 
-  // ── play TTS ────────────────────────────────────────────────────────────────
   const playAudio = useCallback((base64) => {
     setState("speaking");
     const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
@@ -381,7 +454,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startListening]);
 
-  // ── stop AI reply ───────────────────────────────────────────────────────────
   const stopAI = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     analyserRef.current = null;
@@ -390,7 +462,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startListening]);
 
-  // ── toggle mic mute ─────────────────────────────────────────────────────────
   const toggleMic = useCallback(() => {
     setMicMuted(m => {
       const next = !m;
@@ -399,7 +470,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     });
   }, []);
 
-  // ── end call ────────────────────────────────────────────────────────────────
   const endCall = useCallback(() => {
     stopAll(); stopAnimation();
     clearInterval(timerRef.current);
@@ -413,7 +483,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
 
   if (!isOpen) return null;
 
-  // ── minimized floating bubble ───────────────────────────────────────────────
   if (minimized) {
     return (
       <div
@@ -434,7 +503,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     );
   }
 
-  // ── full screen ─────────────────────────────────────────────────────────────
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:9999,
@@ -450,14 +518,12 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
         @keyframes evPulse  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
       `}</style>
 
-      {/* ── top bar ── */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"0 28px", boxSizing:"border-box" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ width:8, height:8, borderRadius:"50%", background:cfg.dotColor, boxShadow:`0 0 8px ${cfg.dotColor}`, flexShrink:0 }} />
           <span style={{ color:"rgba(255,255,255,0.5)", fontSize:13, letterSpacing:"0.04em" }}>{formatTime(timerSecs)}</span>
         </div>
         <span style={{ color:"rgba(255,255,255,0.3)", fontSize:12, letterSpacing:"0.08em" }}>{cfg.label}</span>
-        {/* minimize button */}
         <button
           onClick={() => setMinimized(true)}
           title="Minimize"
@@ -470,7 +536,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
         </button>
       </div>
 
-      {/* ── orb ── */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:20, width:"100%" }}>
         <canvas
           ref={canvasRef}
@@ -494,11 +559,8 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
         </div>
       </div>
 
-      {/* ── controls ── */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:24, width:"100%" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:28 }}>
-
-          {/* mute */}
           <button
             onClick={toggleMic}
             title={micMuted ? "Unmute" : "Mute"}
@@ -526,7 +588,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
             )}
           </button>
 
-          {/* end call */}
           <button
             onClick={endCall}
             title="End call"
@@ -542,7 +603,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
             </svg>
           </button>
 
-          {/* stop AI */}
           <button
             onClick={stopAI}
             title="Stop AI reply"
@@ -558,16 +618,12 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
               <rect x="4" y="4" width="16" height="16" rx="3"/>
             </svg>
           </button>
-
         </div>
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Mic button SVG
-// ─────────────────────────────────────────────────────────────────────────────
 function MicIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width:16, height:16 }}>
@@ -909,6 +965,68 @@ const CW_STYLE = `
     padding: 0 16px 4px; max-width: 720px; margin: 0 auto; width: 100%;
   }
 
+  /* ── ACTIVITY BAR (new) ──────────────────────────────── */
+  .cw-activity-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px 6px 12px;
+    background: #faf8f4;
+    border: 1px solid rgba(193,127,42,.18);
+    border-radius: 20px;
+    font-size: 12.5px; color: var(--t2);
+    font-family: var(--font);
+    animation: cwFadeUp .2s ease;
+    width: fit-content;
+  }
+  .cw-activity-icon { font-size: 14px; flex-shrink: 0; }
+  .cw-activity-text { color: var(--t2); font-weight: 500; }
+  .cw-activity-dots { display: flex; gap: 3px; align-items: center; margin-left: 2px; }
+  .cw-activity-dots span {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--accent); opacity: .4;
+    animation: cwDot 1.2s ease-in-out infinite;
+  }
+  .cw-activity-dots span:nth-child(2) { animation-delay: .2s; }
+  .cw-activity-dots span:nth-child(3) { animation-delay: .4s; }
+
+  /* ── URL CHIP (new) ──────────────────────────────────── */
+  .cw-url-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 12px;
+    font-size: 11.5px; font-family: var(--font);
+    background: #f5f4f0; border: 1px solid var(--border);
+    color: var(--t2);
+    animation: cwFadeUp .15s ease;
+  }
+  .cw-url-spinner {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 1.5px solid rgba(193,127,42,.3);
+    border-top-color: var(--accent);
+    animation: cwSpin .7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes cwSpin { to { transform: rotate(360deg); } }
+  .cw-url-ok  { color: #22863a; font-size: 12px; }
+  .cw-url-err { color: #e05252; font-size: 12px; }
+
+  /* ── DOWNLOAD BUTTON (new) ───────────────────────────── */
+  .cw-download-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    background: #faf7f1;
+    border: 1px solid rgba(193,127,42,.3);
+    border-radius: 10px;
+    font-size: 12px; font-weight: 600;
+    color: var(--accent); cursor: pointer;
+    font-family: var(--font);
+    transition: background .12s, box-shadow .12s;
+    margin-top: 4px;
+  }
+  .cw-download-btn:hover {
+    background: #fff3e0;
+    box-shadow: 0 2px 8px rgba(193,127,42,.15);
+  }
+  .cw-download-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+
   /* ── THINKING ────────────────────────────────────────── */
   .cw-thinking {
     display:flex; align-items:center; gap:10px;
@@ -1219,13 +1337,15 @@ function AttachBubble({ file, sender, onImageClick }) {
 export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, userPlan, setShowNotifPanel, totalBadgeCount }) {
   const [input,          setInput]          = useState("");
   const [isThinking,     setIsThinking]     = useState(false);
-  const [isStreaming,    setIsStreaming]    = useState(false);
+  const [isStreaming,    setIsStreaming]     = useState(false);
+  const [activityStep,   setActivityStep]   = useState(0);      // ← new: 0-3
+  const [urlStatuses,    setUrlStatuses]    = useState({});     // ← new: { url: "loading"|"done"|"error" }
   const [showAttach,     setShowAttach]     = useState(false);
   const [pendingFiles,   setPendingFiles]   = useState([]);
   const [lightboxSrc,    setLightboxSrc]    = useState(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [selectionBtn,   setSelectionBtn]   = useState(null);
-  const [voiceOpen,      setVoiceOpen]      = useState(false); // ← new
+  const [voiceOpen,      setVoiceOpen]      = useState(false);
 
   const fileInputRef       = useRef(null);
   const fileAcceptRef      = useRef("");
@@ -1234,8 +1354,8 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const attachRef          = useRef(null);
   const messagesEndRef     = useRef(null);
   const abortControllerRef = useRef(null);
+  const activityTimerRef   = useRef(null);    // ← new
 
-  // Keep a ref to current messages for the voice modal to read without stale closure
   const messagesRef = useRef([]);
 
   const messages  = useMemo(() => chat?.messages || [], [chat]);
@@ -1257,7 +1377,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-  }, [messages, isThinking]);
+  }, [messages, isThinking, activityStep]);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -1305,6 +1425,20 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       document.removeEventListener("mousedown", handleMouseDown);
     };
   }, []);
+
+  // ── Activity step cycling while thinking ─────────────────────────────────────
+  useEffect(() => {
+    if (isThinking) {
+      setActivityStep(0);
+      activityTimerRef.current = setInterval(() => {
+        setActivityStep(s => (s + 1) % ACTIVITY_STEPS.length);
+      }, 1800);
+    } else {
+      clearInterval(activityTimerRef.current);
+      setActivityStep(0);
+    }
+    return () => clearInterval(activityTimerRef.current);
+  }, [isThinking]);
 
   if (!chat) {
     return (
@@ -1378,6 +1512,25 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       return v;
     }));
 
+  // ── Fetch URL content via backend proxy ──────────────────────────────────────
+  const fetchUrlContent = async (url, token) => {
+    try {
+      setUrlStatuses(prev => ({ ...prev, [url]: "loading" }));
+      const res = await fetch("https://eloria-trial.onrender.com/api/fetch-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ url }),
+      });
+      if (!res.ok) throw new Error("fetch failed");
+      const data = await res.json();
+      setUrlStatuses(prev => ({ ...prev, [url]: "done" }));
+      return data.content || "";
+    } catch {
+      setUrlStatuses(prev => ({ ...prev, [url]: "error" }));
+      return "";
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim() && pendingFiles.length === 0) return;
     if (isThinking) return;
@@ -1389,11 +1542,27 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
 
     const token = await auth.currentUser.getIdToken();
     setIsThinking(true);
+    setUrlStatuses({});
+
+    // ── Detect and fetch URLs in user's message ────────────────────────────────
+    const urls = extractUrls(input.trim());
+    let enrichedText = input.trim();
+
+    if (urls.length > 0) {
+      const urlContents = await Promise.all(
+        urls.map(async (url) => {
+          const content = await fetchUrlContent(url, token);
+          return content ? `\n\n[Content from ${url}]:\n${content.slice(0, 4000)}` : "";
+        })
+      );
+      enrichedText = input.trim() + urlContents.join("");
+    }
 
     const userMsg = {
       id: Date.now(),
       sender: "user",
-      text: input.trim(),
+      text: input.trim(),       // show original text (without injected content) in UI
+      urlStatuses: urls.length > 0 ? Object.fromEntries(urls.map(u => [u, "done"])) : undefined,
       files: pendingFiles.length > 0 ? [...pendingFiles] : [],
       time: getTimestamp(),
     };
@@ -1415,9 +1584,10 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       })
     );
 
-    const apiMessages = newMessages.map(m => ({
+    // Use enriched text (with URL content) when calling the API
+    const apiMessages = newMessages.map((m, idx) => ({
       role: m.sender === "user" ? "user" : "assistant",
-      content: m.text || "",
+      content: idx === newMessages.length - 1 ? enrichedText : (m.text || ""),
       files: m.files || [],
     }));
 
@@ -1548,14 +1718,12 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   };
 
   // ── Voice helpers ─────────────────────────────────────────────────────────────
-  // Convert current chat messages to the API format the voice route expects
   const getVoiceMessages = () =>
     messagesRef.current.map(m => ({
       role: m.sender === "user" ? "user" : "assistant",
       content: m.text || "",
     }));
 
-  // When voice produces a transcript + reply, add both to the chat as normal messages
   const handleVoiceTranscript = (text) => {
     const userMsg = { id: Date.now(), sender: "user", text, files: [], time: getTimestamp() };
     setChats(prev => prev.map(c => {
@@ -1580,12 +1748,24 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
 
   const renderMessage = (msg) => {
     const isUser = msg.sender === "user";
+    const msgUrlStatuses = msg.urlStatuses || {};
+    const urlEntries = Object.entries(msgUrlStatuses);
+
     return (
       <div key={msg.id} className={`cw-msg-row ${msg.sender}`}>
         {!isUser && (
           <div className="cw-ai-avatar"><img src={logo} alt="Eloria" /></div>
         )}
         <div className={`cw-bubble-stack ${isUser ? "user" : "ai"}`}>
+          {/* URL fetch chips on user messages */}
+          {isUser && urlEntries.length > 0 && (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:4, justifyContent:"flex-end" }}>
+              {urlEntries.map(([url, status]) => (
+                <UrlFetchChip key={url} url={url} status={status} />
+              ))}
+            </div>
+          )}
+
           {msg.files?.map(f => (
             <AttachBubble key={f.id} file={f} sender={msg.sender} onImageClick={setLightboxSrc} />
           ))}
@@ -1597,6 +1777,12 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
               }
             </div>
           )}
+
+          {/* Download button on AI messages with code */}
+          {!isUser && msg.text && (
+            <DownloadCodeButton text={msg.text} />
+          )}
+
           {!isUser && (
             <div className="cw-msg-divider">
               <div style={{ flex:1, height:1, background:"linear-gradient(to right, rgba(13,58,53,.12), transparent)" }} />
@@ -1622,7 +1808,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     <main className="cw-root">
       <input ref={fileInputRef} type="file" style={{ display:"none" }} onChange={onFileChange} />
 
-      {/* ── Voice Modal ───────────────────────────────────────────────────────── */}
       <VoiceModal
         isOpen={voiceOpen}
         onClose={() => setVoiceOpen(false)}
@@ -1717,7 +1902,8 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
                 <div className="cw-ai-avatar" style={{ width:28, height:28, borderRadius:8, overflow:"hidden", border:"1.5px solid rgba(193,127,42,.2)", background:"#faf8f4", flexShrink:0 }}>
                   <img src={logo} alt="Eloria" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                 </div>
-                {isThinking && <><div className="cw-thinking-dots"><span/><span/><span/></div><span className="cw-thinking-label">Eloria is thinking…</span></>}
+                {/* ── Activity bar replaces the old "thinking" dots ── */}
+                {isThinking && <ActivityBar step={activityStep} />}
                 {isStreaming && <span className="cw-thinking-label">Eloria is responding…</span>}
                 <button
                   onClick={() => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); }}
@@ -1725,7 +1911,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
                   style={{
                     marginLeft: "auto", padding: "4px 10px",
                     background: "#fdf0f0", border: "1px solid rgba(224,82,82,.3)",
-                    borderRadius: 8, color: "#e05252", fontSize: 11.5,
+                    borderRadius: 8, color: "#0d3a35", fontSize: 11.5,
                     fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)",
                     display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
                     transition: "background .12s",
@@ -1749,7 +1935,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
             <div className="cw-limit-modal-top">
               <button className="cw-limit-btn-close" onClick={() => setShowLimitModal(false)}>✕</button>
               <div className="cw-limit-modal-icon">
-                {userPlan === "pro" || userPlan === "admin" ? "⏰" : "✦"}
+                {userPlan === "pro" || userPlan === "admin" ? "" : "✦"}
               </div>
               <div className="cw-limit-modal-title">
                 {userPlan === "pro" || userPlan === "admin" ? "You're all caught up for today" : "You've hit your daily limit"}
@@ -1847,7 +2033,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
             />
 
-            {/* 🎤 Mic button — NEW */}
+            {/* Mic button */}
             <button
               className={`cw-mic-btn${voiceOpen ? " active" : ""}`}
               onClick={() => setVoiceOpen(true)}
@@ -1863,7 +2049,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
               onClick={(isThinking || isStreaming) ? () => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); } : sendMessage}
               disabled={!isThinking && !isStreaming && (!input.trim() && pendingFiles.length === 0)}
               title={(isThinking || isStreaming) ? "Stop" : "Send"}
-              style={(isThinking || isStreaming) ? { background: "#e05252" } : {}}
+              style={(isThinking || isStreaming) ? { background: "#0d3a35" } : {}}
             >
               {(isThinking || isStreaming) ? (
                 <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
