@@ -866,13 +866,24 @@ const CW_STYLE = `
     color: #fff;
     border-bottom-right-radius: 5px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-  }
-  .cw-msg-row.ai .cw-bubble {
+.cw-msg-row.ai .cw-bubble {
     background: transparent;
     color: var(--t1);
     border: 1px solid #ececea;
     border-bottom-left-radius: 5px;
     box-shadow: 0 1px 6px rgba(0,0,0,.06);
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .cw-msg-row.ai .cw-bubble pre {
+    overflow-x: auto;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .cw-msg-row.ai .cw-bubble code {
+    white-space: pre;
+    word-break: normal;
   }
 
   .cw-msg-time {

@@ -62,17 +62,21 @@ const EC_STYLE = `
   *, *::before, *::after { box-sizing: border-box; }
 
   .ec-root {
-    --ide-bg:        #16181d;
-    --ide-sidebar:   #1c1e24;
-    --ide-panel:     #21242b;
+    --ide-bg:        #19191b;
+    --ide-sidebar:   #151517;
+    --ide-panel:     #1f1f22;
+    --ide-panel-hi:  #26262a;
     --ide-border:    rgba(255,255,255,.07);
-    --ide-border-hi: rgba(193,127,42,.4);
-    --ide-t1:        #e8e8e2;
-    --ide-t2:        #a0a096;
-    --ide-t3:        #5a5a52;
-    --ide-accent:    #c17f2a;
-    --ide-accent2:   #e0a84a;
-    --ide-mono:      'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --ide-border-hi: rgba(255,255,255,.14);
+    --ide-t1:        #e7e7ea;
+    --ide-t2:        #94949c;
+    --ide-t3:        #5c5c63;
+    --ide-accent:    #4d8eff;
+    --ide-accent2:   #7eaeff;
+    --ide-accent-rgb: 77,142,255;
+    --ide-danger:    #e25c5c;
+    --ide-mono:      'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    --ide-ui:        var(--font, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif);
   }
 
   .ec-root {
@@ -80,104 +84,100 @@ const EC_STYLE = `
     height: 100dvh;
     overflow: hidden;
     background: var(--ide-bg);
-    font-family: var(--font);
+    font-family: var(--ide-ui);
     color: var(--ide-t1);
   }
 
   .ec-sidebar {
-    width: 240px; min-width: 240px;
+    width: 232px; min-width: 232px;
     background: var(--ide-sidebar);
     border-right: 1px solid var(--ide-border);
     display: flex; flex-direction: column;
     overflow: hidden;
   }
   .ec-sidebar-header {
-    padding: 0 14px; height: 48px; min-height: 48px;
-    border-bottom: 1px solid var(--ide-border);
+    padding: 0 16px; height: 46px; min-height: 46px;
     display: flex; align-items: center; gap: 9px; flex-shrink: 0;
   }
-  .ec-sidebar-logo { width: 22px; height: 22px; border-radius: 6px; overflow: hidden; flex-shrink: 0; border: 1px solid rgba(193,127,42,.2); }
+  .ec-sidebar-logo { width: 20px; height: 20px; border-radius: 5px; overflow: hidden; flex-shrink: 0; }
   .ec-sidebar-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .ec-sidebar-title { font-size: 12px; font-weight: 700; color: var(--ide-t1); letter-spacing: .06em; text-transform: uppercase; flex: 1; }
-  .ec-sidebar-badge { font-size: 9px; font-family: var(--ide-mono); background: rgba(193,127,42,.15); color: var(--ide-accent2); border: 1px solid rgba(193,127,42,.2); border-radius: 4px; padding: 2px 6px; letter-spacing: .05em; font-weight: 600; }
-  .ec-explorer-label { padding: 10px 14px 5px; font-size: 10px; font-family: var(--ide-mono); color: var(--ide-t3); letter-spacing: .1em; text-transform: uppercase; font-weight: 600; flex-shrink: 0; }
-  .ec-sidebar-scroll { flex: 1; overflow-y: auto; padding: 2px 0 12px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.08) transparent; }
+  .ec-sidebar-title { font-size: 13px; font-weight: 600; color: var(--ide-t1); letter-spacing: -.01em; }
+  .ec-explorer-label { padding: 14px 16px 6px; font-size: 10.5px; color: var(--ide-t3); letter-spacing: .07em; text-transform: uppercase; font-weight: 600; flex-shrink: 0; }
+  .ec-sidebar-scroll { flex: 1; overflow-y: auto; padding: 0 0 12px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.08) transparent; }
   .ec-sidebar-scroll::-webkit-scrollbar { width: 3px; }
   .ec-sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
 
   .ec-proj-group { margin-bottom: 1px; }
-  .ec-proj-header { display: flex; align-items: center; gap: 5px; padding: 5px 8px 5px 10px; cursor: pointer; user-select: none; transition: background .1s; }
-  .ec-proj-header:hover { background: rgba(255,255,255,.04); }
+  .ec-proj-header { display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; cursor: pointer; user-select: none; border-radius: 6px; margin: 0 6px; transition: background .1s; }
+  .ec-proj-header:hover { background: var(--ide-panel); }
   .ec-proj-header:hover .ec-proj-actions { opacity: 1; }
   .ec-proj-chevron { width: 12px; height: 12px; flex-shrink: 0; color: var(--ide-t3); transition: transform .16s ease; }
   .ec-proj-chevron.open { transform: rotate(90deg); }
-  .ec-proj-icon { font-size: 12px; flex-shrink: 0; }
-  .ec-proj-name { flex: 1; min-width: 0; font-size: 11.5px; font-family: var(--ide-mono); font-weight: 600; color: var(--ide-t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .04em; text-transform: uppercase; }
+  .ec-proj-icon { font-size: 12px; flex-shrink: 0; opacity: .85; }
+  .ec-proj-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--ide-t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ec-proj-actions { display: flex; gap: 1px; opacity: 0; transition: opacity .12s; flex-shrink: 0; }
-  .ec-proj-act-btn { width: 20px; height: 20px; border: none; background: none; border-radius: 3px; cursor: pointer; color: var(--ide-t3); display: flex; align-items: center; justify-content: center; transition: background .1s, color .1s; }
-  .ec-proj-act-btn:hover { background: rgba(255,255,255,.08); color: var(--ide-t1); }
-  .ec-proj-act-btn.danger:hover { color: #e05252; }
+  .ec-proj-act-btn { width: 20px; height: 20px; border: none; background: none; border-radius: 4px; cursor: pointer; color: var(--ide-t3); display: flex; align-items: center; justify-content: center; transition: background .1s, color .1s; }
+  .ec-proj-act-btn:hover { background: var(--ide-panel-hi); color: var(--ide-t1); }
+  .ec-proj-act-btn.danger:hover { color: var(--ide-danger); }
   .ec-proj-act-btn svg { width: 11px; height: 11px; }
 
-  .ec-files-list { padding: 0 0 3px 20px; }
-  .ec-file-item { display: flex; align-items: center; gap: 6px; padding: 5px 8px 5px 10px; cursor: pointer; border-radius: 4px; margin: 0 4px; transition: background .1s; position: relative; }
-  .ec-file-item:hover { background: rgba(255,255,255,.05); }
-  .ec-file-item.active { background: rgba(193,127,42,.12); }
+  .ec-files-list { padding: 1px 0 4px 18px; }
+  .ec-file-item { display: flex; align-items: center; gap: 7px; padding: 5px 8px 5px 12px; cursor: pointer; border-radius: 6px; margin: 0 6px 1px; transition: background .1s; position: relative; }
+  .ec-file-item:hover { background: var(--ide-panel); }
+  .ec-file-item.active { background: rgba(var(--ide-accent-rgb),.13); }
   .ec-file-item:hover .ec-file-del { opacity: 1; }
-  .ec-file-ext { font-size: 9.5px; font-family: var(--ide-mono); color: var(--ide-t3); background: rgba(255,255,255,.06); border-radius: 3px; padding: 1px 4px; flex-shrink: 0; letter-spacing: .02em; }
-  .ec-file-item.active .ec-file-ext { background: rgba(193,127,42,.2); color: var(--ide-accent2); }
-  .ec-file-name { flex: 1; min-width: 0; font-size: 12.5px; font-family: var(--ide-mono); color: var(--ide-t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ec-file-item.active .ec-file-name { color: var(--ide-t1); }
+  .ec-file-ext { font-size: 9px; font-family: var(--ide-mono); color: var(--ide-t3); background: rgba(255,255,255,.05); border-radius: 3px; padding: 1px 4px; flex-shrink: 0; }
+  .ec-file-item.active .ec-file-ext { background: rgba(var(--ide-accent-rgb),.2); color: var(--ide-accent2); }
+  .ec-file-name { flex: 1; min-width: 0; font-size: 12.5px; color: var(--ide-t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ec-file-item.active .ec-file-name { color: var(--ide-t1); font-weight: 500; }
   .ec-file-del { width: 16px; height: 16px; border: none; background: none; border-radius: 3px; cursor: pointer; color: var(--ide-t3); font-size: 10px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .1s, color .1s; flex-shrink: 0; }
-  .ec-file-del:hover { color: #e05252; }
-  .ec-new-file-btn { display: flex; align-items: center; gap: 5px; padding: 4px 8px 4px 10px; border-radius: 4px; margin: 0 4px; border: none; background: none; font-size: 11.5px; font-family: var(--ide-mono); color: var(--ide-t3); cursor: pointer; transition: color .1s, background .1s; width: calc(100% - 8px); }
-  .ec-new-file-btn:hover { color: var(--ide-accent2); background: rgba(255,255,255,.04); }
+  .ec-file-del:hover { color: var(--ide-danger); }
+  .ec-new-file-btn { display: flex; align-items: center; gap: 6px; padding: 5px 8px 5px 12px; border-radius: 6px; margin: 2px 6px 0; border: none; background: none; font-size: 12px; color: var(--ide-t3); cursor: pointer; transition: color .1s, background .1s; width: calc(100% - 12px); }
+  .ec-new-file-btn:hover { color: var(--ide-t1); background: var(--ide-panel); }
   .ec-new-file-btn svg { width: 10px; height: 10px; flex-shrink: 0; }
-  .ec-file-rename { flex: 1; min-width: 0; font-size: 12px; font-family: var(--ide-mono); color: var(--ide-t1); background: rgba(255,255,255,.08); border: 1px solid rgba(193,127,42,.4); border-radius: 3px; outline: none; padding: 1px 5px; }
+  .ec-file-rename { flex: 1; min-width: 0; font-size: 12.5px; color: var(--ide-t1); background: var(--ide-panel-hi); border: 1px solid rgba(var(--ide-accent-rgb),.4); border-radius: 4px; outline: none; padding: 2px 6px; }
 
-  .ec-new-proj-row { padding: 8px 10px; border-top: 1px solid var(--ide-border); flex-shrink: 0; }
-  .ec-new-proj-btn { width: 100%; padding: 7px 10px; background: rgba(193,127,42,.12); color: var(--ide-accent2); border: 1px solid rgba(193,127,42,.2); border-radius: 5px; font-size: 12px; font-weight: 600; font-family: var(--ide-mono); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .12s, border-color .12s; letter-spacing: .02em; }
-  .ec-new-proj-btn:hover { background: rgba(193,127,42,.2); border-color: rgba(193,127,42,.4); }
+  .ec-new-proj-row { padding: 10px; border-top: 1px solid var(--ide-border); flex-shrink: 0; }
+  .ec-new-proj-btn { width: 100%; padding: 8px 10px; background: var(--ide-panel); color: var(--ide-t1); border: 1px solid var(--ide-border); border-radius: 7px; font-size: 12.5px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .12s, border-color .12s, color .12s; }
+  .ec-new-proj-btn:hover { background: var(--ide-panel-hi); border-color: var(--ide-border-hi); color: var(--ide-accent2); }
   .ec-new-proj-btn svg { width: 12px; height: 12px; }
 
   .ec-main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ide-bg); overflow: hidden; }
 
-  .ec-tabbar { display: flex; align-items: stretch; background: var(--ide-panel); border-bottom: 1px solid var(--ide-border); height: 38px; min-height: 38px; flex-shrink: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .ec-tabbar { display: flex; align-items: stretch; background: var(--ide-bg); border-bottom: 1px solid var(--ide-border); height: 40px; min-height: 40px; flex-shrink: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
   .ec-tabbar::-webkit-scrollbar { display: none; }
-  .ec-tab { display: flex; align-items: center; gap: 6px; padding: 0 14px; height: 100%; flex-shrink: 0; cursor: pointer; border-right: 1px solid var(--ide-border); font-size: 12px; font-family: var(--ide-mono); color: var(--ide-t3); background: transparent; border-top: 2px solid transparent; transition: color .12s, background .12s; white-space: nowrap; user-select: none; }
-  .ec-tab:hover { color: var(--ide-t2); background: rgba(255,255,255,.03); }
-  .ec-tab.active { color: var(--ide-t1); background: var(--ide-bg); border-top-color: var(--ide-accent); }
-  .ec-tab-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ide-t3); flex-shrink: 0; transition: background .12s; }
-  .ec-tab.active .ec-tab-dot { background: var(--ide-accent2); }
-  .ec-tab-proj { font-size: 9.5px; color: var(--ide-t3); opacity: .7; }
+  .ec-tab { display: flex; align-items: center; gap: 6px; padding: 0 16px; height: 100%; flex-shrink: 0; cursor: pointer; font-size: 12.5px; color: var(--ide-t3); background: transparent; border-bottom: 2px solid transparent; transition: color .12s, background .12s, border-color .12s; white-space: nowrap; user-select: none; }
+  .ec-tab:hover { color: var(--ide-t2); background: rgba(255,255,255,.02); }
+  .ec-tab.active { color: var(--ide-t1); border-bottom-color: var(--ide-accent); }
+  .ec-tab-proj { font-size: 11px; color: var(--ide-t3); }
 
-  .ec-statusbar { display: flex; align-items: center; gap: 16px; padding: 0 16px; height: 24px; min-height: 24px; background: var(--ide-accent); flex-shrink: 0; font-size: 10.5px; font-family: var(--ide-mono); color: rgba(255,255,255,.85); letter-spacing: .02em; }
-  .ec-statusbar-item { display: flex; align-items: center; gap: 4px; }
-  .ec-statusbar-item svg { width: 10px; height: 10px; opacity: .8; }
+  .ec-statusbar { display: flex; align-items: center; gap: 18px; padding: 0 16px; height: 26px; min-height: 26px; background: var(--ide-sidebar); border-top: 1px solid var(--ide-border); flex-shrink: 0; font-size: 11px; color: var(--ide-t3); }
+  .ec-statusbar-item { display: flex; align-items: center; gap: 5px; }
+  .ec-statusbar-item svg { width: 11px; height: 11px; opacity: .7; }
   .ec-statusbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 
   .ec-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.08) transparent; }
   .ec-body::-webkit-scrollbar { width: 4px; }
   .ec-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
 
-  .ec-file-intro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px 20px; gap: 18px; animation: ecFadeUp .3s ease; }
+  .ec-file-intro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px 20px; gap: 20px; animation: ecFadeUp .3s ease; }
   @keyframes ecFadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  .ec-file-intro-badge { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; background: rgba(255,255,255,.04); border: 1px solid var(--ide-border); border-radius: 8px; font-family: var(--ide-mono); font-size: 13px; color: var(--ide-t2); }
-  .ec-file-intro-badge span { color: var(--ide-accent2); }
-  .ec-file-intro-path { font-family: var(--ide-mono); font-size: 11px; color: var(--ide-t3); letter-spacing: .04em; }
-  .ec-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 580px; width: 100%; margin-top: 4px; }
-  .ec-chip { padding: 7px 14px; background: rgba(255,255,255,.04); border: 1px solid var(--ide-border); border-radius: 6px; font-size: 12.5px; font-family: var(--ide-mono); color: var(--ide-t2); cursor: pointer; transition: background .11s, border-color .11s, color .11s, transform .11s; line-height: 1.4; }
-  .ec-chip:hover { background: rgba(193,127,42,.1); border-color: rgba(193,127,42,.35); transform: translateY(-1px); color: var(--ide-t1); }
+  .ec-file-intro-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ide-t2); }
+  .ec-file-intro-badge span { color: var(--ide-t1); font-weight: 600; }
+  .ec-file-intro-path { font-size: 12px; color: var(--ide-t3); }
+  .ec-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 560px; width: 100%; margin-top: 6px; }
+  .ec-chip { padding: 8px 14px; background: var(--ide-panel); border: 1px solid var(--ide-border); border-radius: 8px; font-size: 12.5px; color: var(--ide-t2); cursor: pointer; transition: background .11s, border-color .11s, color .11s; line-height: 1.4; }
+  .ec-chip:hover { background: var(--ide-panel-hi); border-color: var(--ide-border-hi); color: var(--ide-t1); }
 
   .ec-messages { flex: 1; padding: 20px 0 8px; display: flex; flex-direction: column; }
-  .ec-msg-wrap { display: flex; padding: 4px 24px; max-width: 800px; width: 100%; margin: 0 auto; }
+  .ec-msg-wrap { display: flex; padding: 5px 24px; max-width: 760px; width: 100%; margin: 0 auto; }
   .ec-msg-wrap.user { justify-content: flex-end; }
   .ec-msg-wrap.ai { justify-content: flex-start; align-items: flex-start; gap: 10px; }
-  .ec-ai-avatar { width: 26px; height: 26px; border-radius: 7px; overflow: hidden; flex-shrink: 0; margin-top: 3px; border: 1px solid rgba(193,127,42,.25); }
+  .ec-ai-avatar { width: 24px; height: 24px; border-radius: 6px; overflow: hidden; flex-shrink: 0; margin-top: 3px; }
   .ec-ai-avatar img { width: 100%; height: 100%; object-fit: contain; }
-  .ec-bubble { max-width: 92%; padding: 9px 14px; font-size: 13.5px; line-height: 1.5; word-break: break-word; border-radius: 10px; }
-  .ec-msg-wrap.user .ec-bubble { background: rgba(193,127,42,.18); color: var(--ide-t1); border: 1px solid rgba(193,127,42,.25); border-bottom-right-radius: 3px; font-family: var(--font); }
-  .ec-msg-wrap.ai .ec-bubble { background: var(--ide-panel); border: 1px solid var(--ide-border); color: var(--ide-t1); border-bottom-left-radius: 3px; font-family: var(--font); }
+  .ec-bubble { max-width: 92%; padding: 9px 14px; font-size: 13.5px; line-height: 1.55; word-break: break-word; border-radius: 10px; }
+  .ec-msg-wrap.user .ec-bubble { background: rgba(var(--ide-accent-rgb),.16); color: var(--ide-t1); border: 1px solid rgba(var(--ide-accent-rgb),.22); border-bottom-right-radius: 3px; }
+  .ec-msg-wrap.ai .ec-bubble { background: var(--ide-panel); border: 1px solid var(--ide-border); color: var(--ide-t1); border-bottom-left-radius: 3px; }
 
   /* ── ATTACHMENT BUBBLE ─────────────────────────────────────── */
   .ec-attach-bubble {
@@ -192,33 +192,30 @@ const EC_STYLE = `
     align-items: center;
     gap: 7px;
     padding: 8px 12px 7px;
-    background: rgba(193,127,42,.13);
-    border: 1px solid rgba(193,127,42,.28);
+    background: rgba(var(--ide-accent-rgb),.12);
+    border: 1px solid rgba(var(--ide-accent-rgb),.2);
     border-radius: 10px 10px 0 0;
-    font-family: var(--ide-mono);
   }
   .ec-attach-header-icon {
-    width: 28px; height: 28px;
-    background: rgba(193,127,42,.18);
-    border: 1px solid rgba(193,127,42,.3);
+    width: 26px; height: 26px;
+    background: rgba(var(--ide-accent-rgb),.15);
     border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; flex-shrink: 0;
+    font-size: 12px; flex-shrink: 0;
   }
   .ec-attach-header-info { flex: 1; min-width: 0; }
   .ec-attach-header-name {
-    font-size: 12.5px; font-weight: 700;
+    font-size: 12.5px; font-weight: 600;
     color: var(--ide-t1);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    letter-spacing: .02em;
   }
   .ec-attach-header-meta {
-    font-size: 10px; color: var(--ide-t3);
-    margin-top: 1px; letter-spacing: .03em;
+    font-size: 10.5px; color: var(--ide-t3);
+    margin-top: 1px;
   }
   .ec-attach-files {
-    background: rgba(255,255,255,.03);
-    border: 1px solid rgba(193,127,42,.15);
+    background: rgba(255,255,255,.02);
+    border: 1px solid rgba(var(--ide-accent-rgb),.12);
     border-top: none;
     border-radius: 0 0 10px 10px;
     overflow: hidden;
@@ -227,7 +224,6 @@ const EC_STYLE = `
     display: flex; align-items: center; gap: 8px;
     padding: 6px 12px;
     border-bottom: 1px solid rgba(255,255,255,.04);
-    font-family: var(--ide-mono);
   }
   .ec-attach-file-row:last-child { border-bottom: none; }
   .ec-attach-file-icon {
@@ -240,10 +236,10 @@ const EC_STYLE = `
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .ec-attach-file-ext {
-    font-size: 9px; color: var(--ide-t3);
+    font-size: 9px; font-family: var(--ide-mono); color: var(--ide-t3);
     background: rgba(255,255,255,.05);
     border-radius: 3px; padding: 1px 5px;
-    flex-shrink: 0; letter-spacing: .03em;
+    flex-shrink: 0;
   }
   .ec-attach-file-size {
     font-size: 9.5px; color: var(--ide-t3);
@@ -251,13 +247,12 @@ const EC_STYLE = `
   }
   .ec-attach-text {
     padding: 8px 12px;
-    font-size: 13.5px; line-height: 1.65;
+    font-size: 13.5px; line-height: 1.6;
     color: var(--ide-t1); white-space: pre-wrap; word-break: break-word;
-    font-family: var(--font);
   }
   .ec-attach-bubble-solo {
-    background: rgba(193,127,42,.18);
-    border: 1px solid rgba(193,127,42,.25);
+    background: rgba(var(--ide-accent-rgb),.16);
+    border: 1px solid rgba(var(--ide-accent-rgb),.22);
     border-radius: 10px;
     border-bottom-right-radius: 3px;
     overflow: hidden;
@@ -267,15 +262,15 @@ const EC_STYLE = `
   .ec-attach-strip {
     display: flex; gap: 6px; flex-wrap: wrap;
     padding: 8px 12px 0;
-    max-width: 800px; margin: 0 auto; width: 100%;
+    max-width: 760px; margin: 0 auto; width: 100%;
   }
   .ec-attach-chip {
     display: flex; align-items: center; gap: 5px;
     padding: 4px 8px 4px 6px;
-    background: rgba(193,127,42,.1);
-    border: 1px solid rgba(193,127,42,.25);
+    background: var(--ide-panel);
+    border: 1px solid var(--ide-border);
     border-radius: 6px;
-    font-family: var(--ide-mono); font-size: 11px;
+    font-size: 11px;
     color: var(--ide-t2); max-width: 160px;
     animation: ecFadeUp .15s ease;
   }
@@ -288,36 +283,35 @@ const EC_STYLE = `
     border-radius: 3px; flex-shrink: 0; transition: color .1s;
     padding: 0;
   }
-  .ec-attach-chip-remove:hover { color: #e05252; }
+  .ec-attach-chip-remove:hover { color: var(--ide-danger); }
   .ec-attach-limit-note {
-    font-size: 10px; font-family: var(--ide-mono); color: var(--ide-t3);
+    font-size: 10.5px; color: var(--ide-t3);
     padding: 4px 12px 0;
-    max-width: 800px; margin: 0 auto; width: 100%;
-    letter-spacing: .02em;
+    max-width: 760px; margin: 0 auto; width: 100%;
   }
 
   /* ── INPUT TOOLBAR ──────────────────────────────────────────── */
   .ec-input-toolbar {
     display: flex; align-items: center; gap: 6px;
-    padding-bottom: 2px;
+    padding-bottom: 6px;
     border-bottom: 1px solid var(--ide-border);
     margin-bottom: 6px;
   }
   .ec-toolbar-btn {
     display: flex; align-items: center; gap: 5px;
-    padding: 3px 8px;
+    padding: 4px 9px;
     background: none; border: 1px solid transparent;
-    border-radius: 5px; cursor: pointer;
-    font-family: var(--ide-mono); font-size: 11px;
+    border-radius: 6px; cursor: pointer;
+    font-size: 11.5px;
     color: var(--ide-t3); transition: all .12s;
   }
-  .ec-toolbar-btn:hover { background: rgba(193,127,42,.08); border-color: rgba(193,127,42,.2); color: var(--ide-accent2); }
+  .ec-toolbar-btn:hover { background: var(--ide-panel-hi); border-color: var(--ide-border); color: var(--ide-t1); }
   .ec-toolbar-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
   .ec-toolbar-btn.disabled { opacity: .3; pointer-events: none; }
   .ec-toolbar-sep { width: 1px; height: 14px; background: var(--ide-border); flex-shrink: 0; }
 
-  .ec-thinking { display: flex; align-items: center; gap: 10px; padding: 8px 24px; max-width: 800px; width: 100%; margin: 0 auto; }
-  .ec-thinking-avatar { width: 26px; height: 26px; border-radius: 7px; overflow: hidden; flex-shrink: 0; border: 1px solid rgba(193,127,42,.25); }
+  .ec-thinking { display: flex; align-items: center; gap: 10px; padding: 8px 24px; max-width: 760px; width: 100%; margin: 0 auto; }
+  .ec-thinking-avatar { width: 24px; height: 24px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
   .ec-thinking-avatar img { width: 100%; height: 100%; object-fit: contain; }
   .ec-thinking-dots { display: flex; gap: 4px; align-items: center; }
   .ec-thinking-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--ide-accent2); opacity: .35; animation: ecDot 1.2s ease-in-out infinite; }
@@ -325,34 +319,34 @@ const EC_STYLE = `
   .ec-thinking-dots span:nth-child(3) { animation-delay: .36s; }
   @keyframes ecDot { 0%,80%,100% { opacity: .2; transform: scale(.8); } 40% { opacity: 1; transform: scale(1); } }
 
-  .ec-input-wrap { flex-shrink: 0; padding: 10px 20px 14px; background: var(--ide-bg); border-top: 1px solid var(--ide-border); }
-  .ec-input-box { max-width: 800px; margin: 0 auto; background: var(--ide-panel); border: 1px solid var(--ide-border); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; transition: border-color .15s, box-shadow .15s; }
-  .ec-input-box:focus-within { border-color: rgba(193,127,42,.4); box-shadow: 0 0 0 3px rgba(193,127,42,.07); }
-  .ec-input-prefix { font-family: var(--ide-mono); font-size: 13px; color: var(--ide-accent2); flex-shrink: 0; user-select: none; line-height: 22px; padding-top: 1px; }
+  .ec-input-wrap { flex-shrink: 0; padding: 12px 20px 16px; background: var(--ide-bg); }
+  .ec-input-box { max-width: 760px; margin: 0 auto; background: var(--ide-panel); border: 1px solid var(--ide-border); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; transition: border-color .15s, box-shadow .15s; }
+  .ec-input-box:focus-within { border-color: rgba(var(--ide-accent-rgb),.45); box-shadow: 0 0 0 3px rgba(var(--ide-accent-rgb),.08); }
+  .ec-input-prefix { font-family: var(--ide-mono); font-size: 13px; color: var(--ide-t3); flex-shrink: 0; user-select: none; line-height: 22px; padding-top: 1px; }
   .ec-textarea-row { display: flex; align-items: flex-end; gap: 8px; }
-  .ec-textarea { flex: 1; border: none; background: none; outline: none; font-family: var(--ide-mono); font-size: 13px; color: var(--ide-t1); resize: none; min-height: 22px; max-height: 160px; line-height: 1.55; overflow-y: auto; scrollbar-width: thin; caret-color: var(--ide-accent2); }
+  .ec-textarea { flex: 1; border: none; background: none; outline: none; font-family: var(--ide-ui); font-size: 13.5px; color: var(--ide-t1); resize: none; min-height: 22px; max-height: 160px; line-height: 1.55; overflow-y: auto; scrollbar-width: thin; caret-color: var(--ide-accent2); }
   .ec-textarea::placeholder { color: var(--ide-t3); }
-  .ec-send { width: 32px; height: 32px; border-radius: 7px; background: var(--ide-accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; transition: opacity .13s, background .13s; }
+  .ec-send { width: 30px; height: 30px; border-radius: 7px; background: var(--ide-accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; transition: opacity .13s, background .13s; }
   .ec-send:hover:not(:disabled) { background: var(--ide-accent2); }
   .ec-send:disabled { opacity: .25; cursor: default; }
   .ec-send svg { width: 14px; height: 14px; }
-  .ec-hint { text-align: center; font-size: 10.5px; font-family: var(--ide-mono); color: var(--ide-t3); margin-top: 6px; max-width: 800px; margin-left: auto; margin-right: auto; opacity: .7; }
+  .ec-hint { text-align: center; font-size: 11px; color: var(--ide-t3); margin-top: 8px; max-width: 760px; margin-left: auto; margin-right: auto; opacity: .8; }
 
-  .ec-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 500; animation: ecFadeIn .15s ease; }
+  .ec-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 500; animation: ecFadeIn .15s ease; }
   @keyframes ecFadeIn { from { opacity: 0; } to { opacity: 1; } }
-  .ec-modal { background: var(--ide-panel); border: 1px solid var(--ide-border); border-radius: 10px; padding: 24px; width: 380px; max-width: 90vw; box-shadow: 0 16px 56px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 18px; animation: ecSlideUp .18s ease; }
+  .ec-modal { background: var(--ide-panel); border: 1px solid var(--ide-border); border-radius: 12px; padding: 24px; width: 380px; max-width: 90vw; box-shadow: 0 16px 56px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 18px; animation: ecSlideUp .18s ease; }
   @keyframes ecSlideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .ec-modal-title { font-size: 15px; font-weight: 600; color: var(--ide-t1); display: flex; align-items: center; gap: 8px; font-family: var(--ide-mono); }
-  .ec-modal-title-icon { width: 28px; height: 28px; background: rgba(193,127,42,.12); border: 1px solid rgba(193,127,42,.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .ec-modal-title { font-size: 15px; font-weight: 600; color: var(--ide-t1); display: flex; align-items: center; gap: 9px; }
+  .ec-modal-title-icon { width: 28px; height: 28px; background: rgba(var(--ide-accent-rgb),.14); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
   .ec-modal-field { display: flex; flex-direction: column; gap: 6px; }
-  .ec-modal-label { font-size: 10px; color: var(--ide-t3); font-family: var(--ide-mono); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-  .ec-modal-input { padding: 9px 12px; font-size: 13px; font-family: var(--ide-mono); color: var(--ide-t1); background: var(--ide-bg); border: 1px solid var(--ide-border); border-radius: 6px; outline: none; transition: border-color .15s; }
+  .ec-modal-label { font-size: 10.5px; color: var(--ide-t3); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .ec-modal-input { padding: 9px 12px; font-size: 13px; color: var(--ide-t1); background: var(--ide-bg); border: 1px solid var(--ide-border); border-radius: 7px; outline: none; transition: border-color .15s; }
   .ec-modal-input::placeholder { color: var(--ide-t3); }
-  .ec-modal-input:focus { border-color: rgba(193,127,42,.4); }
+  .ec-modal-input:focus { border-color: rgba(var(--ide-accent-rgb),.45); }
   .ec-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
-  .ec-modal-cancel { padding: 7px 14px; background: none; border: 1px solid var(--ide-border); border-radius: 6px; font-size: 12px; font-family: var(--ide-mono); color: var(--ide-t2); cursor: pointer; transition: background .12s; }
-  .ec-modal-cancel:hover { background: rgba(255,255,255,.05); }
-  .ec-modal-create { padding: 7px 18px; background: var(--ide-accent); border: none; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: var(--ide-mono); color: #fff; cursor: pointer; transition: opacity .12s; letter-spacing: .02em; }
+  .ec-modal-cancel { padding: 7px 14px; background: none; border: 1px solid var(--ide-border); border-radius: 7px; font-size: 12.5px; color: var(--ide-t2); cursor: pointer; transition: background .12s; }
+  .ec-modal-cancel:hover { background: var(--ide-panel-hi); }
+  .ec-modal-create { padding: 7px 18px; background: var(--ide-accent); border: none; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; transition: opacity .12s; }
   .ec-modal-create:hover:not(:disabled) { opacity: .88; }
   .ec-modal-create:disabled { opacity: .3; cursor: default; }
 
@@ -363,11 +357,11 @@ const EC_STYLE = `
     .ec-statusbar { display: none; }
     .ec-msg-wrap { padding: 4px 12px; }
     .ec-input-toolbar { flex-wrap: wrap; gap: 4px; }
-    .ec-toolbar-btn { font-size: 10px; padding: 3px 6px; }
+    .ec-toolbar-btn { font-size: 10.5px; padding: 4px 7px; }
     .ec-chips { gap: 6px; }
-    .ec-chip { font-size: 11.5px; padding: 6px 12px; }
+    .ec-chip { font-size: 12px; padding: 7px 12px; }
     .ec-attach-strip { padding: 6px 10px 0; }
-    .ec-tab { padding: 0 10px; font-size: 11px; }
+    .ec-tab { padding: 0 10px; font-size: 12px; }
     .ec-tab-proj { display: none; }
     .ec-textarea { font-size: 16px; }
     .ec-send { width: 36px; height: 36px; }
@@ -384,65 +378,59 @@ const EC_STYLE = `
   .ec-limit-box {
     background: var(--ide-panel);
     border: 1px solid var(--ide-border);
-    border-radius: 16px;
+    border-radius: 14px;
     width: 340px; margin: 0 16px;
     overflow: hidden;
     box-shadow: 0 32px 80px rgba(0,0,0,.5);
     animation: ecSlideUp .2s ease;
   }
   .ec-limit-top {
-    background: linear-gradient(135deg, rgba(193,127,42,.18), rgba(193,127,42,.06));
     border-bottom: 1px solid var(--ide-border);
-    padding: 24px 20px 20px;
+    padding: 26px 20px 20px;
     text-align: center;
     position: relative;
   }
   .ec-limit-close {
     position: absolute; top: 10px; right: 10px;
     width: 26px; height: 26px; border-radius: 50%;
-    background: rgba(255,255,255,.06); border: none;
+    background: var(--ide-panel-hi); border: none;
     color: var(--ide-t3); cursor: pointer; font-size: 13px;
     display: flex; align-items: center; justify-content: center;
     transition: background .12s, color .12s;
   }
   .ec-limit-close:hover { background: rgba(255,255,255,.12); color: var(--ide-t1); }
   .ec-limit-icon {
-    width: 48px; height: 48px; border-radius: 14px;
-    background: rgba(193,127,42,.14);
-    border: 1px solid rgba(193,127,42,.25);
+    width: 44px; height: 44px; border-radius: 12px;
+    background: rgba(var(--ide-accent-rgb),.14);
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; margin: 0 auto 12px;
+    font-size: 20px; margin: 0 auto 14px;
   }
   .ec-limit-title {
-    font-size: 15px; font-weight: 700;
+    font-size: 15px; font-weight: 600;
     color: var(--ide-t1); margin-bottom: 5px;
-    font-family: var(--ide-mono); letter-spacing: .02em;
   }
   .ec-limit-sub {
-    font-size: 11px; color: var(--ide-t3);
-    font-family: var(--ide-mono); letter-spacing: .03em;
+    font-size: 11.5px; color: var(--ide-t3);
   }
   .ec-limit-body { padding: 18px 20px 20px; }
   .ec-limit-desc {
     font-size: 13px; color: var(--ide-t2);
     line-height: 1.65; margin-bottom: 16px;
-    text-align: center; font-family: var(--font);
+    text-align: center;
   }
   .ec-limit-actions { display: flex; gap: 8px; }
   .ec-limit-cancel {
     flex: 1; padding: 10px;
     background: none; border: 1px solid var(--ide-border);
-    border-radius: 8px; font-size: 12px;
-    font-family: var(--ide-mono); color: var(--ide-t2);
+    border-radius: 8px; font-size: 12.5px; color: var(--ide-t2);
     cursor: pointer; transition: background .12s; font-weight: 500;
   }
-  .ec-limit-cancel:hover { background: rgba(255,255,255,.05); }
+  .ec-limit-cancel:hover { background: var(--ide-panel-hi); }
   .ec-limit-upgrade {
     flex: 2; padding: 10px;
     background: var(--ide-accent); border: none;
-    border-radius: 8px; font-size: 12px; font-weight: 700;
-    font-family: var(--ide-mono); color: #fff;
-    cursor: pointer; transition: opacity .12s; letter-spacing: .03em;
+    border-radius: 8px; font-size: 12.5px; font-weight: 600;
+    color: #fff; cursor: pointer; transition: opacity .12s;
   }
   .ec-limit-upgrade:hover { opacity: .88; }
 `;
@@ -479,10 +467,10 @@ async function deleteFileMessages(uid, projectId, fileId) {
 
 function getChips(projectName, fileName) {
   return [
-    { label: `> plan ${fileName}`,  q: `Help me plan what to build in "${fileName}" for the ${projectName} project.` },
-    { label: `> write starter`,     q: `Write clean starter code for "${fileName}" in the ${projectName} project.` },
-    { label: `> best practices`,    q: `What are the best practices I should follow for "${fileName}"?` },
-    { label: `> review my code`,    q: "I'll paste my code — please review it and suggest improvements." },
+    { label: `Plan ${fileName}`,        q: `Help me plan what to build in "${fileName}" for the ${projectName} project.` },
+    { label: `Write starter code`,      q: `Write clean starter code for "${fileName}" in the ${projectName} project.` },
+    { label: `Best practices`,          q: `What are the best practices I should follow for "${fileName}"?` },
+    { label: `Review my code`,          q: "I'll paste my code — please review it and suggest improvements." },
   ];
 }
 
@@ -497,7 +485,7 @@ function AttachmentBubble({ attachment }) {
 
   return (
     <div className="ec-attach-bubble-solo">
-      <div className="ec-attach-header" style={{ borderRadius: 0, background: "rgba(193,127,42,.13)", border: "none", borderBottom: "1px solid rgba(193,127,42,.18)" }}>
+      <div className="ec-attach-header" style={{ borderRadius: 0, borderBottom: "1px solid rgba(var(--ide-accent-rgb),.16)" }}>
         <div className="ec-attach-header-icon">
           {isFolder ? "📁" : getFileIcon(attachment.files[0]?.name || "")}
         </div>
@@ -511,8 +499,8 @@ function AttachmentBubble({ attachment }) {
           </div>
         </div>
         {isFolder && (
-          <div style={{ fontFamily: "var(--ide-mono)", fontSize: 9, color: "var(--ide-t3)", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 4, padding: "2px 6px", flexShrink: 0 }}>
-            FOLDER
+          <div style={{ fontSize: 9.5, color: "var(--ide-t3)", background: "rgba(255,255,255,.05)", borderRadius: 4, padding: "2px 6px", flexShrink: 0 }}>
+            Folder
           </div>
         )}
       </div>
@@ -931,7 +919,7 @@ export default function EloriaCode() {
 
   if (!authReady) return null;
   if (!uid) return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100dvh", fontFamily:"monospace", fontSize:13, color:"#5a5a52", background:"#16181d" }}>
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100dvh", fontFamily:"var(--font, sans-serif)", fontSize:13, color:"#5c5c63", background:"#19191b" }}>
       Please log in to use Eloria Code.
     </div>
   );
@@ -945,7 +933,7 @@ export default function EloriaCode() {
     const parts = [];
     if (folderCount >= 1) parts.push("1 folder max");
     if (fileCount >= 2) parts.push("2 files max");
-    return parts.length ? `// limit reached: ${parts.join(", ")} per message` : null;
+    return parts.length ? `Limit reached — ${parts.join(", ")} per message` : null;
   })();
 
   const isMobile = window.innerWidth <= 768;
@@ -955,34 +943,32 @@ export default function EloriaCode() {
       <div style={{
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        height: "100dvh", background: "#16181d",
+        height: "100dvh", background: "#19191b",
         padding: "32px 24px", textAlign: "center", gap: 20,
-        fontFamily: "var(--font)",
+        fontFamily: "var(--font, sans-serif)",
       }}>
         <div style={{
-          width: 64, height: 64, borderRadius: 18,
-          background: "rgba(193,127,42,.12)",
-          border: "1.5px solid rgba(193,127,42,.25)",
+          width: 60, height: 60, borderRadius: 16,
+          background: "rgba(77,142,255,.12)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 28,
+          fontSize: 26,
         }}>
           💻
         </div>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#e8e8e2", marginBottom: 10, letterSpacing: "-.01em" }}>
-            Desktop Only
+          <div style={{ fontSize: 19, fontWeight: 600, color: "#e7e7ea", marginBottom: 10, letterSpacing: "-.01em" }}>
+            Desktop only
           </div>
-          <div style={{ fontSize: 14, color: "#a0a096", lineHeight: 1.65, maxWidth: 280 }}>
+          <div style={{ fontSize: 14, color: "#94949c", lineHeight: 1.65, maxWidth: 280 }}>
             Eloria Code is designed for desktop use. Please open it on a laptop or desktop for the best experience.
           </div>
         </div>
         <div style={{
-          marginTop: 8, padding: "10px 20px",
-          background: "rgba(193,127,42,.1)",
-          border: "1px solid rgba(193,127,42,.25)",
+          marginTop: 8, padding: "10px 18px",
+          background: "rgba(255,255,255,.04)",
           borderRadius: 10, fontSize: 12,
-          fontFamily: "'SF Mono', 'Fira Code', monospace",
-          color: "#c17f2a", letterSpacing: ".03em",
+          fontFamily: "'SF Mono', monospace",
+          color: "#7eaeff",
         }}>
           {"// use a desktop browser"}
         </div>
@@ -1024,16 +1010,14 @@ export default function EloriaCode() {
         <div className="ec-sidebar-header">
           <div className="ec-sidebar-logo"><img src={logo} alt="Eloria" /></div>
           <span className="ec-sidebar-title">Eloria Code</span>
-          <span className="ec-sidebar-badge">v2</span>
         </div>
 
         <div className="ec-explorer-label">Explorer</div>
 
         <div className="ec-sidebar-scroll">
           {projects.length === 0 && (
-            <div style={{ padding: "20px 14px", textAlign: "center", fontSize: 11, fontFamily: "var(--ide-mono)", color: "var(--ide-t3)", lineHeight: 1.8 }}>
-              {"// no projects yet"}<br/>
-              {"// create one below"}
+            <div style={{ padding: "16px 16px", fontSize: 12, color: "var(--ide-t3)", lineHeight: 1.7 }}>
+              No projects yet — create one below to get started.
             </div>
           )}
           {projects.map(proj => (
@@ -1105,7 +1089,7 @@ export default function EloriaCode() {
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                       </svg>
-                      new file
+                      New file
                     </button>
                   )}
                 </div>
@@ -1119,7 +1103,7 @@ export default function EloriaCode() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            new project
+            New project
           </button>
         </div>
       </aside>
@@ -1134,31 +1118,29 @@ export default function EloriaCode() {
                 className={`ec-tab${activeRef?.projectId === proj.id && activeRef?.fileId === file.id ? " active" : ""}`}
                 onClick={() => switchFile(proj.id, file.id)}
               >
-                <span className="ec-tab-dot" />
                 <span className="ec-tab-proj">{proj.name}/</span>
                 {file.name}
               </div>
             ))
           )}
           {projects.length === 0 && (
-            <div style={{ padding: "0 16px", fontSize: 11, fontFamily: "var(--ide-mono)", color: "var(--ide-t3)", display: "flex", alignItems: "center" }}>
-              no open files
+            <div style={{ padding: "0 16px", fontSize: 12, color: "var(--ide-t3)", display: "flex", alignItems: "center" }}>
+              No open files
             </div>
           )}
         </div>
 
         <div className="ec-body" ref={bodyRef}>
           {!activeProject && (
-            <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
-              <div style={{ fontSize:11, fontFamily:"var(--ide-mono)", color:"var(--ide-t3)", lineHeight:1.8, textAlign:"center" }}>
-                {"// no project selected"}<br/>
-                {"// create one to get started"}
+            <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:14 }}>
+              <div style={{ fontSize:13, color:"var(--ide-t3)", textAlign:"center" }}>
+                No project selected — create one to get started.
               </div>
-              <button className="ec-new-proj-btn" style={{ width:"auto", padding:"7px 18px" }} onClick={() => setShowProjModal(true)}>
+              <button className="ec-new-proj-btn" style={{ width:"auto", padding:"8px 18px" }} onClick={() => setShowProjModal(true)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{width:12,height:12}}>
                   <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                new project
+                New project
               </button>
             </div>
           )}
@@ -1166,9 +1148,9 @@ export default function EloriaCode() {
           {activeFile && messages.length === 0 && !isThinking && (
             <div className="ec-file-intro">
               <div className="ec-file-intro-badge">
-                <span>~/</span>{activeProject.name}/<span style={{ color: "var(--ide-accent2)" }}>{activeFile.name}</span>
+                {activeProject.name}/<span>{activeFile.name}</span>
               </div>
-              <p className="ec-file-intro-path">created {activeProject.createdAt} · no messages yet</p>
+              <p className="ec-file-intro-path">Created {activeProject.createdAt} · no messages yet</p>
               <div className="ec-chips">
                 {getChips(activeProject.name, activeFile.name).map(c => (
                   <button key={c.q} className="ec-chip" onClick={() => setInput(c.q)}>{c.label}</button>
@@ -1189,7 +1171,7 @@ export default function EloriaCode() {
                         <AttachmentBubble key={att.id} attachment={{ ...att, userText: msg.attachments.length === 1 ? msg.text : undefined }} />
                       ))}
                       {msg.attachments.length > 1 && msg.text && (
-                        <div className="ec-bubble" style={{ background: "rgba(193,127,42,.18)", border: "1px solid rgba(193,127,42,.25)", borderBottomRightRadius: 3 }}>
+                        <div className="ec-bubble" style={{ background: "rgba(77,142,255,.16)", border: "1px solid rgba(77,142,255,.22)", borderBottomRightRadius: 3 }}>
                           {msg.text}
                         </div>
                       )}
@@ -1222,7 +1204,7 @@ export default function EloriaCode() {
                 <div key={att.id} className="ec-attach-chip">
                   <span className="ec-attach-chip-icon">{att.type === "folder" ? "📁" : getFileIcon(att.files[0]?.name || "")}</span>
                   <span className="ec-attach-chip-name">{att.name}</span>
-                  <span style={{ fontSize: 9, color: "var(--ide-t3)", fontFamily: "var(--ide-mono)", flexShrink: 0 }}>
+                  <span style={{ fontSize: 9.5, color: "var(--ide-t3)", flexShrink: 0 }}>
                     {att.type === "folder" ? `${att.files.length}f` : formatBytes(att.files[0]?.size || 0)}
                   </span>
                   <button className="ec-attach-chip-remove" onClick={() => removeAttachment(att.id)}>✕</button>
@@ -1245,8 +1227,8 @@ export default function EloriaCode() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
                 </svg>
-                attach file
-                {fileCount > 0 && <span style={{ background: "rgba(193,127,42,.25)", color: "var(--ide-accent2)", borderRadius: 4, padding: "0 5px", fontSize: 9 }}>{fileCount}/2</span>}
+                Attach file
+                {fileCount > 0 && <span style={{ background: "rgba(77,142,255,.18)", color: "var(--ide-accent2)", borderRadius: 4, padding: "0 5px", fontSize: 9.5 }}>{fileCount}/2</span>}
               </button>
 
               <div className="ec-toolbar-sep" />
@@ -1259,12 +1241,12 @@ export default function EloriaCode() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
                 </svg>
-                attach folder
-                {folderCount > 0 && <span style={{ background: "rgba(193,127,42,.25)", color: "var(--ide-accent2)", borderRadius: 4, padding: "0 5px", fontSize: 9 }}>1/1</span>}
+                Attach folder
+                {folderCount > 0 && <span style={{ background: "rgba(77,142,255,.18)", color: "var(--ide-accent2)", borderRadius: 4, padding: "0 5px", fontSize: 9.5 }}>1/1</span>}
               </button>
 
               <div style={{ flex: 1 }} />
-              <span style={{ fontFamily: "var(--ide-mono)", fontSize: 9.5, color: "var(--ide-t3)", opacity: .7 }}>
+              <span style={{ fontSize: 10.5, color: "var(--ide-t3)", opacity: .8 }}>
                 js · ts · html · css · py · +more
               </span>
             </div>
@@ -1278,10 +1260,10 @@ export default function EloriaCode() {
                 value={input}
                 placeholder={
                   pendingAttachments.length > 0
-                    ? "describe what to do with the attached files…"
+                    ? "Describe what to do with the attached files…"
                     : activeFile
-                      ? `ask about ${activeFile.name}…`
-                      : "select a file to start…"
+                      ? `Ask about ${activeFile.name}…`
+                      : "Select a file to start…"
                 }
                 disabled={!activeFile}
                 onChange={e => setInput(e.target.value)}
@@ -1292,7 +1274,7 @@ export default function EloriaCode() {
                 onClick={isThinking ? stopMessage : sendMessage}
                 disabled={(!isThinking && (!input.trim() && pendingAttachments.length === 0)) || !activeFile}
                 title={isThinking ? "Stop" : "Send"}
-                style={isThinking ? { background: "#e05252" } : {}}
+                style={isThinking ? { background: "var(--ide-danger)" } : {}}
               >
                 {isThinking ? (
                   <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
@@ -1307,7 +1289,7 @@ export default function EloriaCode() {
               </button>
             </div>
           </div>
-          <p className="ec-hint">{"// verify all generated code before production use · max 1 folder or 2 files per message"}</p>
+          <p className="ec-hint">{"Verify all generated code before production use · max 1 folder or 2 files per message"}</p>
         </div>
 
         <div className="ec-statusbar">
@@ -1332,14 +1314,14 @@ export default function EloriaCode() {
               <div className="ec-limit-icon">⏰</div>
               <div className="ec-limit-title">
                 {userPlan === "pro" || userPlan === "admin"
-                  ? "// daily limit reached"
-                  : "// upgrade required"
+                  ? "Daily limit reached"
+                  : "Upgrade required"
                 }
               </div>
               <div className="ec-limit-sub">
                 {userPlan === "pro" || userPlan === "admin"
-                  ? "resets at midnight · pro plan"
-                  : "eloria code · pro only"
+                  ? "Resets at midnight · Pro plan"
+                  : "Eloria Code · Pro only"
                 }
               </div>
             </div>
@@ -1352,14 +1334,14 @@ export default function EloriaCode() {
               </div>
               <div className="ec-limit-actions">
                 <button className="ec-limit-cancel" onClick={() => setShowLimitModal(false)}>
-                  {userPlan === "pro" || userPlan === "admin" ? "got it" : "later"}
+                  {userPlan === "pro" || userPlan === "admin" ? "Got it" : "Later"}
                 </button>
                 {userPlan !== "pro" && userPlan !== "admin" && (
                   <button className="ec-limit-upgrade" onClick={() => {
                     setShowLimitModal(false);
                     window.close();
                   }}>
-                    upgrade → pro
+                    Upgrade to Pro
                   </button>
                 )}
               </div>
@@ -1373,19 +1355,19 @@ export default function EloriaCode() {
           <div className="ec-modal" onClick={e => e.stopPropagation()}>
             <div className="ec-modal-title">
               <div className="ec-modal-title-icon">📁</div>
-              new_project
+              New project
             </div>
             <div className="ec-modal-field">
-              <label className="ec-modal-label">project_name</label>
+              <label className="ec-modal-label">Project name</label>
               <input className="ec-modal-input" placeholder="e.g. MyApp, Portfolio, API server" value={newProjName} autoFocus onChange={e => setNewProjName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") createProject(); }} />
             </div>
             <div className="ec-modal-field">
-              <label className="ec-modal-label">{"description // optional"}</label>
+              <label className="ec-modal-label">Description (optional)</label>
               <input className="ec-modal-input" placeholder="What are you building?" value={newProjDesc} onChange={e => setNewProjDesc(e.target.value)} onKeyDown={e => { if (e.key === "Enter") createProject(); }} />
             </div>
             <div className="ec-modal-actions">
-              <button className="ec-modal-cancel" onClick={() => setShowProjModal(false)}>cancel</button>
-              <button className="ec-modal-create" onClick={createProject} disabled={!newProjName.trim()}>create</button>
+              <button className="ec-modal-cancel" onClick={() => setShowProjModal(false)}>Cancel</button>
+              <button className="ec-modal-create" onClick={createProject} disabled={!newProjName.trim()}>Create</button>
             </div>
           </div>
         </div>
