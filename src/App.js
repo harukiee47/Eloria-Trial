@@ -16,7 +16,7 @@ import GroupChat from "./components/GroupChat";
 import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
 import { subscribeToMyProfile, setOnlineStatus } from "./services/userService";
 import { subscribeToNotifications } from "./services/notificationService";
-import NotificationsPanel, { FloatingBadge } from "./components/NotificationsPanel";
+import NotificationsPanel from "./components/NotificationsPanel";
 import ProfileSetupModal from "./components/ProfileSetupModal";
 
 if (window.location.pathname === "/code") {
@@ -410,7 +410,7 @@ export default function App() {
         />
       )}
 
-      
+
       {/* ── Group creation limit modal ── */}
       {groupLimitModal && (
         <div className="app-limit-backdrop" onClick={() => setGroupLimitModal(null)}>
