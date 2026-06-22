@@ -111,7 +111,7 @@ function buildActivitySteps({ hasUrls, hasFiles }) {
 
 // Live activity bar shown while thinking (animating dots)
 function ActivityBar({ step, steps }) {
-  const s = (steps || [])[step] || { icon: "🧠", text: "Thinking…" };
+  const s = (steps || [])[step] || { icon: "", text: "Thinking…" };
   return (
     <div className="cw-activity-bar">
       <span className="cw-activity-icon">{s.icon}</span>
@@ -125,12 +125,15 @@ function ActivityBar({ step, steps }) {
 function ActivityTrail({ steps }) {
   if (!steps || steps.length === 0) return null;
   return (
-    <div className="cw-activity-trail">
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 8 }}>
       {steps.map((s, i) => (
-        <div key={i} className="cw-trail-pill">
-          <span className="cw-trail-icon">{s.icon}</span>
-          <span className="cw-trail-text">{s.text.replace("…", "")}</span>
-          <span className="cw-trail-check">✓</span>
+        <div key={i} style={{
+          display: "flex", alignItems: "center", gap: 6,
+          fontSize: 12, color: "var(--t3)", fontFamily: "var(--font)",
+        }}>
+          <span>{s.icon}</span>
+          <span>{s.text.replace("…", "")}</span>
+          <span style={{ color: "#22863a", fontSize: 11 }}>✓</span>
         </div>
       ))}
     </div>
@@ -1821,19 +1824,19 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
           {msg.files?.map(f => (
             <AttachBubble key={f.id} file={f} sender={msg.sender} onImageClick={setLightboxSrc} />
           ))}
-          {msg.text && (
-            <div className="cw-bubble">
-              {msg.sender === "ai"
-                ? <MarkdownMessage content={msg.text} />
-                : msg.text
-              }
-            </div>
-          )}
+          {/* Permanent activity trail ABOVE the AI reply, Claude-style plain text */}
+{!isUser && msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
+  <ActivityTrail steps={msg.activityTrail} />
+)}
 
-          {/* Permanent activity trail on completed AI messages */}
-          {!isUser && msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
-            <ActivityTrail steps={msg.activityTrail} />
-          )}
+{msg.text && (
+  <div className="cw-bubble">
+    {msg.sender === "ai"
+      ? <MarkdownMessage content={msg.text} />
+      : msg.text
+    }
+  </div>
+)}
 
           {/* Download button on AI messages with code */}
           {!isUser && msg.text && (

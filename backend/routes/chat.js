@@ -208,7 +208,7 @@ router.post("/", verifyUser, checkMessageLimit, async (req, res) => {
 
     const stream = anthropic.messages.stream({
       model: MODELS.CHAT,
-      max_tokens: 2048,
+      max_tokens: 5048,
       system: ELORIA_SYSTEM_PROMPT,
       messages: anthropicMessages,
       tools: [
