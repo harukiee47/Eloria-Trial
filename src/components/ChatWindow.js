@@ -1339,7 +1339,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [isThinking,     setIsThinking]     = useState(false);
   const [isStreaming,    setIsStreaming]     = useState(false);
   const [activityStep,   setActivityStep]   = useState(0);      // ← new: 0-3
-  const [urlStatuses,    setUrlStatuses]    = useState({});     // ← new: { url: "loading"|"done"|"error" }
   const [showAttach,     setShowAttach]     = useState(false);
   const [pendingFiles,   setPendingFiles]   = useState([]);
   const [lightboxSrc,    setLightboxSrc]    = useState(null);
@@ -1515,7 +1514,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   // ── Fetch URL content via backend proxy ──────────────────────────────────────
   const fetchUrlContent = async (url, token) => {
     try {
-      setUrlStatuses(prev => ({ ...prev, [url]: "loading" }));
       const res = await fetch("https://eloria-trial.onrender.com/api/fetch-url", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1523,11 +1521,9 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       });
       if (!res.ok) throw new Error("fetch failed");
       const data = await res.json();
-      setUrlStatuses(prev => ({ ...prev, [url]: "done" }));
-      return data.content || "";
+      return { content: data.content || "", status: "done" };
     } catch {
-      setUrlStatuses(prev => ({ ...prev, [url]: "error" }));
-      return "";
+      return { content: "", status: "error" };
     }
   };
 
@@ -1542,27 +1538,22 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
 
     const token = await auth.currentUser.getIdToken();
     setIsThinking(true);
-    setUrlStatuses({});
 
     // ── Detect and fetch URLs in user's message ────────────────────────────────
     const urls = extractUrls(input.trim());
     let enrichedText = input.trim();
 
-    if (urls.length > 0) {
-      const urlContents = await Promise.all(
-        urls.map(async (url) => {
-          const content = await fetchUrlContent(url, token);
-          return content ? `\n\n[Content from ${url}]:\n${content.slice(0, 4000)}` : "";
-        })
-      );
-      enrichedText = input.trim() + urlContents.join("");
-    }
+    // Build initial userMsg with "loading" statuses so chips appear immediately
+    const initialUrlStatuses = urls.length > 0
+      ? Object.fromEntries(urls.map(u => [u, "loading"]))
+      : undefined;
 
+    const userMsgId = Date.now();
     const userMsg = {
-      id: Date.now(),
+      id: userMsgId,
       sender: "user",
-      text: input.trim(),       // show original text (without injected content) in UI
-      urlStatuses: urls.length > 0 ? Object.fromEntries(urls.map(u => [u, "done"])) : undefined,
+      text: input.trim(),
+      urlStatuses: initialUrlStatuses,
       files: pendingFiles.length > 0 ? [...pendingFiles] : [],
       time: getTimestamp(),
     };
@@ -1583,6 +1574,21 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
         };
       })
     );
+
+    if (urls.length > 0) {
+      const results = await Promise.all(urls.map(url => fetchUrlContent(url, token)));
+      // Update statuses on the message now that fetches are done
+      const finalStatuses = Object.fromEntries(urls.map((u, i) => [u, results[i].status]));
+      setChats(prev => prev.map(c =>
+        c.id === chat.id
+          ? { ...c, messages: c.messages.map(m => m.id === userMsgId ? { ...m, urlStatuses: finalStatuses } : m) }
+          : c
+      ));
+      const urlContents = results.map((r, i) =>
+        r.content ? `\n\n[Content from ${urls[i]}]:\n${r.content.slice(0, 4000)}` : ""
+      );
+      enrichedText = input.trim() + urlContents.join("");
+    }
 
     // Use enriched text (with URL content) when calling the API
     const apiMessages = newMessages.map((m, idx) => ({
