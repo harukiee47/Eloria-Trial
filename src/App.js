@@ -17,8 +17,6 @@ import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/g
 import { subscribeToMyProfile, setOnlineStatus } from "./services/userService";
 import { subscribeToNotifications } from "./services/notificationService";
 import NotificationsPanel, { FloatingBadge } from "./components/NotificationsPanel";
-import { subscribeToFriendsData } from "./services/friendService";
-import DMWindow from "./components/DMWindow";
 import ProfileSetupModal from "./components/ProfileSetupModal";
 
 if (window.location.pathname === "/code") {
@@ -75,51 +73,43 @@ export default function App() {
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
   const [mode, setMode]                 = useState("chat");
   const [showNotifPanel, setShowNotifPanel] = useState(false);
-const [myProfile, setMyProfile]           = useState(null);
-const [notifications, setNotifications]   = useState([]);
-const totalBadgeCount = pendingInviteCount + notifications.length;
-const [groupInvites, setGroupInvites] = useState([]);
-const [friendsData, setFriendsData] = useState({ friends: [], received: [], sent: [] });
-const [activeDM, setActiveDM] = useState(null);
+  const [myProfile, setMyProfile]           = useState(null);
+  const [notifications, setNotifications]   = useState([]);
+  const totalBadgeCount = pendingInviteCount + notifications.length;
+  const [groupInvites, setGroupInvites] = useState([]);
 
   // ── Group creation limit modal ───────────────────────────────
   const [groupLimitModal, setGroupLimitModal] = useState(null); // { message }
 
   useEffect(() => {
-  if (!user?.uid) return;
-  const unsub = subscribeToMyProfile(user.uid, setMyProfile);
-  return () => unsub();
-}, [user]);
+    if (!user?.uid) return;
+    const unsub = subscribeToMyProfile(user.uid, setMyProfile);
+    return () => unsub();
+  }, [user]);
 
-useEffect(() => {
-  if (!user?.uid) return;
-  const unsub = subscribeToFriendsData(user.uid, setFriendsData);
-  return () => unsub();
-}, [user]);
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = subscribeToNotifications(user.uid, setNotifications);
+    return () => unsub();
+  }, [user]);
 
-useEffect(() => {
-  if (!user?.uid) return;
-const unsub = subscribeToNotifications(user.uid, setNotifications);
-  return () => unsub();
-}, [user]);
+  useEffect(() => {
+    if (!user?.uid) return;
+    setOnlineStatus(user.uid, true).catch(console.error);
 
-useEffect(() => {
-  if (!user?.uid) return;
-  setOnlineStatus(user.uid, true).catch(console.error);
+    // Heartbeat: refreshes lastSeen every 30s while the tab is open
+    const heartbeat = setInterval(() => {
+      setOnlineStatus(user.uid, true).catch(() => {});
+    }, 30000);
 
-  // Heartbeat: refreshes lastSeen every 30s while the tab is open
-  const heartbeat = setInterval(() => {
-    setOnlineStatus(user.uid, true).catch(() => {});
-  }, 30000);
-
-  const handleUnload = () => setOnlineStatus(user.uid, false).catch(() => {});
-  window.addEventListener("beforeunload", handleUnload);
-  return () => {
-    clearInterval(heartbeat);
-    window.removeEventListener("beforeunload", handleUnload);
-    setOnlineStatus(user.uid, false).catch(() => {});
-  };
-}, [user]);
+    const handleUnload = () => setOnlineStatus(user.uid, false).catch(() => {});
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      clearInterval(heartbeat);
+      window.removeEventListener("beforeunload", handleUnload);
+      setOnlineStatus(user.uid, false).catch(() => {});
+    };
+  }, [user]);
 
   // Inject limit modal CSS once
   useEffect(() => {
@@ -157,19 +147,26 @@ useEffect(() => {
     if (!activeChatId && chats.length > 0) setActiveChatId(chats[0].id);
   }, [chats, activeChatId]);
 
+  // ── CHAT HISTORY LOAD ─────────────────────────────────────────
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
     const fetchChats = async () => {
-      if (!user?.uid) return;
-      const data = await loadChats(user.uid);
-      if (Array.isArray(data) && data.length > 0) {
-        setChats(data);
-        setActiveChatId(data[0].id);
-      } else {
+      try {
+        const data = await loadChats(user.uid);
+        if (Array.isArray(data) && data.length > 0) {
+          setChats(data);
+          setActiveChatId(data[0].id);
+        } else {
+          const firstChat = { id: Date.now(), title: "New Chat", messages: [] };
+          setChats([firstChat]);
+          setActiveChatId(firstChat.id);
+          await saveChats(user.uid, [firstChat]);
+        }
+      } catch (err) {
+        console.error("Failed to load chats:", err);
         const firstChat = { id: Date.now(), title: "New Chat", messages: [] };
         setChats([firstChat]);
         setActiveChatId(firstChat.id);
-        await saveChats(user.uid, [firstChat]);
       }
     };
     fetchChats();
@@ -200,11 +197,10 @@ useEffect(() => {
 
   useEffect(() => {
     if (!user?.email) return;
-
-const unsub = subscribeToInvites(user.email, (invites) => {
-  setPendingInviteCount(invites.length);
-  setGroupInvites(invites);  // ← add this
-});
+    const unsub = subscribeToInvites(user.email, (invites) => {
+      setPendingInviteCount(invites.length);
+      setGroupInvites(invites);
+    });
     return () => unsub();
   }, [user]);
 
@@ -275,10 +271,15 @@ const unsub = subscribeToInvites(user.email, (invites) => {
     return unsubscribe;
   }, []);
 
+  // ── CHAT HISTORY SAVE (debounced) ─────────────────────────────
   useEffect(() => {
-    if (!user) return;
-    if (chats === null || chats === undefined) return;
-    const timeout = setTimeout(() => { saveChats(user.uid, chats); }, 600);
+    if (!user?.uid) return;
+    if (!chats || chats.length === 0) return;
+    const timeout = setTimeout(() => {
+      saveChats(user.uid, chats).catch(err =>
+        console.error("Failed to save chats:", err)
+      );
+    }, 600);
     return () => clearTimeout(timeout);
   }, [chats, user]);
 
@@ -358,15 +359,11 @@ const unsub = subscribeToInvites(user.email, (invites) => {
         codeProjects={codeProjects}
         activeProjectId={activeProjectId}
         showNotifPanel={showNotifPanel}
-setShowNotifPanel={setShowNotifPanel}
-totalBadgeCount={totalBadgeCount}
-friendsData={friendsData}
-activeDM={activeDM}
-setActiveDM={setActiveDM}
+        setShowNotifPanel={setShowNotifPanel}
+        totalBadgeCount={totalBadgeCount}
       />
 
       <div className="app-main">
-        {/* FIX: only render GroupChat when activeGroup actually exists */}
         {mode === "group" && activeGroup ? (
           <GroupChat
             group={activeGroup}
@@ -374,14 +371,6 @@ setActiveDM={setActiveDM}
             userPlan={userPlan}
             onBack={() => { setMode("chat"); setActiveGroupId(null); }}
           />
-        ) : mode === "dm" && activeDM ? (
-  <DMWindow
-    user={user}
-    friend={activeDM}
-    friends={friendsData.friends || []}
-    onSelectFriend={(f) => setActiveDM(f)}
-    onBack={() => { setMode("chat"); setActiveDM(null); }}
-  />
         ) : (
           <ChatWindow
             user={user}
@@ -392,7 +381,6 @@ setActiveDM={setActiveDM}
             userPlan={userPlan}
           />
         )}
-
 
         {sharedData && (
           <SharedChatViewer
@@ -407,31 +395,25 @@ setActiveDM={setActiveDM}
         )}
       </div>
 
-   {showNotifPanel && (
-  <NotificationsPanel
-    user={user}
-    myProfile={myProfile}
-    notifications={notifications}
-    groupInvites={groupInvites}
-    friendsData={friendsData}
-    onClose={() => setShowNotifPanel(false)}
-    onGroupAccepted={(groupId) => {
-      setActiveGroupId(groupId);
-      setMode("group");
-      setShowNotifPanel(false);
-    }}
-    onOpenDM={(friend) => {
-      setActiveDM(friend);
-      setMode("dm");
-      setShowNotifPanel(false);
-    }}
-  />
-)}
+      {showNotifPanel && (
+        <NotificationsPanel
+          user={user}
+          myProfile={myProfile}
+          notifications={notifications}
+          groupInvites={groupInvites}
+          onClose={() => setShowNotifPanel(false)}
+          onGroupAccepted={(groupId) => {
+            setActiveGroupId(groupId);
+            setMode("group");
+            setShowNotifPanel(false);
+          }}
+        />
+      )}
 
-<FloatingBadge
-  count={totalBadgeCount}
-  onClick={() => setShowNotifPanel(v => !v)}
-/>
+      <FloatingBadge
+        count={totalBadgeCount}
+        onClick={() => setShowNotifPanel(v => !v)}
+      />
 
       {/* ── Group creation limit modal ── */}
       {groupLimitModal && (
@@ -445,6 +427,5 @@ setActiveDM={setActiveDM}
         </div>
       )}
     </div>
-    
   );
 }

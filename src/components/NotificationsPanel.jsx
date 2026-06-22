@@ -1,8 +1,6 @@
 // src/components/NotificationsPanel.jsx
-import React, { useState } from "react";
-import FriendsPanel from "./FriendsPanel";
+import React from "react";
 import { acceptInvite } from "../services/groupService";
-import { acceptFriendRequest, declineFriendRequest } from "../services/friendService";
 import { markRead, markAllRead } from "../services/notificationService";
 
 const PANEL_STYLE = `
@@ -31,24 +29,7 @@ const PANEL_STYLE = `
     display: flex; align-items: center; justify-content: center;
   }
   .np-close:hover { background: #f0f0ec; }
-  .np-tabs {
-    display: flex; gap: 4px; padding: 0 12px 10px; flex-shrink: 0;
-  }
-  .np-tab {
-    flex: 1; padding: 8px 6px; font-size: 12.5px; font-weight: 600;
-    border: none; border-radius: 9px; cursor: pointer;
-    font-family: var(--font, system-ui, sans-serif);
-    background: transparent; color: var(--t3, #7a8a84);
-    display: flex; align-items: center; justify-content: center; gap: 5px;
-  }
-  .np-tab.active { background: var(--accent-bg, #eaf2ef); color: var(--accent, #276152); }
-  .np-tab-badge {
-    min-width: 16px; height: 16px; border-radius: 8px;
-    background: #e05050; color: #fff; font-size: 9.5px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center; padding: 0 4px;
-  }
   .np-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-
   .np-notif-list { flex: 1; overflow-y: auto; padding: 0 10px 16px; }
   .np-notif-item {
     display: flex; gap: 10px; padding: 10px 8px; border-radius: 10px;
@@ -165,17 +146,11 @@ function timeAgo(ts) {
 }
 
 export default function NotificationsPanel({
-  user, notifications = [], groupInvites = [], friendsData,
-  onClose, onGroupAccepted, onOpenDM,
+  user, notifications = [], groupInvites = [],
+  onClose, onGroupAccepted,
 }) {
-  const [tab, setTab] = useState("notifications"); // notifications | friends
-
-  const unreadCount = notifications.filter(n => !n.read).length + groupInvites.length;
-  const friendReqCount = (friendsData?.received || []).length;
-
-  const handleOpenNotifTab = () => {
-    setTab("notifications");
-    markAllRead(notifications.map(n => n.id));
+  const handleOpenPanel = () => {
+    markAllRead(notifications.map(n => n.id)).catch(() => {});
   };
 
   const handleAcceptInvite = async (invite) => {
@@ -187,38 +162,22 @@ export default function NotificationsPanel({
     }
   };
 
-  const handleAcceptFriendReq = async (fromUid) => {
-    await acceptFriendRequest(user.uid, user.username, fromUid);
-  };
-
-  const handleDeclineFriendReq = async (fromUid) => {
-    await declineFriendRequest(user.uid, fromUid);
-  };
-
   const renderNotifText = (n) => {
     if (n.type === "mention") {
       return <>@<b>{n.fromUsername}</b> mentioned you in <b>{n.groupName}</b></>;
-    }
-    if (n.type === "friend_request") {
-      return <><b>@{n.fromUsername}</b> sent you a friend request</>;
-    }
-    if (n.type === "friend_accepted") {
-      return <><b>@{n.fromUsername}</b> accepted your friend request</>;
     }
     return "New notification";
   };
 
   const renderNotifIcon = (n) => {
     if (n.type === "mention") return "💬";
-    if (n.type === "friend_request") return "👋";
-    if (n.type === "friend_accepted") return "✅";
     return "🔔";
   };
 
   return (
     <>
       <div className="np-backdrop" onClick={onClose} />
-      <div className="np-panel">
+      <div className="np-panel" onClick={handleOpenPanel}>
         <div className="np-hdr">
           <span className="np-title">Inbox</span>
           <button className="np-close" onClick={onClose}>
@@ -228,60 +187,37 @@ export default function NotificationsPanel({
           </button>
         </div>
 
-        <div className="np-tabs">
-          <button className={`np-tab${tab === "friends" ? " active" : ""}`} onClick={() => setTab("friends")}>
-            Friends
-            {friendReqCount > 0 && <span className="np-tab-badge">{friendReqCount}</span>}
-          </button>
-          <button className={`np-tab${tab === "notifications" ? " active" : ""}`} onClick={handleOpenNotifTab}>
-            Notifications
-            {unreadCount > 0 && <span className="np-tab-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
-          </button>
-        </div>
-
         <div className="np-body">
-          {tab === "friends" && (
-            <FriendsPanel user={user} friendsData={friendsData} onOpenDM={onOpenDM} />
-          )}
-
-          {tab === "notifications" && (
-            <div className="np-notif-list">
-              {groupInvites.map(invite => (
-                <div key={invite.id} className="np-notif-item unread">
-                  <div className="np-notif-icon">👥</div>
-                  <div className="np-notif-text">
-                    <div>You were invited to join <b>{invite.groupName}</b></div>
-                    <div className="np-notif-time">{timeAgo(invite.createdAt)} ago</div>
-                    <div className="np-notif-actions">
-                      <button className="np-notif-btn accept" onClick={() => handleAcceptInvite(invite)}>Accept</button>
-                    </div>
+          <div className="np-notif-list">
+            {groupInvites.map(invite => (
+              <div key={invite.id} className="np-notif-item unread">
+                <div className="np-notif-icon">👥</div>
+                <div className="np-notif-text">
+                  <div>You were invited to join <b>{invite.groupName}</b></div>
+                  <div className="np-notif-time">{timeAgo(invite.createdAt)} ago</div>
+                  <div className="np-notif-actions">
+                    <button className="np-notif-btn accept" onClick={() => handleAcceptInvite(invite)}>Accept</button>
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {notifications.map(n => (
-                <div key={n.id} className={`np-notif-item${n.read ? "" : " unread"}`} onClick={() => markRead(n.id)}>
-                  <div className="np-notif-icon">{renderNotifIcon(n)}</div>
-                  <div className="np-notif-text">
-                    <div>{renderNotifText(n)}</div>
-                    <div className="np-notif-time">{timeAgo(n.createdAt)} ago</div>
-                    {n.type === "friend_request" && (
-                      <div className="np-notif-actions">
-                        <button className="np-notif-btn accept" onClick={(e) => { e.stopPropagation(); handleAcceptFriendReq(n.fromUid); }}>Accept</button>
-                        <button className="np-notif-btn decline" onClick={(e) => { e.stopPropagation(); handleDeclineFriendReq(n.fromUid); }}>Decline</button>
-                      </div>
-                    )}
-                  </div>
+            {notifications.map(n => (
+              <div key={n.id} className={`np-notif-item${n.read ? "" : " unread"}`} onClick={() => markRead(n.id)}>
+                <div className="np-notif-icon">{renderNotifIcon(n)}</div>
+                <div className="np-notif-text">
+                  <div>{renderNotifText(n)}</div>
+                  <div className="np-notif-time">{timeAgo(n.createdAt)} ago</div>
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {groupInvites.length === 0 && notifications.length === 0 && (
-                <p style={{ fontSize: 12, color: "var(--t3)", textAlign: "center", padding: "28px 12px", lineHeight: 1.6 }}>
-                  No notifications yet.
-                </p>
-              )}
-            </div>
-          )}
+            {groupInvites.length === 0 && notifications.length === 0 && (
+              <p style={{ fontSize: 12, color: "var(--t3)", textAlign: "center", padding: "28px 12px", lineHeight: 1.6 }}>
+                No notifications yet.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </>
