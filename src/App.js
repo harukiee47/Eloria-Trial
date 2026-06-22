@@ -16,7 +16,6 @@ import GroupChat from "./components/GroupChat";
 import { subscribeToGroups, subscribeToInvites, createGroup } from "./services/groupService";
 import { subscribeToMyProfile, setOnlineStatus } from "./services/userService";
 import { subscribeToNotifications } from "./services/notificationService";
-import NotificationsPanel, { FloatingBadge } from "./components/NotificationsPanel";
 import ProfileSetupModal from "./components/ProfileSetupModal";
 
 if (window.location.pathname === "/code") {
@@ -409,11 +408,6 @@ export default function App() {
           }}
         />
       )}
-
-      <FloatingBadge
-        count={totalBadgeCount}
-        onClick={() => setShowNotifPanel(v => !v)}
-      />
 
       {/* ── Group creation limit modal ── */}
       {groupLimitModal && (

@@ -27,15 +27,18 @@ const GC_STYLE = `
   }
 
   /* ── HEADER ─────────────────────────────────────────────── */
-  .gc-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-panel);
-    flex-shrink: 0;
-  }
+.gc-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
   .gc-header-back {
     background: none; border: none; cursor: pointer;
     color: var(--t3); padding: 4px; border-radius: 6px;
