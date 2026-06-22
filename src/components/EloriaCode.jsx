@@ -465,7 +465,6 @@ async function deleteFileMessages(uid, fileId) {
   await setDoc(ref, { codeFileMessages: map }, { merge: true });
 }
 
-const FILE_STATUS_LABELS = { done: "Ready", pending: "Pending", in_progress: "In Progress" };
 
 // ─── ATTACHMENT BUBBLE ─────────────────────────────────────────────────────
 function AttachmentBubble({ attachment }) {
