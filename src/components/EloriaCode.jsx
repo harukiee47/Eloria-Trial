@@ -1052,7 +1052,7 @@ export default function EloriaCode() {
           <div className="ec-projects-subheading">Select a project or create a new one to start coding.</div>
           {projects.length === 0 ? (
             <div className="ec-projects-empty">
-              <div className="ec-projects-empty-icon">⚡</div>
+              <div className="ec-projects-empty-icon"></div>
               <div className="ec-projects-empty-text">No projects yet.<br />Create one to get started.</div>
             </div>
           ) : (
@@ -1060,7 +1060,7 @@ export default function EloriaCode() {
               {projects.map(project => (
                 <div key={project.id} className="ec-project-card" onClick={() => enterProject(project)}>
                   <button className="ec-project-card-del" onClick={e => deleteProject(e, project.id)}>✕</button>
-                  <div className="ec-project-card-icon">⚡</div>
+                  <div className="ec-project-card-icon"></div>
                   <div>
                     <div className="ec-project-card-title">{project.name}</div>
                     {project.description && <div style={{ fontSize:11, color:"var(--t3)", marginTop:3 }}>{project.description}</div>}
@@ -1084,7 +1084,7 @@ export default function EloriaCode() {
       {showProjectModal && (
         <div className="ec-modal-backdrop" onClick={() => setShowProjectModal(false)}>
           <div className="ec-modal" onClick={e => e.stopPropagation()}>
-            <div className="ec-modal-title"><div className="ec-modal-title-icon">⚡</div>New Project</div>
+            <div className="ec-modal-title"><div className="ec-modal-title-icon"></div>New Project</div>
             <div className="ec-modal-field">
               <label className="ec-modal-label">Project name</label>
               <input className="ec-modal-input" placeholder="e.g. Portfolio Website, Chat App" value={newProjectName} autoFocus onChange={e => setNewProjectName(e.target.value)} onKeyDown={e => e.key === "Enter" && createProject()} />
@@ -1130,11 +1130,11 @@ export default function EloriaCode() {
   // Right panel content — uses rightFile (may differ from active task)
   const rightContent = () => {
     const rf = rightFile;
-    if (!rf) return <div className="ec-no-content"><div className="ec-no-content-icon">⚡</div><div className="ec-no-content-text">Select a task to view code, preview, and summary.</div></div>;
+    if (!rf) return <div className="ec-no-content"><div className="ec-no-content-icon"></div><div className="ec-no-content-text">Select a task to view code, preview, and summary.</div></div>;
 
     if (rightTab === "preview") {
       const ext = getExt(rf.name);
-      if (rf.isPlan) return <div className="ec-preview-placeholder"><div className="ec-preview-placeholder-icon">📝</div><div className="ec-preview-placeholder-text">Plan document has no live preview.<br/>Open the Code tab to read it.</div></div>;
+      if (rf.isPlan) return <div className="ec-preview-placeholder"><div className="ec-preview-placeholder-icon"></div><div className="ec-preview-placeholder-text">Plan document has no live preview.<br/>Open the Code tab to read it.</div></div>;
       if (!rf.code) return <div className="ec-preview-placeholder"><div className="ec-preview-placeholder-icon">👁</div><div className="ec-preview-placeholder-text">{rf.status === "pending" ? "File hasn't been generated yet." : "No code yet."}</div></div>;
 
       if (["html","htm"].includes(ext)) {
@@ -1228,7 +1228,7 @@ export default function EloriaCode() {
     if (isMainChat) {
       if (!messages.length) return (
         <div className="ec-pending-view">
-          <div className="ec-pending-icon">⚡</div>
+          <div className="ec-pending-icon"></div>
           <div className="ec-pending-title">{activeProject.name}</div>
           <div className="ec-pending-sub">This is the main chat for your project. Ask Eloria to build files, plan features, or coordinate the whole project.</div>
         </div>
@@ -1287,7 +1287,7 @@ export default function EloriaCode() {
             return (
               <div key={msg.id} className="ec-log-card">
                 <div className="ec-log-card-head">
-                  <span className="ec-log-card-icon">⚡</span>
+                  <span className="ec-log-card-icon"></span>
                   <span className="ec-log-card-title">Eloria</span>
                 </div>
                 <div className="ec-log-card-body"><MarkdownMessage content={msg.text} /></div>
@@ -1370,7 +1370,7 @@ export default function EloriaCode() {
           return (
             <div key={msg.id} className="ec-log-card">
               <div className="ec-log-card-head">
-                <span className="ec-log-card-icon">⚡</span>
+                <span className="ec-log-card-icon"></span>
                 <span className="ec-log-card-title">Eloria</span>
               </div>
               <div className="ec-log-card-body"><MarkdownMessage content={msg.text} /></div>
@@ -1450,7 +1450,7 @@ export default function EloriaCode() {
           <div className="ec-chat-header">
             {isMainChat ? (
               <>
-                <span className="ec-chat-file-icon">⚡</span>
+                <span className="ec-chat-file-icon"></span>
                 <span className="ec-chat-header-title">{activeProject.name}</span>
                 <span className="ec-main-chat-badge">Main</span>
               </>
@@ -1556,7 +1556,7 @@ export default function EloriaCode() {
 
           <div className="ec-statusbar">
             <div className="ec-statusbar-item">Eloria Code</div>
-            {activeProject && <div className="ec-statusbar-item">⚡ {activeProject.name}</div>}
+            {activeProject && <div className="ec-statusbar-item"> {activeProject.name}</div>}
             <div className="ec-statusbar-right">
               <div className="ec-statusbar-item">{doneFiles.filter(f=>!f.isPlan).length}/{codeFiles.length} ready</div>
             </div>
