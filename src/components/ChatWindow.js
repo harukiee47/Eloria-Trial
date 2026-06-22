@@ -98,16 +98,20 @@ function detectCodeBlocks(text) {
   return blocks;
 }
 
-// ── Activity status messages ───────────────────────────────────────────────────
-const ACTIVITY_STEPS = [
-  { icon: "", text: "Thinking…" },
-  { icon: "", text: "Searching the web…" },
-  { icon: "", text: "Reading results…" },
-  { icon: "",  text: "Writing response…" },
-];
+// ── Activity status trail ──────────────────────────────────────────────────────
+// Build context-aware steps based on what's in the message
+function buildActivitySteps({ hasUrls, hasFiles }) {
+  const steps = [];
+  steps.push({ icon: "", text: "Thinking…" });
+  if (hasUrls) steps.push({ icon: "", text: "Checking link…" });
+  if (hasFiles) steps.push({ icon: "", text: "Reading code file…" });
+  steps.push({ icon: "", text: "Writing response…" });
+  return steps;
+}
 
-function ActivityBar({ step }) {
-  const s = ACTIVITY_STEPS[step] || ACTIVITY_STEPS[0];
+// Live activity bar shown while thinking (animating dots)
+function ActivityBar({ step, steps }) {
+  const s = (steps || [])[step] || { icon: "🧠", text: "Thinking…" };
   return (
     <div className="cw-activity-bar">
       <span className="cw-activity-icon">{s.icon}</span>
@@ -117,11 +121,29 @@ function ActivityBar({ step }) {
   );
 }
 
-// ── Download button for code files ────────────────────────────────────────────
+// Permanent trail shown after response completes — pills stacked vertically
+function ActivityTrail({ steps }) {
+  if (!steps || steps.length === 0) return null;
+  return (
+    <div className="cw-activity-trail">
+      {steps.map((s, i) => (
+        <div key={i} className="cw-trail-pill">
+          <span className="cw-trail-icon">{s.icon}</span>
+          <span className="cw-trail-text">{s.text.replace("…", "")}</span>
+          <span className="cw-trail-check">✓</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Download button for code files (only when >100 lines) ────────────────────
 function DownloadCodeButton({ text }) {
   const blocks = detectCodeBlocks(text);
   if (blocks.length === 0) return null;
   const { lang, code, ext } = blocks[0];
+  // Only show download button for long code (>100 lines)
+  if (code.split("\n").length <= 100) return null;
   const filename = `eloria-output.${ext}`;
   const handleDownload = () => {
     const blob = new Blob([code], { type: "text/plain" });
@@ -1008,6 +1030,24 @@ const CW_STYLE = `
   .cw-url-ok  { color: #22863a; font-size: 12px; }
   .cw-url-err { color: #e05252; font-size: 12px; }
 
+  /* ── ACTIVITY TRAIL (permanent pills after response) ─── */
+  .cw-activity-trail {
+    display: flex; flex-direction: column; gap: 4px;
+    margin-top: 6px; margin-bottom: 2px;
+  }
+  .cw-trail-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 12px;
+    font-size: 11.5px; font-family: var(--font);
+    background: rgba(193,127,42,.07);
+    border: 1px solid rgba(193,127,42,.15);
+    color: var(--t2);
+    width: fit-content;
+  }
+  .cw-trail-icon { font-size: 12px; }
+  .cw-trail-text { font-weight: 500; }
+  .cw-trail-check { color: #22863a; font-size: 11px; margin-left: 2px; }
+
   /* ── DOWNLOAD BUTTON (new) ───────────────────────────── */
   .cw-download-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -1338,7 +1378,8 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [input,          setInput]          = useState("");
   const [isThinking,     setIsThinking]     = useState(false);
   const [isStreaming,    setIsStreaming]     = useState(false);
-  const [activityStep,   setActivityStep]   = useState(0);      // ← new: 0-3
+  const [activityStep,   setActivityStep]   = useState(0);
+  const [activitySteps,  setActivitySteps]  = useState([]);     // context-aware steps for current request
   const [showAttach,     setShowAttach]     = useState(false);
   const [pendingFiles,   setPendingFiles]   = useState([]);
   const [lightboxSrc,    setLightboxSrc]    = useState(null);
@@ -1430,14 +1471,14 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     if (isThinking) {
       setActivityStep(0);
       activityTimerRef.current = setInterval(() => {
-        setActivityStep(s => (s + 1) % ACTIVITY_STEPS.length);
+        setActivityStep(s => (s + 1) % Math.max(activitySteps.length, 1));
       }, 1800);
     } else {
       clearInterval(activityTimerRef.current);
       setActivityStep(0);
     }
     return () => clearInterval(activityTimerRef.current);
-  }, [isThinking]);
+  }, [isThinking, activitySteps]);
 
   if (!chat) {
     return (
@@ -1541,6 +1582,11 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
 
     // ── Detect and fetch URLs in user's message ────────────────────────────────
     const urls = extractUrls(input.trim());
+    const hasFiles = pendingFiles.length > 0;
+
+    // Build context-aware activity steps and set them
+    const steps = buildActivitySteps({ hasUrls: urls.length > 0, hasFiles });
+    setActivitySteps(steps);
     let enrichedText = input.trim();
 
     // Build initial userMsg with "loading" statuses so chips appear immediately
@@ -1616,7 +1662,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       setChats(prev =>
         prev.map(c =>
           c.id === chat.id
-            ? { ...c, messages: [...newMessages, { id: aiMsgId, sender: "ai", text: "", time: getTimestamp() }] }
+            ? { ...c, messages: [...newMessages, { id: aiMsgId, sender: "ai", text: "", activityTrail: steps, time: getTimestamp() }] }
             : c
         )
       );
@@ -1784,6 +1830,11 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
             </div>
           )}
 
+          {/* Permanent activity trail on completed AI messages */}
+          {!isUser && msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
+            <ActivityTrail steps={msg.activityTrail} />
+          )}
+
           {/* Download button on AI messages with code */}
           {!isUser && msg.text && (
             <DownloadCodeButton text={msg.text} />
@@ -1909,7 +1960,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
                   <img src={logo} alt="Eloria" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                 </div>
                 {/* ── Activity bar replaces the old "thinking" dots ── */}
-                {isThinking && <ActivityBar step={activityStep} />}
+                {isThinking && <ActivityBar step={activityStep} steps={activitySteps} />}
                 {isStreaming && <span className="cw-thinking-label">Eloria is responding…</span>}
                 <button
                   onClick={() => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); }}

@@ -7,9 +7,8 @@ import codeRoutes from "./routes/code.js";
 import membershipRoutes from "./routes/membership.js";
 import paymentsRoutes from "./routes/payments.js";
 import groupChatRoutes from "./routes/groupChat.js";
-import voiceRoutes from "./routes/voice.js"; // ← new
-import fetchUrlRoutes from "./routes/fetchUrl.js";
-app.use("/api/fetch-url", fetchUrlRoutes);
+import voiceRoutes from "./routes/voice.js";
+import fetchUrlRoutes from "./routes/fetchUrl.route.js";
 
 const app = express();
 
@@ -34,7 +33,8 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/code", codeRoutes);
 app.use("/api/membership", membershipRoutes);
 app.use("/api/group-chat", groupChatRoutes);
-app.use("/api/voice", voiceRoutes); // ← new
+app.use("/api/voice", voiceRoutes);
+app.use("/api/fetch-url", fetchUrlRoutes);
 
 const PORT = process.env.PORT || 5001;
 
