@@ -744,8 +744,34 @@ const CW_STYLE = `
     letter-spacing: .01em;
   }
   .cw-upgrade:hover { opacity:.88; box-shadow:0 2px 12px rgba(0,0,0,.25); }
-  @media(max-width: 640px) {
+@media(max-width: 640px) {
     .cw-upgrade { padding: 5px 10px; font-size: 11px; }
+  }
+
+  .cw-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+  @media(max-width: 400px) {
+    .cw-header-right { gap: 5px; }
+  }
+
+  .cw-plan-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  @media(max-width: 400px) {
+    .cw-plan-badge { display: none; }
   }
 
   /* ── BODY ────────────────────────────────────────────── */
@@ -991,7 +1017,7 @@ const CW_STYLE = `
   }
 
   /* ── ACTIVITY BAR (new) ──────────────────────────────── */
-  .cw-activity-bar {
+.cw-activity-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 14px 6px 12px;
     background: #faf8f4;
@@ -1001,6 +1027,15 @@ const CW_STYLE = `
     font-family: var(--font);
     animation: cwFadeUp .2s ease;
     width: fit-content;
+    max-width: calc(100vw - 100px);
+    overflow: hidden;
+  }
+  .cw-activity-text {
+    color: var(--t2); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  @media(max-width: 640px) {
+    .cw-activity-bar { font-size: 11.5px; padding: 5px 10px 5px 9px; gap: 6px; }
   }
   .cw-activity-icon { font-size: 14px; flex-shrink: 0; }
   .cw-activity-text { color: var(--t2); font-weight: 500; }
@@ -1075,7 +1110,10 @@ const CW_STYLE = `
     display:flex; align-items:center; gap:10px;
     padding: 5px 20px; max-width:780px; width:100%; margin:0 auto;
   }
-  @media(max-width: 640px) { .cw-thinking { padding: 4px 12px; gap: 8px; } }
+@media(max-width: 640px) {
+    .cw-thinking { padding: 4px 12px; gap: 6px; }
+    .cw-thinking .cw-thinking-label { font-size: 12px; }
+  }
   .cw-thinking-dots { display:flex; gap:4px; align-items:center; }
   .cw-thinking-dots span {
     width:6px; height:6px; border-radius:50%;
@@ -1915,15 +1953,15 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
             <sub>By Kairox</sub>
           </div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-          <div style={{
-            padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
-            fontFamily: "var(--font)", letterSpacing: "0.04em", textTransform: "uppercase",
-            background: userPlan === "pro" || userPlan === "admin" ? "rgba(39,97,82,0.12)" : "rgba(193,127,42,.1)",
-            color: "var(--accent)",
-            border: userPlan === "pro" || userPlan === "admin" ? "1px solid rgba(39,97,82,.25)" : "1px solid rgba(193,127,42,.25)",
-            whiteSpace: "nowrap",
-          }}>
+        <div className="cw-header-right">
+          <div
+            className="cw-plan-badge"
+            style={{
+              background: userPlan === "pro" || userPlan === "admin" ? "rgba(39,97,82,0.12)" : "rgba(193,127,42,.1)",
+              color: "var(--accent)",
+              border: userPlan === "pro" || userPlan === "admin" ? "1px solid rgba(39,97,82,.25)" : "1px solid rgba(193,127,42,.25)",
+            }}
+          >
             {userPlan === "admin" ? "Admin" : userPlan === "pro" ? "Pro ✦" : "Free"}
           </div>
           {userPlan !== "pro" && userPlan !== "admin" && (
@@ -1969,12 +2007,13 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
                   onClick={() => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); }}
                   title="Stop"
                   style={{
-                    marginLeft: "auto", padding: "4px 10px",
+                    marginLeft: "auto", padding: "4px 8px",
                     background: "#fdf0f0", border: "1px solid rgba(224,82,82,.3)",
-                    borderRadius: 8, color: "#0d3a35", fontSize: 11.5,
+                    borderRadius: 8, color: "#0d3a35", fontSize: 11,
                     fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)",
-                    display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+                    display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
                     transition: "background .12s",
+                    whiteSpace: "nowrap",
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = "#fce8e8"}
                   onMouseLeave={e => e.currentTarget.style.background = "#fdf0f0"}
