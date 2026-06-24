@@ -165,7 +165,7 @@ function parseFilesFromAI(text) {
   return files;
 }
 
-// ─── STYLES — Pure black/white/grey, no orange ───────────────────────────────
+// ─── STYLES ───────────────────────────────────────────────────────────────────
 const EC_STYLE = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   .ec-root {
@@ -242,7 +242,6 @@ const EC_STYLE = `
   .ec-task-section-label { padding: 12px 8px 6px; font-size: 10px; color: var(--t3); letter-spacing: .07em; text-transform: uppercase; font-weight: 700; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
   .ec-task-section-label .ec-count { color: var(--t2); font-weight: 700; }
 
-  /* MAIN CHAT special task item */
   .ec-task-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px; border-radius: var(--radius); cursor: pointer; transition: background .15s; margin-bottom: 1px; position: relative; }
   .ec-task-item:hover { background: var(--bg-hi); }
   .ec-task-item.active { background: var(--bg-panel); }
@@ -328,6 +327,21 @@ const EC_STYLE = `
   .ec-thinking-dots span:nth-child(3) { animation-delay: .36s; }
   @keyframes ecDot { 0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)} }
 
+  /* Auto-build progress bar */
+  .ec-build-progress { margin: 4px 10px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); animation: ecFadeUp .15s ease; }
+  .ec-build-progress-header { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+  .ec-build-progress-title { font-size: 12px; font-weight: 600; color: var(--t1); flex: 1; }
+  .ec-build-progress-count { font-size: 10px; color: var(--t3); font-family: var(--mono); }
+  .ec-build-progress-track { height: 2px; background: rgba(255,255,255,.07); border-radius: 1px; overflow: hidden; }
+  .ec-build-progress-fill { height: 100%; background: var(--t2); border-radius: 1px; transition: width .4s ease; }
+  .ec-build-progress-files { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .ec-build-file-row { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--t3); }
+  .ec-build-file-row.done { color: var(--t2); }
+  .ec-build-file-row.active { color: var(--t1); }
+  .ec-build-file-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: var(--t3); }
+  .ec-build-file-dot.done { background: var(--success); }
+  .ec-build-file-dot.active { background: var(--t2); animation: ecDot 1s infinite; }
+
   /* Attach */
   .ec-attach-bubble-solo { max-width: 92%; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
   .ec-attach-header { display: flex; align-items: center; gap: 7px; padding: 7px 10px 6px; border-bottom: 1px solid rgba(255,255,255,.05); }
@@ -403,14 +417,32 @@ const EC_STYLE = `
   .ec-summary-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
   .ec-summary-block-label { font-size: 10px; color: var(--t3); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 8px; }
   .ec-summary-list { display: flex; flex-direction: column; gap: 6px; }
-  .ec-summary-list-item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--t2); }
-  .ec-summary-list-item svg { flex-shrink: 0; color: var(--success); }
+  .ec-summary-list-item { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: var(--t2); line-height: 1.5; }
+  .ec-summary-list-item svg { flex-shrink: 0; color: var(--success); margin-top: 2px; }
   .ec-summary-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
   .ec-summary-file-chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 5px; font-size: 11.5px; color: var(--t1); font-family: var(--mono); cursor: pointer; transition: all .15s; }
   .ec-summary-file-chip:hover { border-color: var(--border-hi); }
   .ec-summary-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
   .ec-summary-status-badge.ready { background: rgba(90,154,90,.12); color: var(--success); }
   .ec-summary-status-badge.progress { background: rgba(255,255,255,.06); color: var(--t2); }
+
+  /* AI Summary card */
+  .ec-ai-summary { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .ec-ai-summary-header { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  .ec-ai-summary-icon { width: 18px; height: 18px; border-radius: 4px; background: rgba(255,255,255,.06); display: flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0; }
+  .ec-ai-summary-label { font-size: 11px; font-weight: 600; color: var(--t1); flex: 1; }
+  .ec-ai-summary-ts { font-size: 9.5px; color: var(--t3); }
+  .ec-ai-summary-body { padding: 12px; font-size: 12px; line-height: 1.7; color: var(--t2); }
+  .ec-ai-summary-generating { display: flex; align-items: center; gap: 8px; padding: 12px; font-size: 11.5px; color: var(--t3); }
+  .ec-ai-summary-regen { display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 4px; background: none; border: 1px solid var(--border); font-size: 10px; color: var(--t3); cursor: pointer; font-family: var(--ui); transition: all .15s; }
+  .ec-ai-summary-regen:hover { background: var(--bg-hi); color: var(--t1); }
+
+  /* Caution / notes block in summary */
+  .ec-summary-notes { background: rgba(255,255,255,.03); border: 1px solid var(--border); border-left: 2px solid var(--t3); border-radius: var(--radius); padding: 10px 12px; }
+  .ec-summary-notes-label { font-size: 9.5px; font-weight: 700; color: var(--t3); letter-spacing: .07em; text-transform: uppercase; margin-bottom: 6px; }
+  .ec-summary-notes-list { display: flex; flex-direction: column; gap: 5px; }
+  .ec-summary-notes-item { font-size: 12px; color: var(--t2); line-height: 1.55; display: flex; align-items: flex-start; gap: 6px; }
+  .ec-summary-notes-item::before { content: "·"; color: var(--t3); flex-shrink: 0; }
 
   /* Empty states */
   .ec-no-content { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 10px; padding: 40px 16px; text-align: center; }
@@ -492,6 +524,14 @@ async function deleteFileMessages(uid, fileId) {
   delete map[String(fileId)];
   await setDoc(ref, { codeFileMessages: map }, { merge: true });
 }
+async function loadProjectSummary(uid, projectId) {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return null;
+  return ((snap.data().codeProjectSummaries || {})[String(projectId)]) || null;
+}
+async function saveProjectSummary(uid, projectId, summary) {
+  await setDoc(doc(db, "users", uid), { codeProjectSummaries: { [String(projectId)]: JSON.parse(JSON.stringify(summary)) } }, { merge: true });
+}
 
 // ─── ATTACHMENT BUBBLE ─────────────────────────────────────────────────────
 function AttachmentBubble({ attachment }) {
@@ -548,7 +588,6 @@ function CodeViewer({ code, filename }) {
 }
 
 // ─── FILE CREATED TRAIL CARD ─────────────────────────────────────────────────
-// Shown in main chat after a file is generated — no code, just a reference card
 function FileCreatedCard({ file, onView }) {
   return (
     <div className="ec-file-created-card">
@@ -563,9 +602,38 @@ function FileCreatedCard({ file, onView }) {
   );
 }
 
+// ─── AUTO-BUILD PROGRESS CARD ──────────────────────────────────────────────
+function AutoBuildProgress({ files, doneCount, activeIdx }) {
+  const pct = files.length > 0 ? Math.round((doneCount / files.length) * 100) : 0;
+  return (
+    <div className="ec-build-progress">
+      <div className="ec-build-progress-header">
+        <span className="ec-build-progress-title">Building project files…</span>
+        <span className="ec-build-progress-count">{doneCount}/{files.length}</span>
+      </div>
+      <div className="ec-build-progress-track">
+        <div className="ec-build-progress-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="ec-build-progress-files">
+        {files.map((f, i) => {
+          const isDone = i < doneCount;
+          const isActive = i === activeIdx;
+          return (
+            <div key={f.id || i} className={`ec-build-file-row${isDone ? " done" : isActive ? " active" : ""}`}>
+              <span className={`ec-build-file-dot${isDone ? " done" : isActive ? " active" : ""}`} />
+              {f.name}
+              {isDone && <span style={{ marginLeft:"auto", fontSize:10, color:"var(--success)" }}>✓</span>}
+              {isActive && <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>building…</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN ──────────────────────────────────────────────────────────────────
 export default function EloriaCode() {
-  // IMPORTANT: "main" is a special fileId sentinel meaning the project-level chat
   const MAIN_CHAT_ID = "main";
 
   const [uid,            setUid]           = useState(null);
@@ -574,14 +642,13 @@ export default function EloriaCode() {
   const [userPlan,       setUserPlan]      = useState("free");
   const [projects,       setProjects]      = useState([]);
   const [activeProject,  setActiveProject] = useState(null);
-  // activeFileId: "main" = project-level main chat, or a file id number for task chat
   const [activeFileId,   setActiveFileId]  = useState(MAIN_CHAT_ID);
   const [messages,       setMessages]      = useState([]);
   const [input,          setInput]         = useState("");
   const [isThinking,     setIsThinking]    = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState([]);
   const [rightTab,       setRightTab]      = useState("preview");
-  const [rightFileId,    setRightFileId]   = useState(null); // what's shown in right panel
+  const [rightFileId,    setRightFileId]   = useState(null);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showFileModal,  setShowFileModal]  = useState(false);
@@ -591,12 +658,27 @@ export default function EloriaCode() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [showWelcome,    setShowWelcome]    = useState(() => !localStorage.getItem("eloria_code_welcomed"));
 
+  // Auto-build state
+  const [autoBuildQueue,   setAutoBuildQueue]   = useState([]); // [{id, name}]
+  const [autoBuildDone,    setAutoBuildDone]    = useState(0);  // count built
+  const [autoBuildActive,  setAutoBuildActive]  = useState(-1); // current index
+  const [isAutoBuild,      setIsAutoBuild]      = useState(false);
+  const autoBuildRef = useRef(false); // guard against re-entry
+
+  // Summary state
+  const [projectSummary,     setProjectSummary]     = useState(null);  // { text, notes, ts, files }
+  const [summaryGenerating,  setSummaryGenerating]  = useState(false);
+
   const fileInputRef   = useRef(null);
   const folderInputRef = useRef(null);
   const bodyRef        = useRef(null);
   const textareaRef    = useRef(null);
   const abortRef       = useRef(null);
   const statusBtnRef   = useRef(null);
+
+  // Keep a ref to the latest project so the auto-build loop can always read current state
+  const projectRef = useRef(null);
+  useEffect(() => { projectRef.current = activeProject; }, [activeProject]);
 
   const isMainChat = activeFileId === MAIN_CHAT_ID;
 
@@ -605,7 +687,6 @@ export default function EloriaCode() {
     return (activeProject.files || []).find(f => f.id === activeFileId) || null;
   }, [activeProject, activeFileId, isMainChat]);
 
-  // The file displayed in the right panel (can differ from the selected task)
   const rightFile = useMemo(() => {
     if (!activeProject) return null;
     if (rightFileId) return (activeProject.files || []).find(f => f.id === rightFileId) || null;
@@ -652,7 +733,7 @@ export default function EloriaCode() {
     return unsub;
   }, []);
 
-  useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight; }, [messages, isThinking]);
+  useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight; }, [messages, isThinking, autoBuildQueue, autoBuildDone]);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -672,6 +753,12 @@ export default function EloriaCode() {
     return () => document.removeEventListener("mousedown", h);
   }, [showStatusMenu]);
 
+  // Load summary when entering a project
+  useEffect(() => {
+    if (!uid || !activeProject) { setProjectSummary(null); return; }
+    loadProjectSummary(uid, activeProject.id).then(s => setProjectSummary(s));
+  }, [uid, activeProject?.id]);
+
   const updateProjects = useCallback(async (updated) => {
     setProjects(updated);
     if (uid) await saveProjects(uid, updated);
@@ -685,6 +772,238 @@ export default function EloriaCode() {
     const updated = projects.map(p => p.id === activeProject?.id ? updater(p) : p);
     await updateProjects(updated);
   }, [projects, activeProject, updateProjects]);
+
+  // ─── GENERATE AI SUMMARY ───────────────────────────────────────────────────
+  const generateSummary = useCallback(async (project, userRequest, builtFiles) => {
+    if (!auth.currentUser || !project) return;
+    setSummaryGenerating(true);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const filesSummary = builtFiles.map(f => `${f.name} (${f.lines} lines, status: ${f.status})`).join(", ");
+      const allFiles = (project.files || []).filter(f => !f.isPlan);
+
+      const prompt = `You are a concise technical assistant summarizing what was just built in a coding project.
+
+Project: "${project.name}"
+User request: "${userRequest}"
+Files built/updated: ${filesSummary}
+All project files: ${allFiles.map(f => f.name).join(", ") || "none"}
+
+Write a project summary with these two sections:
+1. WHAT CHANGED: 3-5 bullet points describing what was actually built or changed — be specific about what each file does and how they connect.
+2. KEEP IN MIND: 3-4 bullet points of important technical notes, gotchas, or things the user should know (e.g. dependencies, browser compatibility, next steps, potential issues).
+
+Format your response as JSON exactly like this (no markdown fences, just raw JSON):
+{
+  "changes": ["point 1", "point 2", "point 3"],
+  "notes": ["note 1", "note 2", "note 3"]
+}`;
+
+      const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          messages: [
+            { role: "user", content: "You are a JSON-only responder. Never add markdown fences or extra text." },
+            { role: "assistant", content: "Understood. I will respond with raw JSON only." },
+            { role: "user", content: prompt }
+          ]
+        }),
+      });
+
+      if (!res.ok) return;
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let raw = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.startsWith("data: "));
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.done || json.error) break;
+            if (json.text) raw += json.text;
+          } catch {}
+        }
+      }
+
+      // Parse JSON from response, stripping any accidental fences
+      const cleaned = raw.replace(/```json|```/g, "").trim();
+      let parsed = { changes: [], notes: [] };
+      try { parsed = JSON.parse(cleaned); } catch {}
+
+      const summary = {
+        changes: parsed.changes || [],
+        notes: parsed.notes || [],
+        request: userRequest,
+        files: builtFiles.map(f => f.name),
+        ts: new Date().toISOString(),
+      };
+      setProjectSummary(summary);
+      if (uid) await saveProjectSummary(uid, project.id, summary);
+    } catch (err) {
+      console.error("Summary generation failed", err);
+    } finally {
+      setSummaryGenerating(false);
+    }
+  }, [uid]);
+
+  // ─── BUILD A SINGLE FILE (used in auto-build loop) ─────────────────────────
+  const buildSingleFile = useCallback(async (file, project, token, userRequest, allFilesContext) => {
+    const sysCtx = `You are Eloria Code, an expert coding agent. Project: "${project.name}". 
+Current task file: "${file.name}". 
+All project files: ${allFilesContext}. 
+The user's original request was: "${userRequest}".
+Generate complete, production-ready code for "${file.name}". 
+Wrap it in a fenced block: \`\`\`${getExt(file.name)} ${file.name}\n...\n\`\`\`
+Do NOT explain at length — just generate the code.`;
+
+    const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messages: [
+          { role: "user", content: sysCtx },
+          { role: "assistant", content: "Understood. Generating the file now." },
+          { role: "user", content: `Build ${file.name} for the project "${project.name}". Request: ${userRequest}` }
+        ]
+      }),
+    });
+
+    if (!res.ok) return null;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let aiText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.startsWith("data: "));
+      for (const line of lines) {
+        try {
+          const json = JSON.parse(line.slice(6));
+          if (json.done || json.error) break;
+          if (json.text) aiText += json.text;
+        } catch {}
+      }
+    }
+
+    const parsed = parseFilesFromAI(aiText);
+    const match = parsed.find(f => f.name.toLowerCase() === file.name.toLowerCase()) || parsed[0];
+    return match ? match.code : null;
+  }, []);
+
+  // ─── AUTO-BUILD RUNNER ─────────────────────────────────────────────────────
+  const runAutoBuild = useCallback(async (filesToBuild, project, userRequest) => {
+    if (autoBuildRef.current) return;
+    autoBuildRef.current = true;
+    setIsAutoBuild(true);
+    setAutoBuildQueue(filesToBuild);
+    setAutoBuildDone(0);
+    setAutoBuildActive(0);
+
+    let token;
+    try { token = await auth.currentUser.getIdToken(); } catch { autoBuildRef.current = false; setIsAutoBuild(false); return; }
+
+    const allFilesContext = filesToBuild.map(f => `${f.name}(pending)`).join(", ");
+    let builtResults = [];
+
+    for (let i = 0; i < filesToBuild.length; i++) {
+      const file = filesToBuild[i];
+      setAutoBuildActive(i);
+
+      // Mark file as in_progress in project state
+      setProjects(prev => {
+        const updated = prev.map(p => p.id === project.id
+          ? { ...p, files: (p.files || []).map(f => f.id === file.id ? { ...f, status: "in_progress" } : f) }
+          : p
+        );
+        // also update activeProject ref
+        const found = updated.find(p => p.id === project.id);
+        if (found) { setActiveProject(found); projectRef.current = found; }
+        return updated;
+      });
+
+      let code = null;
+      try {
+        code = await buildSingleFile(file, project, token, userRequest, allFilesContext);
+      } catch {}
+
+      if (code) {
+        const lines = code.split("\n").length;
+        const now = new Date().toISOString();
+
+        // Persist code into project
+        setProjects(prev => {
+          const updated = prev.map(p => p.id === project.id
+            ? {
+                ...p,
+                files: (p.files || []).map(f =>
+                  f.id === file.id
+                    ? { ...f, status: "done", code, lines, updatedAt: now }
+                    : f
+                ),
+                updatedAt: now,
+              }
+            : p
+          );
+          const found = updated.find(p => p.id === project.id);
+          if (found) { setActiveProject(found); projectRef.current = found; }
+          // save to Firestore
+          if (uid) saveProjects(uid, updated);
+          return updated;
+        });
+
+        builtResults.push({ ...file, code, lines, status: "done" });
+
+        // Show file-created card in main chat
+        setMessages(prev => [
+          ...prev.filter(m => m.id !== "auto-build-progress"),
+          {
+            id: Date.now() + Math.random(),
+            sender: "file_created",
+            file: { id: file.id, name: file.name, lines },
+          }
+        ]);
+      } else {
+        // Mark back to pending on failure
+        setProjects(prev => {
+          const updated = prev.map(p => p.id === project.id
+            ? { ...p, files: (p.files || []).map(f => f.id === file.id ? { ...f, status: "pending" } : f) }
+            : p
+          );
+          const found = updated.find(p => p.id === project.id);
+          if (found) { setActiveProject(found); projectRef.current = found; }
+          return updated;
+        });
+        setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender: "log", icon: "!", text: `Failed to build ${file.name} — you can retry from its task.` }]);
+      }
+
+      setAutoBuildDone(i + 1);
+      setAutoBuildActive(i + 1 < filesToBuild.length ? i + 1 : -1);
+    }
+
+    // All done — remove progress card, generate summary
+    setMessages(prev => [
+      ...prev.filter(m => m.id !== "auto-build-progress"),
+      { id: Date.now() + Math.random(), sender: "log", icon: "✓", text: `All ${filesToBuild.length} file${filesToBuild.length > 1 ? "s" : ""} built. Opening Summary tab…` }
+    ]);
+
+    setIsAutoBuild(false);
+    autoBuildRef.current = false;
+    setAutoBuildQueue([]);
+    setAutoBuildDone(0);
+    setAutoBuildActive(-1);
+
+    // Switch right panel to summary and generate summary
+    setRightTab("summary");
+    const currentProject = projectRef.current || project;
+    await generateSummary(currentProject, userRequest, builtResults);
+  }, [uid, buildSingleFile, generateSummary]);
 
   // Project actions
   const createProject = async () => {
@@ -723,12 +1042,10 @@ export default function EloriaCode() {
     setInput(""); setPendingAttachments([]);
     setRightFileId(null);
     setActiveFileId(MAIN_CHAT_ID);
-    // Load main chat messages — stored under "main_{projectId}"
     const mainKey = MAIN_CHAT_ID + "_" + project.id;
     setMessages(uid ? await loadFileMessages(uid, mainKey) : []);
   };
 
-  // Save main chat under "main_{projectId}"
   useEffect(() => {
     if (!uid || !activeProject) return;
     if (activeFileId === MAIN_CHAT_ID && messages.length > 0) {
@@ -736,7 +1053,6 @@ export default function EloriaCode() {
     }
   }, [messages, activeFileId, uid, activeProject]);
 
-  // File / task actions
   const createFile = async () => {
     if (!newFileName.trim() || !activeProject) return;
     const file = { id: Date.now(), name: newFileName.trim(), status: "pending", code: null, lines: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
@@ -757,7 +1073,6 @@ export default function EloriaCode() {
     if (rightFileId === fileId) setRightFileId(null);
   };
 
-  // Switch to main project chat
   const switchToMain = async () => {
     if (uid && activeFileId && activeFileId !== MAIN_CHAT_ID) {
       await saveFileMessages(uid, activeFileId, messages);
@@ -768,7 +1083,6 @@ export default function EloriaCode() {
     setMessages(uid ? await loadFileMessages(uid, mainKey) : []);
   };
 
-  // Switch to a task file
   const switchToTask = async (fileId) => {
     if (uid && activeFileId) {
       if (activeFileId === MAIN_CHAT_ID) {
@@ -778,7 +1092,7 @@ export default function EloriaCode() {
       }
     }
     setActiveFileId(fileId);
-    setRightFileId(fileId); // show that file's code in right panel
+    setRightFileId(fileId);
     setInput(""); setPendingAttachments([]);
     setMessages(uid ? await loadFileMessages(uid, fileId) : []);
   };
@@ -819,11 +1133,8 @@ export default function EloriaCode() {
     const signal = abortRef.current.signal;
     const hasText = input.trim().length > 0;
     const hasAttachments = pendingAttachments.length > 0;
-    if ((!hasText && !hasAttachments) || isThinking) return;
+    if ((!hasText && !hasAttachments) || isThinking || isAutoBuild) return;
     if (!auth.currentUser) return;
-
-    // In main chat, always require activeProject but no specific file needed
-    // In task chat, require activeFile
     if (!isMainChat && !activeFile) return;
 
     const token = await auth.currentUser.getIdToken();
@@ -837,12 +1148,24 @@ export default function EloriaCode() {
       }).join("\n");
     }
 
-    // System context differs for main chat vs task chat
+    // System context for main chat — instruct AI to list FILES_TO_BUILD when it's a code request
     const sysCtx = isMainChat
-      ? `You are Eloria Code, an expert coding AI assistant. Project: "${activeProject.name}". This is the main project chat where you help the user plan, coordinate, and build. Project files: ${(activeProject.files || []).map(f => `${f.name}(${f.status})`).join(", ") || "none yet"}. When you generate code for a file, wrap it in a fenced block: \`\`\`ext filename.ext\n...\n\`\`\`. If new files are needed, list them at end as: FILES_NEEDED: file1.ext, file2.ext`
+      ? `You are Eloria Code, an expert coding AI assistant. Project: "${activeProject.name}". 
+This is the main project chat. You help the user plan, coordinate, and build their project.
+Project files: ${(activeProject.files || []).map(f => `${f.name}(${f.status})`).join(", ") || "none yet"}.
+
+IMPORTANT INSTRUCTIONS:
+- When the user asks you to build something (a website, app, script, or any code), respond with:
+  1. A brief plan (2-3 sentences max) of what you'll build.
+  2. A list of files you'll create using this exact format on its own line:
+     FILES_TO_BUILD: filename1.ext, filename2.ext, filename3.ext
+  3. Do NOT write code in the main chat. The files will be auto-built as separate tasks.
+- Split code logically: HTML in its own file, CSS in its own file, JS in its own file (etc).
+- For non-code questions (planning, advice), just answer conversationally without FILES_TO_BUILD.`
       : `You are Eloria Code, an expert coding agent. Project: "${activeProject.name}". Current task file: "${activeFile.name}". All project files: ${(activeProject.files || []).map(f => `${f.name}(${f.status})`).join(", ")}. When you produce code for "${activeFile.name}", use a fenced block: \`\`\`${getExt(activeFile.name)} ${activeFile.name}\n...\n\`\`\`. Do NOT explain the code at length in chat — just generate it. If additional files are needed list them as: FILES_NEEDED: file1.ext, file2.ext`;
 
-    const userMsg = { id: Date.now(), sender: "user", text: hasText ? input : "", attachments: hasAttachments ? [...pendingAttachments] : undefined };
+    const capturedInput = input.trim();
+    const userMsg = { id: Date.now(), sender: "user", text: hasText ? capturedInput : "", attachments: hasAttachments ? [...pendingAttachments] : undefined };
     const newMsgs = [...messages, userMsg];
     setMessages(newMsgs); setInput(""); setPendingAttachments([]);
 
@@ -857,7 +1180,7 @@ export default function EloriaCode() {
 
     try {
       if (!isMainChat) pushLog(`Working on ${activeFile.name}…`, { icon: "⚙" });
-      else pushLog(`Thinking…`, { icon: "⚙" });
+      else pushLog(`Thinking…`, { icon: "⚙", id: "thinking-log" });
 
       const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
         method: "POST",
@@ -875,10 +1198,8 @@ export default function EloriaCode() {
       let aiText = "";
       const aiMsgId = Date.now() + 1;
 
-      // For task chats: we stream into a hidden accumulator, not shown as text
-      // For main chat: show as a regular AI text bubble
       if (isMainChat) {
-        setMessages(prev => [...prev, { id: aiMsgId, sender: "ai", text: "" }]);
+        setMessages(prev => [...prev.filter(m => m.id !== "thinking-log"), { id: aiMsgId, sender: "ai", text: "" }]);
       }
       setIsThinking(false);
 
@@ -902,97 +1223,149 @@ export default function EloriaCode() {
         }
       }
 
-      // Parse files from AI response
+      // ── MAIN CHAT: detect FILES_TO_BUILD ───────────────────────────────────
+      if (isMainChat) {
+        const filesToBuildMatch = aiText.match(/FILES_TO_BUILD:\s*([^\n]+)/i);
+        if (filesToBuildMatch) {
+          const fileNames = filesToBuildMatch[1].split(",").map(f => f.trim()).filter(Boolean);
+          if (fileNames.length > 0) {
+            const now = new Date().toISOString();
+
+            // Strip FILES_TO_BUILD line from displayed text
+            const cleanText = aiText.replace(/FILES_TO_BUILD:[^\n]*/i, "").trim();
+
+            // Replace streaming ai bubble with clean text
+            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, text: cleanText } : m));
+
+            // Create task files in the project
+            let newFiles = [];
+            setProjects(prev => {
+              const updated = prev.map(p => {
+                if (p.id !== activeProject.id) return p;
+                const existingNames = new Set((p.files || []).map(f => f.name.toLowerCase()));
+                const toAdd = [];
+                for (const name of fileNames) {
+                  if (!existingNames.has(name.toLowerCase())) {
+                    const nf = { id: Date.now() + Math.random(), name, status: "pending", code: null, lines: 0, createdAt: now, updatedAt: now };
+                    toAdd.push(nf);
+                    existingNames.add(name.toLowerCase());
+                    newFiles.push(nf);
+                  }
+                }
+                return { ...p, files: [...(p.files || []), ...toAdd], updatedAt: now };
+              });
+              const found = updated.find(p => p.id === activeProject.id);
+              if (found) { setActiveProject(found); projectRef.current = found; }
+              if (uid) saveProjects(uid, updated);
+              return updated;
+            });
+
+            // Add a build-progress sentinel message
+            setMessages(prev => [...prev, { id: "auto-build-progress", sender: "auto_build_start", files: newFiles }]);
+
+            // Kick off auto-build after a short delay so state settles
+            setTimeout(() => {
+              const currentProject = projectRef.current;
+              runAutoBuild(newFiles, currentProject, capturedInput);
+            }, 300);
+
+            return; // done for this send
+          }
+        }
+
+        // No FILES_TO_BUILD — handle regular code or conversation reply
+        const parsedFiles = parseFilesFromAI(aiText);
+        if (parsedFiles.length > 0) {
+          let builtFiles = [];
+          const now = new Date().toISOString();
+          setProjects(prev => {
+            const updated = prev.map(p => {
+              if (p.id !== activeProject.id) return p;
+              let files = [...(p.files || [])];
+              const existingNames = new Set(files.map(f => f.name.toLowerCase()));
+              for (const pf of parsedFiles) {
+                const idx = files.findIndex(f => f.name.toLowerCase() === pf.name.toLowerCase());
+                if (idx >= 0) {
+                  files[idx] = { ...files[idx], status: "done", code: pf.code, lines: pf.code.split("\n").length, updatedAt: now };
+                  builtFiles.push(files[idx]);
+                } else {
+                  const nf = { id: Date.now() + Math.random(), name: pf.name, status: "done", code: pf.code, lines: pf.code.split("\n").length, createdAt: now, updatedAt: now };
+                  files.push(nf);
+                  builtFiles.push(nf);
+                  existingNames.add(pf.name.toLowerCase());
+                }
+              }
+              return { ...p, files, updatedAt: now };
+            });
+            const found = updated.find(p => p.id === activeProject.id);
+            if (found) { setActiveProject(found); projectRef.current = found; }
+            if (uid) saveProjects(uid, updated);
+            return updated;
+          });
+
+          setMessages(prev => {
+            const filtered = prev.filter(m => m.id !== aiMsgId);
+            const cards = builtFiles.map(f => ({ id: Date.now() + Math.random(), sender: "file_created", file: { id: f.id, name: f.name, lines: f.lines } }));
+            return [...filtered, ...cards];
+          });
+
+          setRightTab("summary");
+          generateSummary(projectRef.current || activeProject, capturedInput, builtFiles);
+        }
+        // else: just a conversational reply, already streamed in
+        return;
+      }
+
+      // ── TASK CHAT: existing logic ──────────────────────────────────────────
       const parsedFiles = parseFilesFromAI(aiText);
       const filesNeededMatch = aiText.match(/FILES_NEEDED:\s*([^\n]+)/i);
       const filesNeeded = filesNeededMatch ? filesNeededMatch[1].split(",").map(f => f.trim()).filter(Boolean) : [];
 
       if (parsedFiles.length > 0 && activeProject) {
         let builtFiles = [];
-
         await updateActiveProject(p => {
           let files = [...(p.files || [])];
           const existingNames = new Set(files.map(f => f.name.toLowerCase()));
-
-          if (!isMainChat) {
-            // Task chat: update the specific task file
-            const currentParsed = parsedFiles.find(f => f.name.toLowerCase() === activeFile.name.toLowerCase()) || parsedFiles[0];
-            files = files.map(f => f.id === activeFileId
-              ? { ...f, status: "done", code: currentParsed.code, lines: currentParsed.code.split("\n").length, updatedAt: new Date().toISOString() }
-              : f
-            );
-            builtFiles.push({ ...activeFile, code: currentParsed.code, lines: currentParsed.code.split("\n").length });
-          } else {
-            // Main chat: create/update files for all parsed
-            for (const pf of parsedFiles) {
-              const existingIdx = files.findIndex(f => f.name.toLowerCase() === pf.name.toLowerCase());
-              if (existingIdx >= 0) {
-                files[existingIdx] = { ...files[existingIdx], status: "done", code: pf.code, lines: pf.code.split("\n").length, updatedAt: new Date().toISOString() };
-                builtFiles.push(files[existingIdx]);
-              } else {
-                const newFile = { id: Date.now() + Math.random(), name: pf.name, status: "done", code: pf.code, lines: pf.code.split("\n").length, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-                files.push(newFile);
-                builtFiles.push(newFile);
-                existingNames.add(pf.name.toLowerCase());
-              }
-            }
-          }
-
-          // Add FILES_NEEDED as pending tasks
+          const currentParsed = parsedFiles.find(f => f.name.toLowerCase() === activeFile.name.toLowerCase()) || parsedFiles[0];
+          files = files.map(f => f.id === activeFileId
+            ? { ...f, status: "done", code: currentParsed.code, lines: currentParsed.code.split("\n").length, updatedAt: new Date().toISOString() }
+            : f
+          );
+          builtFiles.push({ ...activeFile, code: currentParsed.code, lines: currentParsed.code.split("\n").length });
           for (const fn of filesNeeded) {
             if (!existingNames.has(fn.toLowerCase())) {
               files.push({ id: Date.now() + Math.random(), name: fn, status: "pending", code: null, lines: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
               existingNames.add(fn.toLowerCase());
             }
           }
-
           return { ...p, files, updatedAt: new Date().toISOString() };
         });
 
-        // Remove the streaming AI text bubble and replace with file-created cards
-        if (isMainChat) {
-          setMessages(prev => {
-            const filtered = prev.filter(m => m.id !== aiMsgId);
-            const cards = builtFiles.map(f => ({
-              id: Date.now() + Math.random(),
-              sender: "file_created",
-              file: { id: f.id, name: f.name, lines: f.lines },
-            }));
-            if (filesNeeded.length) {
-              cards.push({ id: Date.now() + Math.random(), sender: "log", icon: "+", text: `Queued ${filesNeeded.length} more file${filesNeeded.length > 1 ? "s" : ""}: ${filesNeeded.join(", ")}` });
-            }
-            return [...filtered, ...cards];
-          });
-        } else {
-          // Task chat: show compact done card, no code in chat
-          setMessages(prev => {
-            // Remove the "Working on…" log entry and replace with a done card
-            const filtered = prev.filter(m => !(m.sender === "log" && m.icon === "⚙"));
-            return [...filtered, {
-              id: Date.now() + Math.random(),
-              sender: "log",
-              kind: "build",
-              icon: "✓",
-              text: `Built ${activeFile?.name || builtFiles[0]?.name}`,
-              diff: `+${builtFiles[0]?.lines || 0} lines`,
-              file: activeFile?.name || builtFiles[0]?.name,
-            }];
-          });
-          // Switch right panel to show this file's code
-          setRightTab("code");
-          setRightFileId(activeFileId);
-        }
+        setMessages(prev => {
+          const filtered = prev.filter(m => !(m.sender === "log" && m.icon === "⚙"));
+          return [...filtered, {
+            id: Date.now() + Math.random(),
+            sender: "log",
+            kind: "build",
+            icon: "✓",
+            text: `Built ${activeFile?.name || builtFiles[0]?.name}`,
+            diff: `+${builtFiles[0]?.lines || 0} lines`,
+            file: activeFile?.name || builtFiles[0]?.name,
+          }];
+        });
+        setRightTab("code");
+        setRightFileId(activeFileId);
+
+        // Also generate summary for task builds
+        generateSummary(projectRef.current || activeProject, capturedInput, builtFiles);
 
       } else if (!isMainChat && aiText.length > 60 && activeFile?.status === "pending") {
-        // Streaming reply in task with no code block — mark in_progress
-        // Show the text as a regular ai card in task view
         setMessages(prev => {
           const filtered = prev.filter(m => !(m.sender === "log" && m.icon === "⚙"));
           return [...filtered, { id: aiMsgId, sender: "ai", text: aiText }];
         });
         await updateActiveProject(p => ({ ...p, files: (p.files || []).map(f => f.id === activeFileId ? { ...f, status: "in_progress", updatedAt: new Date().toISOString() } : f), updatedAt: new Date().toISOString() }));
       } else if (!isMainChat && aiText.length > 0 && parsedFiles.length === 0) {
-        // Task chat reply with no code — show as conversation
         setMessages(prev => {
           const filtered = prev.filter(m => !(m.sender === "log" && m.icon === "⚙"));
           return [...filtered, { id: aiMsgId, sender: "ai", text: aiText }];
@@ -1127,10 +1500,99 @@ export default function EloriaCode() {
     );
   };
 
-  // Right panel content — uses rightFile (may differ from active task)
+  // ── RIGHT PANEL CONTENT ───────────────────────────────────────────────────
   const rightContent = () => {
     const rf = rightFile;
-    if (!rf) return <div className="ec-no-content"><div className="ec-no-content-icon"></div><div className="ec-no-content-text">Select a task to view code, preview, and summary.</div></div>;
+
+    if (rightTab === "summary") {
+      return (
+        <div className="ec-summary-body">
+          {/* AI-generated living summary */}
+          <div className="ec-ai-summary">
+            <div className="ec-ai-summary-header">
+              <div className="ec-ai-summary-icon">✦</div>
+              <span className="ec-ai-summary-label">Build Summary</span>
+              {projectSummary?.ts && <span className="ec-ai-summary-ts">{timeAgo(projectSummary.ts)}</span>}
+              {projectSummary && !summaryGenerating && (
+                <button className="ec-ai-summary-regen" onClick={() => {
+                  const allBuilt = (activeProject?.files || []).filter(f => !f.isPlan && f.status === "done" && f.code);
+                  generateSummary(activeProject, projectSummary.request || "latest build", allBuilt);
+                }}>↻ Refresh</button>
+              )}
+            </div>
+            {summaryGenerating ? (
+              <div className="ec-ai-summary-generating">
+                <div className="ec-thinking-dots"><span/><span/><span/></div>
+                Generating summary…
+              </div>
+            ) : projectSummary ? (
+              <div className="ec-ai-summary-body">
+                {projectSummary.changes?.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div className="ec-summary-block-label">What Changed</div>
+                    <div className="ec-summary-list">
+                      {projectSummary.changes.map((c, i) => (
+                        <div key={i} className="ec-summary-list-item">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          {c}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {projectSummary.notes?.length > 0 && (
+                  <div className="ec-summary-notes">
+                    <div className="ec-summary-notes-label">Keep in Mind</div>
+                    <div className="ec-summary-notes-list">
+                      {projectSummary.notes.map((n, i) => (
+                        <div key={i} className="ec-summary-notes-item">{n}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ padding:"14px 12px", fontSize:11.5, color:"var(--t3)", lineHeight:1.6 }}>
+                No summary yet. Ask Eloria to build something and a summary will appear here automatically.
+              </div>
+            )}
+          </div>
+
+          {/* Files built */}
+          <div>
+            <div className="ec-summary-block-label">Files in Project</div>
+            <div className="ec-summary-chip-row">
+              {codeFiles.length === 0 && <div style={{ fontSize:12, color:"var(--t3)" }}>No files yet.</div>}
+              {codeFiles.map(f => (
+                <div key={f.id} className="ec-summary-file-chip" onClick={() => { setRightFileId(f.id); setRightTab("code"); }}>
+                  {getFileIcon(f.name)} {f.name}
+                  <span style={{ fontSize:9, color: f.status === "done" ? "var(--success)" : "var(--t3)", marginLeft:2 }}>{f.status === "done" ? "✓" : f.status === "in_progress" ? "…" : "○"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Overall status */}
+          <div>
+            <div className="ec-summary-block-label">Status</div>
+            {(() => {
+              const allReady = codeFiles.length > 0 && codeFiles.every(f => f.status === "done");
+              return (
+                <span className={`ec-summary-status-badge ${allReady ? "ready" : "progress"}`}>
+                  {isAutoBuild
+                    ? `● Building ${autoBuildDone}/${autoBuildQueue.length}…`
+                    : allReady
+                      ? "✓ Ready for review"
+                      : "● In progress"}
+                </span>
+              );
+            })()}
+          </div>
+        </div>
+      );
+    }
+
+    if (!rf) return <div className="ec-no-content"><div className="ec-no-content-icon"></div><div className="ec-no-content-text">Select a task to view code or preview.</div></div>;
 
     if (rightTab === "preview") {
       const ext = getExt(rf.name);
@@ -1144,11 +1606,9 @@ export default function EloriaCode() {
       }
 
       if (ext === "css") {
-        // Find any HTML file in the project to pair with this CSS
         const htmlFile = (activeProject?.files || []).find(f => ["html","htm"].includes(getExt(f.name)) && f.code);
         let previewDoc;
         if (htmlFile) {
-          // Inject this CSS into the paired HTML file
           const cssTag = `<style>\n${rf.code}\n</style>`;
           if (htmlFile.code.includes("</head>")) {
             previewDoc = htmlFile.code.replace("</head>", `${cssTag}\n</head>`);
@@ -1158,7 +1618,6 @@ export default function EloriaCode() {
             previewDoc = `<!doctype html><html><head>${cssTag}</head><body>${htmlFile.code}</body></html>`;
           }
         } else {
-          // No HTML found — render a demo page styled by this CSS
           previewDoc = `<!doctype html><html><head><meta charset="utf-8"><style>${rf.code}</style></head><body>
 <div class="container">
   <header class="header"><nav class="nav"><a class="nav-link" href="#">Home</a><a class="nav-link" href="#">About</a><a class="nav-link" href="#">Contact</a></nav></header>
@@ -1182,60 +1641,32 @@ export default function EloriaCode() {
       if (!rf.code) return <div className="ec-no-content"><div className="ec-no-content-icon">{rf.status === "pending" ? "⏳" : "💬"}</div><div className="ec-no-content-text">{rf.status === "pending" ? "Pending generation." : "No code yet."}</div></div>;
       return <CodeViewer code={rf.code} filename={rf.name} />;
     }
-
-    if (rightTab === "summary") {
-      const changed = doneFiles.filter(f => !f.isPlan);
-      const allReady = codeFiles.length > 0 && codeFiles.every(f => f.status === "done");
-      return (
-        <div className="ec-summary-body">
-          <div>
-            <div className="ec-summary-block-label">What Changed</div>
-            <div className="ec-summary-list">
-              {changed.length === 0 && <div style={{ fontSize:12, color:"var(--t3)" }}>Nothing built yet.</div>}
-              {changed.map(f => (
-                <div key={f.id} className="ec-summary-list-item">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  {taskTitleForFile(f.name)}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="ec-summary-block-label">Files Modified</div>
-            <div className="ec-summary-chip-row">
-              {codeFiles.length === 0 && <div style={{ fontSize:12, color:"var(--t3)" }}>No files yet.</div>}
-              {codeFiles.map(f => (
-                <div key={f.id} className="ec-summary-file-chip" onClick={() => { setRightFileId(f.id); setRightTab("code"); }}>
-                  {getFileIcon(f.name)} {f.name}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="ec-summary-block-label">Status</div>
-            <span className={`ec-summary-status-badge ${allReady ? "ready" : "progress"}`}>
-              {allReady ? "✓ Ready for review" : "● In progress"}
-            </span>
-          </div>
-        </div>
-      );
-    }
   };
 
-  // Middle panel content (chat / activity feed)
+  // ── MIDDLE PANEL CONTENT ─────────────────────────────────────────────────
   const middleContent = () => {
-    // Main project chat
     if (isMainChat) {
       if (!messages.length) return (
         <div className="ec-pending-view">
           <div className="ec-pending-icon"></div>
           <div className="ec-pending-title">{activeProject.name}</div>
-          <div className="ec-pending-sub">This is the main chat for your project. Ask Eloria to build files, plan features, or coordinate the whole project.</div>
+          <div className="ec-pending-sub">This is the main chat. Ask Eloria to build your project and files will be created and built automatically.</div>
         </div>
       );
       return (
         <div className="ec-feed">
           {messages.map(msg => {
+            // Auto-build progress sentinel
+            if (msg.sender === "auto_build_start") {
+              return (
+                <AutoBuildProgress
+                  key={msg.id}
+                  files={autoBuildQueue.length > 0 ? autoBuildQueue : msg.files}
+                  doneCount={autoBuildDone}
+                  activeIdx={autoBuildActive}
+                />
+              );
+            }
             if (msg.sender === "file_created") {
               return (
                 <FileCreatedCard
@@ -1283,7 +1714,7 @@ export default function EloriaCode() {
                 </div>
               );
             }
-            // ai message in main chat
+            // ai message
             return (
               <div key={msg.id} className="ec-log-card">
                 <div className="ec-log-card-head">
@@ -1366,7 +1797,6 @@ export default function EloriaCode() {
               </div>
             );
           }
-          // ai message in task (e.g. planning reply with no code)
           return (
             <div key={msg.id} className="ec-log-card">
               <div className="ec-log-card-head">
@@ -1388,7 +1818,6 @@ export default function EloriaCode() {
       <input ref={folderInputRef} type="file" webkitdirectory="true" directory="true" multiple style={{ display:"none" }} onChange={handleFolderSelect} />
       {showWelcome && <EloriaCodeWelcome onDismiss={() => setShowWelcome(false)} userName={userName} />}
 
-      {/* Top header — "Eloria Code" badge, no GPT-5.5 */}
       <div className="ec-topbar">
         <div className="ec-topbar-logo"><img src={logo} alt="Eloria" /></div>
         <span className="ec-topbar-title">Eloria Workspace</span>
@@ -1413,7 +1842,6 @@ export default function EloriaCode() {
           </div>
 
           <div className="ec-task-list">
-            {/* Main chat item always at top */}
             <div className="ec-task-section-label">PROJECT</div>
             <div
               className={`ec-task-item main-chat${isMainChat ? " active" : ""}`}
@@ -1427,7 +1855,7 @@ export default function EloriaCode() {
             </div>
 
             {(activeProject.files || []).length === 0 ? (
-              <div style={{ padding:"12px 8px", fontSize:11, color:"var(--t3)", lineHeight:1.65 }}>No tasks yet.<br/>Add a file to get started.</div>
+              <div style={{ padding:"12px 8px", fontSize:11, color:"var(--t3)", lineHeight:1.65 }}>No tasks yet.<br/>Ask Eloria in Main Chat to build something.</div>
             ) : (
               <>
                 {renderTaskSection(wipFiles, "In Progress", "in_progress")}
@@ -1445,7 +1873,7 @@ export default function EloriaCode() {
           </div>
         </aside>
 
-        {/* MIDDLE — activity feed */}
+        {/* MIDDLE — chat/activity */}
         <main className="ec-chat">
           <div className="ec-chat-header">
             {isMainChat ? (
@@ -1453,6 +1881,11 @@ export default function EloriaCode() {
                 <span className="ec-chat-file-icon"></span>
                 <span className="ec-chat-header-title">{activeProject.name}</span>
                 <span className="ec-main-chat-badge">Main</span>
+                {isAutoBuild && (
+                  <span style={{ fontSize:10, color:"var(--t3)", marginLeft:4 }}>
+                    Building {autoBuildDone}/{autoBuildQueue.length}…
+                  </span>
+                )}
               </>
             ) : activeFile ? (
               <>
@@ -1528,7 +1961,8 @@ export default function EloriaCode() {
                   rows={1}
                   value={input}
                   placeholder={
-                    isMainChat ? `Ask Eloria anything about ${activeProject.name}…` :
+                    isAutoBuild ? "Building files… please wait" :
+                    isMainChat ? `Ask Eloria to build something for ${activeProject.name}…` :
                     !activeFile ? "Select a task to start…" :
                     activeFile.isPlan ? "Ask about the plan…" :
                     activeFile.status === "pending" ? `Build ${activeFile.name}…` :
@@ -1537,11 +1971,12 @@ export default function EloriaCode() {
                   }
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                  disabled={isAutoBuild}
                 />
                 <button
                   className="ec-send"
                   onClick={isThinking ? stopMessage : sendMessage}
-                  disabled={!isThinking && !input.trim() && !pendingAttachments.length}
+                  disabled={isAutoBuild || (!isThinking && !input.trim() && !pendingAttachments.length)}
                   style={isThinking ? { background:"var(--danger)" } : {}}
                 >
                   {isThinking
@@ -1551,14 +1986,21 @@ export default function EloriaCode() {
                 </button>
               </div>
             </div>
-            <p className="ec-hint">Verify generated code before use · max 1 folder or 2 files per message</p>
+            <p className="ec-hint">
+              {isAutoBuild
+                ? `Auto-building ${autoBuildDone}/${autoBuildQueue.length} files — sit tight`
+                : "Verify generated code before use · max 1 folder or 2 files per message"}
+            </p>
           </div>
 
           <div className="ec-statusbar">
             <div className="ec-statusbar-item">Eloria Code</div>
             {activeProject && <div className="ec-statusbar-item"> {activeProject.name}</div>}
             <div className="ec-statusbar-right">
-              <div className="ec-statusbar-item">{doneFiles.filter(f=>!f.isPlan).length}/{codeFiles.length} ready</div>
+              {isAutoBuild
+                ? <div className="ec-statusbar-item">⚙ Auto-building {autoBuildDone}/{autoBuildQueue.length}</div>
+                : <div className="ec-statusbar-item">{doneFiles.filter(f=>!f.isPlan).length}/{codeFiles.length} ready</div>
+              }
             </div>
           </div>
         </main>
@@ -1568,10 +2010,13 @@ export default function EloriaCode() {
           <div className="ec-right-header">
             <div className="ec-right-tabs">
               {[["preview","Preview"],["code","Code"],["summary","Summary"]].map(([tab, label]) => (
-                <button key={tab} className={`ec-right-tab${rightTab === tab ? " active" : ""}`} onClick={() => setRightTab(tab)}>{label}</button>
+                <button key={tab} className={`ec-right-tab${rightTab === tab ? " active" : ""}`} onClick={() => setRightTab(tab)}>
+                  {label}
+                  {tab === "summary" && summaryGenerating && <span style={{ marginLeft:4, fontSize:9, color:"var(--t3)" }}>●</span>}
+                </button>
               ))}
             </div>
-            {rightFile && rightFile.code && (
+            {rightFile && rightFile.code && rightTab !== "summary" && (
               <button className="ec-download-btn" style={{ margin:"0 10px", fontSize:10.5 }} onClick={() => downloadFile(rightFile.name, rightFile.code)}>↓ {rightFile.name}</button>
             )}
           </div>

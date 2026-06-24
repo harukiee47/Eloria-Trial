@@ -88,12 +88,12 @@ export default function EloriaCodeWelcome({ onDismiss, userName }) {
           {/* Boot lines */}
           {visibleLines.map((line, i) => (
             <div key={i} style={{ marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: "#d4af37", fontSize: 13 }}>
+              <span style={{ color: "#fffaec", fontSize: 13 }}>
                 {line === "Ready." ? "✓" : "›"}
               </span>
               <span
                 style={{
-                  color: line === "Ready." ? "#d4af37" : "#888",
+                  color: line === "Ready." ? "#fffaec" : "#888",
                   fontSize: 13,
                   letterSpacing: 0.3,
                 }}
@@ -114,7 +114,7 @@ export default function EloriaCodeWelcome({ onDismiss, userName }) {
                 </span>
               </div>
               <div style={{ marginBottom: 20, paddingLeft: 16 }}>
-                <span style={{ color: "#d4af37", fontSize: 13 }}>
+                <span style={{ color: "#fffaec", fontSize: 13 }}>
                   {firstName ? firstName : "developer"}
                 </span>
               </div>
@@ -126,7 +126,7 @@ export default function EloriaCodeWelcome({ onDismiss, userName }) {
               </div>
               <div style={{ marginBottom: 28, paddingLeft: 16 }}>
                 <p style={{ margin: 0, color: "#eee", fontSize: 15, fontWeight: 600 }}>
-                  Welcome to <span style={{ color: "#d4af37" }}>Eloria Code.</span>
+                  Welcome to <span style={{ color: "#fffaec" }}>Eloria Code.</span>
                 </p>
                 <p style={{ margin: "4px 0 0", color: "#666", fontSize: 12 }}>
                   Your coding journey begins here.
@@ -147,7 +147,7 @@ export default function EloriaCodeWelcome({ onDismiss, userName }) {
                   border: "1px solid #333",
                   borderRadius: 4,
                   padding: "8px 20px",
-                  color: "#d4af37",
+                  color: "#fffaec",
                   fontSize: 13,
                   fontFamily: "inherit",
                   cursor: "pointer",
@@ -155,7 +155,7 @@ export default function EloriaCodeWelcome({ onDismiss, userName }) {
                   transition: "border-color 0.15s, background 0.15s",
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.borderColor = "#d4af37";
+                  e.target.style.borderColor = "#fffaec";
                   e.target.style.background = "rgba(212,175,55,0.06)";
                 }}
                 onMouseLeave={(e) => {
