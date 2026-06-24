@@ -1008,16 +1008,23 @@ const CW_STYLE = `
     .cw-bubble-stack { max-width: min(92%, 100%); }
   }
 
-  .cw-bubble {
-    padding: 10px 15px;
-    font-size: 13px; line-height: 1.5;
-    word-break: break-word;
-    border-radius: 18px;
-    font-family: var(--font);
-  }
-  @media(max-width: 640px) {
-    .cw-bubble { font-size: 13.5px; padding: 9px 13px; }
-  }
+.cw-bubble {
+  padding: 11px 16px;
+  font-size: 16px;
+  line-height: 1.55;
+  word-break: break-word;
+  border-radius: 18px;
+  font-family: 'Tiempos Text', 'Charter', Georgia, ui-serif, serif; /* Claude's user-message serif */
+  letter-spacing: -0.003em;
+}
+.cw-msg-row.ai .cw-bubble {
+  font-family: var(--font); /* keep AI replies in your sans font */
+  font-size: 15px;
+}
+@media(max-width: 640px) {
+  .cw-bubble { font-size: 16px; padding: 10px 14px; }
+  .cw-msg-row.ai .cw-bubble { font-size: 14.5px; }
+}
   .cw-msg-row.user .cw-bubble {
     background: var(--accent);
     color: #fff;
@@ -1301,11 +1308,11 @@ const CW_STYLE = `
 
 @media (prefers-color-scheme: dark) {
   .cw-download-btn {
-    background: linear-gradient(135deg, #d4c4b0 0%, #cbb9a6 100%);
+    background: linear-gradient(135deg, #fffee8f8 0%, #fffee8f8 100%);
     box-shadow: 0 6px 20px rgba(210, 190, 165, 0.3);
   }
   .cw-download-btn:hover {
-    background: linear-gradient(135deg, #cbb9a6 0%, #c2ae99 100%);
+    background: linear-gradient(135deg, #fffee8f8 0%, #fffee8f8 100%);
     box-shadow: 0 10px 30px rgba(210, 190, 165, 0.4);
   }
 }
@@ -1584,6 +1591,20 @@ const CW_STYLE = `
 
 
 function PendingChip({ file, onRemove }) {
+  if (file.kind === "paste") {
+    return (
+      <div className="cw-pending-chip">
+        <div className="cw-pending-doc-icon" style={{ background: "#eef0ea", color: "#5b6b56" }}>
+          {file.isCode ? "</>" : "TXT"}
+        </div>
+        <div className="cw-pending-chip-info">
+          <div className="cw-pending-chip-name">{file.name}</div>
+          <div className="cw-pending-chip-meta">{file.lineCount} lines</div>
+        </div>
+        <button className="cw-pending-remove" onClick={onRemove}>✕</button>
+      </div>
+    );
+  }
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
   const di = docIcon(ext);
@@ -1604,6 +1625,19 @@ function PendingChip({ file, onRemove }) {
 }
 
 function AttachBubble({ file, sender, onImageClick }) {
+  if (file.kind === "paste") {
+    return (
+      <div className="cw-attach-doc-bubble">
+        <div className="cw-doc-icon-box" style={{ background: "#eef0ea", color: "#5b6b56" }}>
+          {file.isCode ? "</>" : "TXT"}
+        </div>
+        <div className="cw-doc-info">
+          <div className="cw-doc-name">{file.name}</div>
+          <div className="cw-doc-meta">{file.lineCount} lines</div>
+        </div>
+      </div>
+    );
+  }
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
   const di = docIcon(ext);
@@ -1635,7 +1669,7 @@ function InputBox({
   input, setInput, isThinking, isStreaming, pendingFiles, setPendingFiles,
   showAttach, setShowAttach, attachRef, fileInputRef, canAddMore,
   textareaRef, voiceOpen, setVoiceOpen, sendMessage, abortControllerRef,
-  setIsThinking, setIsStreaming, isCentered,
+  setIsThinking, setIsStreaming, isCentered, handleTextareaPaste,
 }) {
   return (
     <div className={`cw-input-box${isCentered ? " cw-input-box-centered" : ""}`}>
@@ -1690,7 +1724,7 @@ function InputBox({
           )}
         </div>
 
-        <textarea
+         <textarea
           ref={textareaRef}
           className="cw-textarea"
           rows={1}
@@ -1698,6 +1732,7 @@ function InputBox({
           placeholder={pendingFiles.length > 0 ? "Add a message about your files…" : "Message Eloria…"}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+          onPaste={handleTextareaPaste}
         />
 
         <button
@@ -1903,6 +1938,25 @@ const greeting = GREETINGS[greetingIdx];
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
+  const PASTE_THRESHOLD = 200;
+
+  const handleTextareaPaste = (e) => {
+    const text = e.clipboardData.getData("text");
+    if (!text || text.length < PASTE_THRESHOLD) return;
+    e.preventDefault();
+    if (pendingFiles.length >= 2) return;
+    const isCode = /```|function |const |let |def |class |import |<\/?[a-z]+>/i.test(text);
+    setPendingFiles(prev => [...prev, {
+      id: Date.now() + Math.random(),
+      name: isCode ? "Pasted code" : "Pasted text",
+      size: text.length,
+      kind: "paste",
+      isCode,
+      textContent: text,
+      lineCount: text.split("\n").length,
+    }]);
+  };
+
   const openFilePicker = (kind) => {
   if (!canAddMore) return;
   setShowAttach(false);
@@ -2010,6 +2064,12 @@ const greeting = GREETINGS[greetingIdx];
       );
       enrichedText = input.trim() + urlContents.join("");
     }
+
+    const pasteContents = pendingFiles
+      .filter(f => f.kind === "paste")
+      .map(f => `\n\n[${f.name}]:\n${f.textContent}`)
+      .join("");
+    enrichedText = enrichedText + pasteContents;
 
     const apiMessages = newMessages.map((m, idx) => ({
       role: m.sender === "user" ? "user" : "assistant",
@@ -2277,6 +2337,7 @@ const greeting = GREETINGS[greetingIdx];
     textareaRef, voiceOpen, setVoiceOpen,
     sendMessage, abortControllerRef,
     setIsThinking, setIsStreaming,
+    handleTextareaPaste,
   };
 
   const renderMessage = (msg) => {
@@ -2658,6 +2719,7 @@ const greeting = GREETINGS[greetingIdx];
             placeholder="Message Eloria…"
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+            onPaste={handleTextareaPaste}
           />
           <button className={`cw-mic-btn${voiceOpen ? " active" : ""}`} onClick={() => setVoiceOpen(true)} title="Voice mode">
             <MicIcon />
