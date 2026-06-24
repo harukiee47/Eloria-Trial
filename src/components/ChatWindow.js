@@ -269,7 +269,7 @@ function DownloadCodeButton({ text }) {
   const blocks = detectCodeBlocks(text);
   if (blocks.length === 0) return null;
   const { lang, code, ext } = blocks[0];
-  if (code.split("\n").length <= 100) return null;
+  if (code.split("\n").length <= 50) return null;
   const filename = `eloria-output.${ext}`;
   const handleDownload = () => {
     const blob = new Blob([code], { type: "text/plain" });
@@ -278,16 +278,27 @@ function DownloadCodeButton({ text }) {
     a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   };
-  return (
-    <button className="cw-download-btn" onClick={handleDownload} title={`Download ${filename}`}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      Download {lang} file
-    </button>
-  );
+return (
+  <button 
+    className="cw-download-btn" 
+    onClick={handleDownload} 
+    title={`Download ${filename}`}
+  >
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2.2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    <span className="cw-download-text">Download {lang}</span>
+  </button>
+);
 }
 
 function UrlFetchChip({ url, status }) {
@@ -1204,22 +1215,108 @@ const CW_STYLE = `
 
   /* ── DOWNLOAD BUTTON ─────────────────────────────────── */
   .cw-download-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 12px;
-    background: #faf7f1;
-    border: 1px solid rgba(193,127,42,.3);
-    border-radius: 10px;
-    font-size: 12px; font-weight: 600;
-    color: var(--accent); cursor: pointer;
-    font-family: var(--font);
-    transition: background .12s, box-shadow .12s;
-    margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  margin-top: 12px;
+  background: linear-gradient(135deg, #276152 0%, #1f4f43 100%);
+  color: #fbf6f0;
+  border: 1px solid rgba(39, 97, 82, 0.3);
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 6px 20px rgba(39, 97, 82, 0.2);
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer effect on hover */
+.cw-download-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transition: left 0.5s ease;
+}
+
+.cw-download-btn:hover::before {
+  left: 100%;
+}
+
+.cw-download-btn:hover {
+  background: linear-gradient(135deg, #1f4f43 0%, #1a4338 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(39, 97, 82, 0.3);
+  border-color: rgba(39, 97, 82, 0.5);
+}
+
+.cw-download-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(39, 97, 82, 0.2);
+}
+
+.cw-download-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.cw-download-btn:hover svg {
+  transform: translateY(2px);
+  animation: downloadPulse 0.6s ease;
+}
+
+@keyframes downloadPulse {
+  0%, 100% {
+    transform: translateY(2px);
   }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+.cw-download-text {
+  display: inline-block;
+  font-weight: 600;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .cw-download-btn {
+    padding: 9px 14px;
+    font-size: 12.5px;
+    gap: 6px;
+  }
+
+  .cw-download-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .cw-download-btn {
+    background: linear-gradient(135deg, #2d8659 0%, #1f5a43 100%);
+    box-shadow: 0 6px 20px rgba(39, 97, 82, 0.3);
+  }
+
   .cw-download-btn:hover {
-    background: #fff3e0;
-    box-shadow: 0 2px 8px rgba(193,127,42,.15);
+    background: linear-gradient(135deg, #1f5a43 0%, #194535 100%);
+    box-shadow: 0 10px 30px rgba(39, 97, 82, 0.4);
   }
-  .cw-download-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+}
 
   /* ── THINKING ────────────────────────────────────────── */
   .cw-thinking {
