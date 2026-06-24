@@ -1221,9 +1221,9 @@ const CW_STYLE = `
   gap: 8px;
   padding: 10px 18px;
   margin-top: 12px;
-  background: linear-gradient(135deg, #276152 0%, #1f4f43 100%);
-  color: #fbf6f0;
-  border: 1px solid rgba(39, 97, 82, 0.3);
+  background: linear-gradient(135deg, #f5ede0 0%, #ede5d8 100%);
+  color: #3d3d3d;
+  border: 1px solid rgba(210, 190, 165, 0.4);
   border-radius: 10px;
   font-size: 13.5px;
   font-weight: 600;
@@ -1231,7 +1231,7 @@ const CW_STYLE = `
   cursor: pointer;
   outline: none;
   transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 6px 20px rgba(39, 97, 82, 0.2);
+  box-shadow: 0 6px 20px rgba(210, 190, 165, 0.2);
   letter-spacing: 0.01em;
   position: relative;
   overflow: hidden;
@@ -1245,7 +1245,7 @@ const CW_STYLE = `
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   transition: left 0.5s ease;
 }
 
@@ -1254,15 +1254,15 @@ const CW_STYLE = `
 }
 
 .cw-download-btn:hover {
-  background: linear-gradient(135deg, #1f4f43 0%, #1a4338 100%);
+  background: linear-gradient(135deg, #ede5d8 0%, #e5dcd0 100%);
   transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(39, 97, 82, 0.3);
-  border-color: rgba(39, 97, 82, 0.5);
+  box-shadow: 0 10px 30px rgba(210, 190, 165, 0.3);
+  border-color: rgba(210, 190, 165, 0.6);
 }
 
 .cw-download-btn:active {
   transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(39, 97, 82, 0.2);
+  box-shadow: 0 4px 12px rgba(210, 190, 165, 0.2);
 }
 
 .cw-download-btn svg {
@@ -1278,12 +1278,8 @@ const CW_STYLE = `
 }
 
 @keyframes downloadPulse {
-  0%, 100% {
-    transform: translateY(2px);
-  }
-  50% {
-    transform: translateY(6px);
-  }
+  0%, 100% { transform: translateY(2px); }
+  50% { transform: translateY(6px); }
 }
 
 .cw-download-text {
@@ -1291,30 +1287,26 @@ const CW_STYLE = `
   font-weight: 600;
 }
 
-/* Mobile responsive */
 @media (max-width: 480px) {
   .cw-download-btn {
     padding: 9px 14px;
     font-size: 12.5px;
     gap: 6px;
   }
-
   .cw-download-btn svg {
     width: 16px;
     height: 16px;
   }
 }
 
-/* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .cw-download-btn {
-    background: linear-gradient(135deg, #2d8659 0%, #1f5a43 100%);
-    box-shadow: 0 6px 20px rgba(39, 97, 82, 0.3);
+    background: linear-gradient(135deg, #d4c4b0 0%, #cbb9a6 100%);
+    box-shadow: 0 6px 20px rgba(210, 190, 165, 0.3);
   }
-
   .cw-download-btn:hover {
-    background: linear-gradient(135deg, #1f5a43 0%, #194535 100%);
-    box-shadow: 0 10px 30px rgba(39, 97, 82, 0.4);
+    background: linear-gradient(135deg, #cbb9a6 0%, #c2ae99 100%);
+    box-shadow: 0 10px 30px rgba(210, 190, 165, 0.4);
   }
 }
 
