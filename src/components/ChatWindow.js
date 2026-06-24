@@ -780,17 +780,6 @@ const CW_STYLE = `
   .cw-body::-webkit-scrollbar-thumb { background: #ddddd8; border-radius: 3px; }
 
   /* ── CENTERED EMPTY STATE ───────────────────────────── */
-  .cw-empty-state {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 24px 0;
-    pointer-events: none;
-    animation: cwFadeUp .4s ease;
-  }
-
   .cw-welcome-greeting {
     display: flex;
     flex-direction: column;
@@ -828,16 +817,7 @@ const CW_STYLE = `
   }
 
   /* ── CENTERED INPUT WRAP (empty state) ──────────────── */
-  .cw-input-wrap-centered {
-    position: absolute;
-    top: 50%;
-    left: 0; right: 0;
-    transform: translateY(-50%);
-    padding: 0 16px;
-    z-index: 5;
-    pointer-events: all;
-    animation: cwFadeUp .35s ease;
-  }
+
   @media(max-width: 640px) {
     .cw-input-wrap-centered { padding: 0 10px; }
   }
@@ -1696,6 +1676,17 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     window.getSelection()?.removeAllRanges();
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
+
+  const openFilePicker = (kind) => {
+  if (!canAddMore) return;
+  setShowAttach(false);
+  fileAcceptRef.current = ATTACH_TYPES[kind].accept;
+  if (fileInputRef.current) {
+    fileInputRef.current.value = "";
+    fileInputRef.current.setAttribute("accept", fileAcceptRef.current);
+    fileInputRef.current.click();
+  }
+};
 
   const generateChatTitle = text => {
     const stop = ["how","to","the","a","an","and","or","for","with","of","in","on","is","are","can","i","you","me","my","what","why","when","make","fix","create","write","about"];
