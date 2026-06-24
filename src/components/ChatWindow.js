@@ -1655,8 +1655,6 @@ function PasteViewerModal({ data, onClose, onSave }) {
   );
 }
 
-
-function PendingChip({ file, onRemove }) {
   function PendingChip({ file, onRemove, onView }) {
   if (file.kind === "paste") {
     return (
@@ -1668,10 +1666,9 @@ function PendingChip({ file, onRemove }) {
           <div className="cw-pending-chip-name">{file.name}</div>
           <div className="cw-pending-chip-meta">{file.lineCount} lines</div>
         </div>
-        <button className="cw-pending-remove" onClick={onRemove}>✕</button>
+        <button className="cw-pending-remove" onClick={e => { e.stopPropagation(); onRemove(); }}>✕</button>
       </div>
     );
-  }
   }
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
@@ -1692,8 +1689,7 @@ function PendingChip({ file, onRemove }) {
   );
 }
 
-function AttachBubble({ file, sender, onImageClick }) {
-  function AttachBubble({ file, sender, onImageClick, onPasteClick }) {
+function AttachBubble({ file, sender, onImageClick, onPasteClick }) {
   if (file.kind === "paste") {
     return (
       <div className="cw-attach-doc-bubble" onClick={() => onPasteClick && onPasteClick(file)} style={{ cursor: "pointer" }}>
@@ -1707,11 +1703,9 @@ function AttachBubble({ file, sender, onImageClick }) {
       </div>
     );
   }
-  }
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
   const di = docIcon(ext);
-
   if (isImage) {
     return (
       <div
@@ -1722,7 +1716,6 @@ function AttachBubble({ file, sender, onImageClick }) {
       </div>
     );
   }
-
   return (
     <div className="cw-attach-doc-bubble">
       <div className="cw-doc-icon-box" style={{ background: di.bg, color: di.color }}>{di.char}</div>
