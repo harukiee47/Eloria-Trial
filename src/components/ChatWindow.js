@@ -102,22 +102,102 @@ function detectCodeBlocks(text) {
   return blocks;
 }
 
-function buildActivitySteps({ hasUrls, hasFiles }) {
+function classifyMessage({ text, hasFiles }) {
+  const t = (text || "").toLowerCase();
+  const hasCode = /```|function |const |let |var |def |class |import |require|<[a-z]+>/.test(text);
+  const hasUrl = /https?:\/\//.test(text);
+  const isSearch = /search|look up|find|latest|news|current|today|who is|what is the price|weather|stock/.test(t);
+  const isLong = text.length > 200 || t.split(" ").length > 40;
+  const isSimple = !hasCode && !hasUrl && !isSearch && !hasFiles && !isLong && text.length < 120;
+  return { hasCode, hasUrl, isSearch, isLong, isSimple };
+}
+
+function buildActivitySteps({ text = "", hasFiles = false }) {
+  const { hasCode, hasUrl, isSearch, isLong, isSimple } = classifyMessage({ text, hasFiles });
+  const t = (text || "").toLowerCase();
+  if (isSimple) return [];
   const steps = [];
-  steps.push({ icon: "", text: "Thinking…" });
-  if (hasUrls) steps.push({ icon: "", text: "Checking link…" });
-  if (hasFiles) steps.push({ icon: "", text: "Reading code file…" });
-  steps.push({ icon: "", text: "Writing response…" });
+  if (hasFiles) steps.push({ icon: "file", text: "Reading your file", badge: "Script", badgeType: "code" });
+  if (hasCode) {
+    steps.push({ icon: "code", text: "Reading your code", badge: "Script", badgeType: "code" });
+    steps.push({ icon: "zoom", text: "Analyzing the logic", badge: "Script", badgeType: "code" });
+    if (t.includes("fix") || t.includes("bug") || t.includes("error") || t.includes("broken"))
+      steps.push({ icon: "tool", text: "Identifying the issue", badge: "Script", badgeType: "code" });
+  }
+  if (hasUrl) steps.push({ icon: "world", text: "Fetching the link", badge: "Web", badgeType: "web" });
+  if (isSearch) {
+    steps.push({ icon: "search", text: "Searching the web", badge: "Web", badgeType: "web" });
+    steps.push({ icon: "news", text: "Reading results", badge: "Web", badgeType: "web" });
+  }
+  if (isLong) steps.push({ icon: "list", text: "Breaking down your question", badge: null, badgeType: null });
+  steps.push({ icon: "sparkles", text: "Writing response", badge: null, badgeType: null });
   return steps;
 }
 
-function ActivityBar({ step, steps }) {
-  const s = (steps || [])[step] || { icon: "", text: "Thinking…" };
+function TrailBadge({ label, type }) {
+  if (!label) return null;
+  const styles = {
+    code: { background: "rgba(0,0,0,0.06)", color: "#666", border: "0.5px solid rgba(0,0,0,0.12)" },
+    web:  { background: "rgba(24,95,165,0.1)", color: "#185fa5", border: "0.5px solid rgba(24,95,165,0.2)" },
+  };
+  const s = styles[type] || styles.code;
   return (
+    <span style={{
+      display: "inline-block", fontSize: 11, fontWeight: 500,
+      padding: "2px 9px", borderRadius: 4,
+      fontFamily: "var(--font)", letterSpacing: "0.02em", ...s,
+    }}>{label}</span>
+  );
+}
+
+function ActivityBar({ step, steps }) {
+  if (!steps || steps.length === 0) return (
     <div className="cw-activity-bar">
-      <span className="cw-activity-icon">{s.icon}</span>
-      <span className="cw-activity-text">{s.text}</span>
+      <span className="cw-activity-icon">✦</span>
+      <span className="cw-activity-text">Thinking…</span>
       <div className="cw-activity-dots"><span/><span/><span/></div>
+    </div>
+  );
+
+  const current = steps[Math.min(step, steps.length - 1)];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {steps.slice(0, step).map((s, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(34,134,58,0.08)", border: "0.5px solid rgba(34,134,58,0.2)",
+          }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#22863a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="11" height="11">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <span style={{ fontSize: 12, color: "var(--t3)", fontFamily: "var(--font)" }}>{s.text}</span>
+          {s.badge && <TrailBadge label={s.badge} type={s.badgeType} />}
+        </div>
+      ))}
+      {current && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: step > 0 ? 2 : 0 }}>
+          <div style={{
+            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "#faf8f4", border: "1px solid rgba(193,127,42,.25)",
+          }}>
+            <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+              {[0,1,2].map(i => (
+                <span key={i} style={{
+                  width: 3, height: 3, borderRadius: "50%", display: "inline-block",
+                  background: "var(--accent)", opacity: 0.6,
+                  animation: `cwDot 1.2s ease-in-out ${i * 0.2}s infinite`,
+                }}/>
+              ))}
+            </div>
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)", fontFamily: "var(--font)" }}>{current.text}</span>
+          {current.badge && <TrailBadge label={current.badge} type={current.badgeType} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -125,15 +205,30 @@ function ActivityBar({ step, steps }) {
 function ActivityTrail({ steps }) {
   if (!steps || steps.length === 0) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: 10 }}>
       {steps.map((s, i) => (
-        <div key={i} style={{
-          display: "flex", alignItems: "center", gap: 6,
-          fontSize: 12, color: "var(--t3)", fontFamily: "var(--font)",
-        }}>
-          <span>{s.icon}</span>
-          <span>{s.text.replace("…", "")}</span>
-          <span style={{ color: "#22863a", fontSize: 11 }}>✓</span>
+        <div key={i} style={{ display: "flex", gap: 10, position: "relative" }}>
+          {i < steps.length - 1 && (
+            <div style={{
+              position: "absolute", left: 11, top: 26, bottom: -2,
+              width: 1, background: "rgba(0,0,0,0.08)",
+            }} />
+          )}
+          <div style={{
+            width: 24, height: 24, borderRadius: 6, flexShrink: 0, marginTop: 2,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(34,134,58,0.07)", border: "0.5px solid rgba(34,134,58,0.18)",
+          }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#22863a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="11" height="11">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div style={{ paddingBottom: i < steps.length - 1 ? 10 : 6 }}>
+            <div style={{ fontSize: 12, color: "var(--t3)", fontFamily: "var(--font)", marginBottom: s.badge ? 3 : 0 }}>
+              {s.text}
+            </div>
+            {s.badge && <TrailBadge label={s.badge} type={s.badgeType} />}
+          </div>
         </div>
       ))}
     </div>
@@ -1635,7 +1730,7 @@ const greeting = GREETINGS[greetingIdx];
     if (isThinking) {
       setActivityStep(0);
       activityTimerRef.current = setInterval(() => {
-        setActivityStep(s => (s + 1) % Math.max(activitySteps.length, 1));
+        setActivityStep(s => Math.min(s + 1, Math.max(activitySteps.length - 1, 0)));
       }, 1800);
     } else {
       clearInterval(activityTimerRef.current);
@@ -1747,7 +1842,7 @@ const greeting = GREETINGS[greetingIdx];
     const urls = extractUrls(input.trim());
     const hasFiles = pendingFiles.length > 0;
 
-    const steps = buildActivitySteps({ hasUrls: urls.length > 0, hasFiles });
+    const steps = buildActivitySteps({ text: input.trim(), hasFiles });
     setActivitySteps(steps);
     let enrichedText = input.trim();
 
@@ -2457,7 +2552,11 @@ const greeting = GREETINGS[greetingIdx];
                 <div className="cw-ai-avatar" style={{ width:28, height:28, borderRadius:8, overflow:"hidden", border:"1.5px solid rgba(193,127,42,.2)", background:"#faf8f4", flexShrink:0 }}>
                   <img src={logo} alt="Eloria" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                 </div>
-                {isThinking && <ActivityBar step={activityStep} steps={activitySteps} />}
+                {isThinking && (
+  activitySteps.length === 0
+    ? <span className="cw-thinking-label">Thinking…</span>
+    : <ActivityBar step={activityStep} steps={activitySteps} />
+)}
                 {isStreaming && <span className="cw-thinking-label">Eloria is responding…</span>}
                 <button
                   onClick={() => {
