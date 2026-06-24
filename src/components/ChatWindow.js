@@ -2097,42 +2097,133 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       {/* ── BODY ── */}
       <div className="cw-body" ref={bodyRef}>
         {showIntro ? (
-          <>
-            {/* Welcome greeting sits at the top of the body, above center */}
-            <div className="cw-empty-state">
-              <div className="cw-welcome-greeting">
-                <span className="cw-welcome-label">
-                  {isNewUser ? "Welcome" : "Welcome back"}
-                </span>
-                {displayName && (
-                  <span className="cw-welcome-name">{displayName}</span>
-                )}
-                <span className="cw-welcome-sub">
-                  {isNewUser
-                    ? "Ask me anything — I'm here to help."
-                    : "Ready when you are."}
-                </span>
-              </div>
-            </div>
+  <div style={{
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "24px 16px 40px",
+    gap: "32px",
+  }}>
+    {/* Welcome greeting */}
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "8px",
+      textAlign: "center",
+      animation: "cwFadeUp .4s ease",
+    }}>
+      <span style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: "#b1b7ab",
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+      }}>
+        {isNewUser ? "Welcome" : "Welcome back"}
+      </span>
+      {displayName && (
+        <span style={{
+          fontSize: "clamp(28px, 5vw, 42px)",
+          fontWeight: 700,
+          color: "#0d3a35",
+          letterSpacing: "-0.03em",
+          lineHeight: 1.1,
+        }}>
+          {displayName}
+        </span>
+      )}
+      <span style={{
+        fontSize: 14,
+        color: "#b1b7ab",
+        marginTop: 2,
+        lineHeight: 1.5,
+      }}>
+        {isNewUser ? "Ask me anything — I'm here to help." : "Ready when you are."}
+      </span>
+    </div>
 
-            {/* Centered input — absolutely positioned in the middle of body */}
-            <div className="cw-input-wrap-centered">
-              {pendingFiles.length > 0 && (
-                <div style={{ background:"var(--bg-chat)", borderRadius:"14px 14px 0 0", borderBottom:"none", paddingTop:2, maxWidth:720, margin:"0 auto" }}>
-                  <div className="cw-pending-strip" style={{ padding:"8px 12px 4px" }}>
-                    {pendingFiles.map(f => (
-                      <PendingChip key={f.id} file={f} onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))} />
-                    ))}
-                  </div>
-                  {pendingFiles.length >= 2 && (
-                    <div className="cw-pending-limit">Max 2 attachments per message</div>
-                  )}
-                </div>
-              )}
-              <InputBox {...inputProps} isCentered={true} />
-              <p className="cw-hint" style={{ marginTop: 6 }}>Eloria can make mistakes. Verify important information.</p>
-            </div>
-          </>
+    {/* Input box */}
+    <div style={{ width: "100%", maxWidth: 680 }}>
+      {pendingFiles.length > 0 && (
+        <div style={{ marginBottom: 6 }}>
+          <div className="cw-pending-strip" style={{ padding: "6px 0 4px" }}>
+            {pendingFiles.map(f => (
+              <PendingChip key={f.id} file={f} onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))} />
+            ))}
+          </div>
+          {pendingFiles.length >= 2 && (
+            <div className="cw-pending-limit">Max 2 attachments per message</div>
+          )}
+        </div>
+      )}
+      <div className="cw-input-box" style={{
+        boxShadow: "0 4px 28px rgba(13,58,53,.12), 0 1px 6px rgba(0,0,0,.04)",
+        borderColor: "rgba(13,58,53,.18)",
+      }}>
+        <div className="cw-textarea-row">
+          <div className="cw-attach" ref={attachRef}>
+            <button
+              className={`cw-attach-btn${pendingFiles.length > 0 ? " has-files" : ""}`}
+              onClick={() => setShowAttach(v => !v)}
+              title="Attach file"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+              </svg>
+            </button>
+            {showAttach && (
+              <div className="cw-attach-menu">
+                {!canAddMore && <div className="cw-attach-menu-limit">Max 2 files per message</div>}
+                {canAddMore && (
+                  <>
+                    <div className="cw-attach-menu-item" onClick={() => openFilePicker("image")}>
+                      {ATTACH_TYPES.image.icon}<span>Image</span>
+                      <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>jpg · png · gif</span>
+                    </div>
+                    <div className="cw-attach-menu-sep" />
+                    <div className="cw-attach-menu-item" onClick={() => openFilePicker("document")}>
+                      {ATTACH_TYPES.document.icon}<span>Document</span>
+                      <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>pdf · doc · txt</span>
+                    </div>
+                  </>
+                )}
+                {pendingFiles.length > 0 && canAddMore && (
+                  <><div className="cw-attach-menu-sep" /><div className="cw-attach-menu-limit">{pendingFiles.length}/2 attached</div></>
+                )}
+              </div>
+            )}
+          </div>
+          <textarea
+            ref={textareaRef}
+            className="cw-textarea"
+            rows={1}
+            value={input}
+            placeholder="Message Eloria…"
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+          />
+          <button className={`cw-mic-btn${voiceOpen ? " active" : ""}`} onClick={() => setVoiceOpen(true)} title="Voice mode">
+            <MicIcon />
+          </button>
+          <button
+            className="cw-send"
+            onClick={sendMessage}
+            disabled={!input.trim() && pendingFiles.length === 0}
+            title="Send"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"/>
+              <polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <p className="cw-hint" style={{ marginTop: 8 }}>Eloria can make mistakes. Verify important information.</p>
+    </div>
+  </div>
         ) : (
           <div className="cw-messages">
             {messages.map(renderMessage)}
