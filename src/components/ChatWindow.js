@@ -1228,7 +1228,7 @@ const CW_STYLE = `
   gap: 8px;
   padding: 10px 18px;
   margin-top: 12px;
-  background: linear-gradient(135deg, #f5ede0 0%, #ede5d8 100%);
+  background: linear-gradient(135deg, #fffbf6 0%, #fff9ef 100%);
   color: #3d3d3d;
   border: 1px solid rgba(210, 190, 165, 0.4);
   border-radius: 10px;
@@ -1261,7 +1261,7 @@ const CW_STYLE = `
 }
 
 .cw-download-btn:hover {
-  background: linear-gradient(135deg, #ede5d8 0%, #e5dcd0 100%);
+  background: linear-gradient(135deg, #fcf7ef 0%, #fff8f0 100%);
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(210, 190, 165, 0.3);
   border-color: rgba(210, 190, 165, 0.6);
@@ -1590,10 +1590,77 @@ const CW_STYLE = `
 `;
 
 
+function PasteViewerModal({ data, onClose, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(data?.textContent || "");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => { setText(data?.textContent || ""); setEditing(false); }, [data]);
+
+  if (!data) return null;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="cw-limit-modal-back" onClick={onClose}>
+      <div className="cw-limit-modal" style={{ width: 560, maxWidth: "92vw" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 18px", borderBottom:"1px solid var(--border-soft)" }}>
+          <div style={{ fontSize:13, fontWeight:600, color:"var(--t1)", fontFamily:"var(--font)" }}>{data.name}</div>
+          <button onClick={onClose} style={{ border:"none", background:"none", cursor:"pointer", color:"var(--t3)", fontSize:16 }}>✕</button>
+        </div>
+        <div style={{ padding:"14px 18px" }}>
+          {editing ? (
+            <textarea
+              autoFocus
+              value={text}
+              onChange={e => setText(e.target.value)}
+              style={{
+                width:"100%", minHeight:300, maxHeight:"55vh",
+                fontFamily:"ui-monospace, monospace", fontSize:12.5,
+                border:"1px solid var(--border)", borderRadius:10,
+                padding:12, resize:"vertical", outline:"none", boxSizing:"border-box",
+                color:"var(--t1)",
+              }}
+            />
+          ) : (
+            <pre style={{
+              margin:0, maxHeight:"55vh", overflow:"auto",
+              fontFamily:"ui-monospace, monospace", fontSize:12.5,
+              background:"#faf9f6", border:"1px solid var(--border-soft)",
+              borderRadius:10, padding:12, whiteSpace:"pre-wrap", wordBreak:"break-word",
+              color:"var(--t1)",
+            }}>{text}</pre>
+          )}
+        </div>
+        <div style={{ display:"flex", gap:8, padding:"0 18px 16px", justifyContent:"flex-end" }}>
+          <button className="cw-limit-btn-cancel" onClick={handleCopy} style={{ flex:"none", padding:"8px 14px" }}>
+            {copied ? "✓ Copied" : "Copy"}
+          </button>
+          {editing ? (
+            <button className="cw-limit-btn-upgrade" style={{ flex:"none", padding:"8px 14px" }} onClick={() => { onSave(text); setEditing(false); }}>
+              Save
+            </button>
+          ) : (
+            <button className="cw-limit-btn-upgrade" style={{ flex:"none", padding:"8px 14px" }} onClick={() => setEditing(true)}>
+              Edit
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function PendingChip({ file, onRemove }) {
+  function PendingChip({ file, onRemove, onView }) {
   if (file.kind === "paste") {
     return (
-      <div className="cw-pending-chip">
+      <div className="cw-pending-chip" onClick={() => onView && onView(file)} style={{ cursor: "pointer" }}>
         <div className="cw-pending-doc-icon" style={{ background: "#eef0ea", color: "#5b6b56" }}>
           {file.isCode ? "</>" : "TXT"}
         </div>
@@ -1604,6 +1671,7 @@ function PendingChip({ file, onRemove }) {
         <button className="cw-pending-remove" onClick={onRemove}>✕</button>
       </div>
     );
+  }
   }
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
@@ -1625,9 +1693,10 @@ function PendingChip({ file, onRemove }) {
 }
 
 function AttachBubble({ file, sender, onImageClick }) {
+  function AttachBubble({ file, sender, onImageClick, onPasteClick }) {
   if (file.kind === "paste") {
     return (
-      <div className="cw-attach-doc-bubble">
+      <div className="cw-attach-doc-bubble" onClick={() => onPasteClick && onPasteClick(file)} style={{ cursor: "pointer" }}>
         <div className="cw-doc-icon-box" style={{ background: "#eef0ea", color: "#5b6b56" }}>
           {file.isCode ? "</>" : "TXT"}
         </div>
@@ -1637,6 +1706,7 @@ function AttachBubble({ file, sender, onImageClick }) {
         </div>
       </div>
     );
+  }
   }
   const isImage = file.kind === "image";
   const ext = getExt(file.name);
@@ -1783,6 +1853,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [selectionBtn,   setSelectionBtn]   = useState(null);
   const [voiceOpen,      setVoiceOpen]      = useState(false);
+  const [pasteViewer,    setPasteViewer]    = useState(null);
   const [openTrails, setOpenTrails] = useState({});
 
   const fileInputRef       = useRef(null);
@@ -1938,14 +2009,58 @@ const greeting = GREETINGS[greetingIdx];
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
-  const PASTE_THRESHOLD = 200;
+  const openPasteViewer = (file, source) => setPasteViewer({ file, source });
+
+  const savePasteEdit = (newText) => {
+    if (!pasteViewer) return;
+    const { file, source } = pasteViewer;
+    const updated = { ...file, textContent: newText, lineCount: newText.split("\n").length, size: newText.length };
+    if (source === "pending") {
+      setPendingFiles(prev => prev.map(f => f.id === file.id ? updated : f));
+    } else {
+      setChats(prev => prev.map(c => c.id === chat.id
+        ? { ...c, messages: c.messages.map(m => m.id === source
+            ? { ...m, files: (m.files || []).map(f => f.id === file.id ? updated : f) }
+            : m) }
+        : c));
+    }
+    setPasteViewer(prev => prev ? { ...prev, file: updated } : prev);
+  };
+
+  const PASTE_THRESHOLD = 50;
+
+  const detectPasteLang = (text) => {
+    if (/def\s+\w+\(|import\s+\w+|print\(/.test(text)) return "python";
+    if (/<\/?[a-z][\s\S]*>/i.test(text) && /<html|<div|<span|<body/i.test(text)) return "html";
+    if (/function\s|=>|const\s|let\s|var\s|console\.log/.test(text)) return "javascript";
+    if (/#include|std::|->/.test(text)) return "cpp";
+    return "";
+  };
 
   const handleTextareaPaste = (e) => {
     const text = e.clipboardData.getData("text");
-    if (!text || text.length < PASTE_THRESHOLD) return;
+    if (!text) return;
+    const isCode = /```|function |const |let |def |class |import |<\/?[a-z]+>/i.test(text);
+
+    if (text.length < PASTE_THRESHOLD) {
+      if (!isCode) return; // plain short text — let normal paste happen
+      e.preventDefault();
+      const lang = detectPasteLang(text);
+      const fenced = "```" + lang + "\n" + text + "\n```";
+      const ta = e.target;
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      const newValue = input.slice(0, start) + fenced + input.slice(end);
+      setInput(newValue);
+      setTimeout(() => {
+        ta.focus();
+        const pos = start + fenced.length;
+        ta.setSelectionRange(pos, pos);
+      }, 0);
+      return;
+    }
+
     e.preventDefault();
     if (pendingFiles.length >= 2) return;
-    const isCode = /```|function |const |let |def |class |import |<\/?[a-z]+>/i.test(text);
     setPendingFiles(prev => [...prev, {
       id: Date.now() + Math.random(),
       name: isCode ? "Pasted code" : "Pasted text",
@@ -2071,11 +2186,19 @@ const greeting = GREETINGS[greetingIdx];
       .join("");
     enrichedText = enrichedText + pasteContents;
 
-    const apiMessages = newMessages.map((m, idx) => ({
-      role: m.sender === "user" ? "user" : "assistant",
-      content: idx === newMessages.length - 1 ? enrichedText : (m.text || ""),
-      files: m.files || [],
-    }));
+const apiMessages = newMessages.map((m, idx) => {
+      const isLast = idx === newMessages.length - 1;
+      const baseText = isLast ? enrichedText : (m.text || "");
+      const filePasteContents = (m.files || [])
+        .filter(f => f.kind === "paste")
+        .map(f => `\n\n[${f.name}]:\n${f.textContent}`)
+        .join("");
+      return {
+        role: m.sender === "user" ? "user" : "assistant",
+        content: isLast ? baseText : (baseText + filePasteContents),
+        files: m.files || [],
+      };
+    });
 
     try {
       const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
@@ -2157,9 +2280,18 @@ const greeting = GREETINGS[greetingIdx];
     const token = await auth.currentUser.getIdToken();
     setIsThinking(true);
 
-    const apiMessages = prevMsgs
-      .filter(m => m.text)
-      .map(m => ({ role: m.sender === "user" ? "user" : "assistant", content: m.text }));
+   const apiMessages = prevMsgs
+      .filter(m => m.text || (m.files && m.files.some(f => f.kind === "paste")))
+      .map(m => {
+        const pasteContents = (m.files || [])
+          .filter(f => f.kind === "paste")
+          .map(f => `\n\n[${f.name}]:\n${f.textContent}`)
+          .join("");
+        return {
+          role: m.sender === "user" ? "user" : "assistant",
+          content: (m.text || "") + pasteContents,
+        };
+      });
 
     try {
       const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
@@ -2230,10 +2362,16 @@ const greeting = GREETINGS[greetingIdx];
     c.id === chat.id ? { ...c, messages: sanitizeForFirestore(newMessages) } : c
   ));
 
-  const apiMessages = newMessages.map(m => ({
-    role: m.sender === "user" ? "user" : "assistant",
-    content: m.text || "",
-  }));
+  const apiMessages = newMessages.map(m => {
+    const pasteContents = (m.files || [])
+      .filter(f => f.kind === "paste")
+      .map(f => `\n\n[${f.name}]:\n${f.textContent}`)
+      .join("");
+    return {
+      role: m.sender === "user" ? "user" : "assistant",
+      content: (m.text || "") + pasteContents,
+    };
+  });
 
   if (abortControllerRef.current) abortControllerRef.current.abort();
   abortControllerRef.current = new AbortController();
@@ -2414,7 +2552,13 @@ const greeting = GREETINGS[greetingIdx];
                     </svg>
                   </button>
                   {msg.files?.map(f => (
-                    <AttachBubble key={f.id} file={f} sender={msg.sender} onImageClick={setLightboxSrc} />
+                    <AttachBubble
+                      key={f.id}
+                      file={f}
+                      sender={msg.sender}
+                      onImageClick={setLightboxSrc}
+                      onPasteClick={(file) => openPasteViewer(file, msg.id)}
+                    />
                   ))}
                   {msg.text && (
   <div className="cw-bubble">
@@ -2553,6 +2697,12 @@ const greeting = GREETINGS[greetingIdx];
         </button>
       )}
 
+      <PasteViewerModal
+        data={pasteViewer?.file}
+        onClose={() => setPasteViewer(null)}
+        onSave={savePasteEdit}
+      />
+
       {lightboxSrc && (
         <div className="cw-lightbox" onClick={() => setLightboxSrc(null)}>
           <img src={lightboxSrc} alt="preview" onClick={e => e.stopPropagation()} />
@@ -2666,7 +2816,12 @@ const greeting = GREETINGS[greetingIdx];
         <div style={{ marginBottom: 6 }}>
           <div className="cw-pending-strip" style={{ padding: "6px 0 4px" }}>
             {pendingFiles.map(f => (
-              <PendingChip key={f.id} file={f} onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))} />
+              <PendingChip
+  key={f.id}
+  file={f}
+  onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))}
+  onView={(file) => openPasteViewer(file, "pending")}
+/>
             ))}
           </div>
           {pendingFiles.length >= 2 && (
@@ -2833,7 +2988,12 @@ const greeting = GREETINGS[greetingIdx];
             <div style={{ background:"var(--bg-chat)", borderTop:"1px solid var(--border-soft)", paddingTop:2 }}>
               <div className="cw-pending-strip">
                 {pendingFiles.map(f => (
-                  <PendingChip key={f.id} file={f} onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))} />
+                 <PendingChip
+  key={f.id}
+  file={f}
+  onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))}
+  onView={(file) => openPasteViewer(file, "pending")}
+/>
                 ))}
               </div>
               {pendingFiles.length >= 2 && (
