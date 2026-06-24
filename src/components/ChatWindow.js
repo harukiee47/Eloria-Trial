@@ -4,6 +4,12 @@ import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
 
+const GREETINGS = [
+  { label: "Good to have you back.", name: true,  sub: "What can I help you with today?" },
+  { label: "What are you working on?", name: false, sub: "I'm ready whenever you are." },
+  { label: "Eloria is ready.",         name: false, sub: "Ask me anything — I'll do my best." },
+];
+
 const ATTACH_TYPES = {
   image: {
     accept: "image/jpeg,image/png,image/gif,image/webp",
@@ -1551,6 +1557,9 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     return allChats.every(c => !c.messages || c.messages.length === 0);
   }, [allChats]);
 
+  const greetingIdx = useMemo(() => Math.floor(Math.random() * GREETINGS.length), [chat?.id]);
+const greeting = GREETINGS[greetingIdx];
+
   const displayName = auth.currentUser?.displayName
     ? auth.currentUser.displayName.split(" ")[0]   // first name only
     : null;
@@ -2100,42 +2109,59 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   }}>
     {/* Welcome greeting */}
     <div style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: "8px",
-      textAlign: "center",
-      animation: "cwFadeUp .4s ease",
-    }}>
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "10px",
+  textAlign: "center",
+  animation: "cwFadeUp .45s ease",
+}}>
+  {greeting.name && displayName ? (
+    <>
       <span style={{
-        fontSize: 12,
-        fontWeight: 600,
-        color: "#b1b7ab",
-        letterSpacing: "0.1em",
+        fontSize: 11,
+        fontWeight: 500,
+        color: "#a8b0a8",
+        letterSpacing: "0.12em",
         textTransform: "uppercase",
+        fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       }}>
-        {isNewUser ? "Welcome" : "Welcome back"}
+        {greeting.label}
       </span>
-      {displayName && (
-        <span style={{
-          fontSize: "clamp(28px, 5vw, 42px)",
-          fontWeight: 700,
-          color: "#0d3a35",
-          letterSpacing: "-0.03em",
-          lineHeight: 1.1,
-        }}>
-          {displayName}
-        </span>
-      )}
       <span style={{
-        fontSize: 14,
-        color: "#b1b7ab",
-        marginTop: 2,
-        lineHeight: 1.5,
+        fontFamily: "'Georgia', 'Times New Roman', serif",
+        fontSize: "clamp(38px, 7vw, 58px)",
+        fontWeight: 400,
+        color: "#0d3a35",
+        letterSpacing: "-0.02em",
+        lineHeight: 1.08,
       }}>
-        {isNewUser ? "Ask me anything — I'm here to help." : "Ready when you are."}
+        {displayName}
       </span>
-    </div>
+    </>
+  ) : (
+    <span style={{
+      fontFamily: "'Georgia', 'Times New Roman', serif",
+      fontSize: "clamp(32px, 5.5vw, 48px)",
+      fontWeight: 400,
+      color: "#0d3a35",
+      letterSpacing: "-0.02em",
+      lineHeight: 1.1,
+    }}>
+      {greeting.label}
+    </span>
+  )}
+  <span style={{
+    fontSize: 13.5,
+    color: "#a8b0a8",
+    marginTop: 2,
+    lineHeight: 1.6,
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontWeight: 400,
+  }}>
+    {greeting.sub}
+  </span>
+</div>
 
     {/* Input box */}
     <div style={{ width: "100%", maxWidth: 680 }}>
