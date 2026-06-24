@@ -69,7 +69,6 @@ function docIcon(ext) {
   return map[ext] || { bg: "#f5f5f0", color: "#888", char: ext.slice(0,3) };
 }
 
-// ── Detect URLs in text ────────────────────────────────────────────────────────
 function extractUrls(text) {
   const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
   return (text.match(urlRegex) || []).filter(u => {
@@ -77,7 +76,6 @@ function extractUrls(text) {
   });
 }
 
-// ── Detect code files in AI response ──────────────────────────────────────────
 function detectCodeBlocks(text) {
   const blocks = [];
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
@@ -98,8 +96,6 @@ function detectCodeBlocks(text) {
   return blocks;
 }
 
-// ── Activity status trail ──────────────────────────────────────────────────────
-// Build context-aware steps based on what's in the message
 function buildActivitySteps({ hasUrls, hasFiles }) {
   const steps = [];
   steps.push({ icon: "", text: "Thinking…" });
@@ -109,7 +105,6 @@ function buildActivitySteps({ hasUrls, hasFiles }) {
   return steps;
 }
 
-// Live activity bar shown while thinking (animating dots)
 function ActivityBar({ step, steps }) {
   const s = (steps || [])[step] || { icon: "", text: "Thinking…" };
   return (
@@ -121,7 +116,6 @@ function ActivityBar({ step, steps }) {
   );
 }
 
-// Permanent trail shown after response completes — pills stacked vertically
 function ActivityTrail({ steps }) {
   if (!steps || steps.length === 0) return null;
   return (
@@ -140,12 +134,10 @@ function ActivityTrail({ steps }) {
   );
 }
 
-// ── Download button for code files (only when >100 lines) ────────────────────
 function DownloadCodeButton({ text }) {
   const blocks = detectCodeBlocks(text);
   if (blocks.length === 0) return null;
   const { lang, code, ext } = blocks[0];
-  // Only show download button for long code (>100 lines)
   if (code.split("\n").length <= 100) return null;
   const filename = `eloria-output.${ext}`;
   const handleDownload = () => {
@@ -167,7 +159,6 @@ function DownloadCodeButton({ text }) {
   );
 }
 
-// ── URL fetch status chip ──────────────────────────────────────────────────────
 function UrlFetchChip({ url, status }) {
   const hostname = (() => { try { return new URL(url).hostname.replace("www.", ""); } catch { return url; } })();
   return (
@@ -231,7 +222,7 @@ function getSupportedMimeType() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Voice Modal — full-screen molecule orb design
+// Voice Modal
 // ─────────────────────────────────────────────────────────────────────────────
 function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
   const canvasRef     = useRef(null);
@@ -744,7 +735,7 @@ const CW_STYLE = `
     letter-spacing: .01em;
   }
   .cw-upgrade:hover { opacity:.88; box-shadow:0 2px 12px rgba(0,0,0,.25); }
-@media(max-width: 640px) {
+  @media(max-width: 640px) {
     .cw-upgrade { padding: 5px 10px; font-size: 11px; }
   }
 
@@ -782,60 +773,78 @@ const CW_STYLE = `
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: #e0e0da transparent;
+    position: relative;
   }
   @media(max-width: 640px) { .cw-body { padding-bottom: 120px; } }
   .cw-body::-webkit-scrollbar       { width: 5px; }
   .cw-body::-webkit-scrollbar-thumb { background: #ddddd8; border-radius: 3px; }
 
-  /* ── INTRO ───────────────────────────────────────────── */
-  .cw-intro {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 40px 24px 20px; gap: 28px;
+  /* ── CENTERED EMPTY STATE ───────────────────────────── */
+  .cw-empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 24px 0;
+    pointer-events: none;
+    animation: cwFadeUp .4s ease;
+  }
+
+  .cw-welcome-greeting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .cw-welcome-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #b1b7ab;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .cw-welcome-name {
+    font-size: clamp(22px, 4.5vw, 32px);
+    font-weight: 700;
+    color: #0d3a35;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+  }
+
+  .cw-welcome-sub {
+    font-size: 13.5px;
+    color: #b1b7ab;
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  @media(max-width: 640px) {
+    .cw-empty-state { padding: 20px 16px 0; }
+    .cw-welcome-name { font-size: 22px; }
+  }
+
+  /* ── CENTERED INPUT WRAP (empty state) ──────────────── */
+  .cw-input-wrap-centered {
+    position: absolute;
+    top: 50%;
+    left: 0; right: 0;
+    transform: translateY(-50%);
+    padding: 0 16px;
+    z-index: 5;
+    pointer-events: all;
     animation: cwFadeUp .35s ease;
   }
+  @media(max-width: 640px) {
+    .cw-input-wrap-centered { padding: 0 10px; }
+  }
+
   @keyframes cwFadeUp {
     from { opacity:0; transform:translateY(14px); }
     to   { opacity:1; transform:translateY(0); }
-  }
-  @media(max-width: 640px) { .cw-intro { padding: 24px 14px 14px; gap: 18px; } }
-
-  .cw-intro-logo {
-    width:52px; height:52px; border-radius:14px; overflow:hidden;
-    box-shadow:0 4px 20px rgba(193,127,42,.2); flex-shrink:0;
-  }
-  .cw-intro-logo img { width:100%; height:100%; object-fit:contain; }
-
-  .cw-intro-text { display:flex; flex-direction:column; align-items:center; gap:10px; }
-  .cw-intro-headline {
-    font-size: clamp(18px, 4vw, 28px);
-    font-weight: 700; color: var(--t1);
-    text-align: center; line-height: 1.3; letter-spacing:-.025em;
-  }
-  .cw-intro-sub { font-size: 13px; color: var(--t3); text-align: center; line-height: 1.5; }
-
-  .cw-cards {
-    display: flex; flex-wrap: wrap; gap: 8px;
-    justify-content: center; max-width: 560px; width: 100%;
-  }
-  .cw-card {
-    flex: 1 1 140px; max-width: 210px;
-    padding: 11px 13px;
-    background: #faf9f6; border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    font-size: 13px; color: var(--t2); cursor: pointer;
-    line-height: 1.4;
-    transition: background .13s, border-color .13s, transform .13s, box-shadow .13s;
-    font-family: var(--font); text-align: left;
-  }
-  .cw-card:hover {
-    background:#fff; border-color:rgba(193,127,42,.4);
-    transform:translateY(-2px); color:var(--t1);
-    box-shadow: 0 4px 16px rgba(193,127,42,.1);
-  }
-  .cw-card-icon { font-size:16px; margin-bottom:6px; display:block; }
-  @media(max-width: 640px) {
-    .cw-card { flex: 1 1 calc(50% - 4px); max-width: none; font-size: 12px; padding: 10px 12px; }
   }
 
   /* ── MESSAGES ────────────────────────────────────────── */
@@ -1016,8 +1025,8 @@ const CW_STYLE = `
     padding: 0 16px 4px; max-width: 720px; margin: 0 auto; width: 100%;
   }
 
-  /* ── ACTIVITY BAR (new) ──────────────────────────────── */
-.cw-activity-bar {
+  /* ── ACTIVITY BAR ──────────────────────────────────────── */
+  .cw-activity-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 14px 6px 12px;
     background: #faf8f4;
@@ -1038,7 +1047,6 @@ const CW_STYLE = `
     .cw-activity-bar { font-size: 11.5px; padding: 5px 10px 5px 9px; gap: 6px; }
   }
   .cw-activity-icon { font-size: 14px; flex-shrink: 0; }
-  .cw-activity-text { color: var(--t2); font-weight: 500; }
   .cw-activity-dots { display: flex; gap: 3px; align-items: center; margin-left: 2px; }
   .cw-activity-dots span {
     width: 4px; height: 4px; border-radius: 50%;
@@ -1048,7 +1056,7 @@ const CW_STYLE = `
   .cw-activity-dots span:nth-child(2) { animation-delay: .2s; }
   .cw-activity-dots span:nth-child(3) { animation-delay: .4s; }
 
-  /* ── URL CHIP (new) ──────────────────────────────────── */
+  /* ── URL CHIP ────────────────────────────────────────── */
   .cw-url-chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 4px 10px; border-radius: 12px;
@@ -1068,7 +1076,7 @@ const CW_STYLE = `
   .cw-url-ok  { color: #22863a; font-size: 12px; }
   .cw-url-err { color: #e05252; font-size: 12px; }
 
-  /* ── ACTIVITY TRAIL (permanent pills after response) ─── */
+  /* ── ACTIVITY TRAIL ──────────────────────────────────── */
   .cw-activity-trail {
     display: flex; flex-direction: column; gap: 4px;
     margin-top: 6px; margin-bottom: 2px;
@@ -1082,11 +1090,8 @@ const CW_STYLE = `
     color: var(--t2);
     width: fit-content;
   }
-  .cw-trail-icon { font-size: 12px; }
-  .cw-trail-text { font-weight: 500; }
-  .cw-trail-check { color: #22863a; font-size: 11px; margin-left: 2px; }
 
-  /* ── DOWNLOAD BUTTON (new) ───────────────────────────── */
+  /* ── DOWNLOAD BUTTON ─────────────────────────────────── */
   .cw-download-btn {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 6px 12px;
@@ -1110,7 +1115,7 @@ const CW_STYLE = `
     display:flex; align-items:center; gap:10px;
     padding: 5px 20px; max-width:780px; width:100%; margin:0 auto;
   }
-@media(max-width: 640px) {
+  @media(max-width: 640px) {
     .cw-thinking { padding: 4px 12px; gap: 6px; }
     .cw-thinking .cw-thinking-label { font-size: 12px; }
   }
@@ -1128,7 +1133,7 @@ const CW_STYLE = `
   }
   .cw-thinking-label { font-size:13px; color:var(--t3); font-style:italic; }
 
-  /* ── INPUT ───────────────────────────────────────────── */
+  /* ── INPUT WRAP (bottom, normal state) ───────────────── */
   .cw-input-wrap {
     flex-shrink: 0;
     padding: 8px 16px 14px;
@@ -1145,6 +1150,7 @@ const CW_STYLE = `
     }
   }
 
+  /* ── INPUT BOX (shared between centered and bottom) ──── */
   .cw-input-box {
     max-width: 720px; margin: 0 auto;
     background: #fafaf8; border: 1.5px solid var(--border);
@@ -1154,12 +1160,22 @@ const CW_STYLE = `
     box-shadow: 0 1px 6px rgba(0,0,0,.04);
   }
   .cw-input-box:focus-within {
-    border-color: rgba(193,127,42,.45);
-    box-shadow: 0 0 0 3px rgba(193,127,42,.08), 0 1px 6px rgba(0,0,0,.04);
+    border-color: rgba(13,58,53,.35);
+    box-shadow: 0 0 0 3px rgba(13,58,53,.07), 0 2px 12px rgba(0,0,0,.06);
     background: #fff;
   }
   @media(max-width: 640px) {
     .cw-input-box { border-radius: 16px; padding: 8px 10px; }
+  }
+
+  /* Centered input box gets a slightly elevated look */
+  .cw-input-wrap-centered .cw-input-box {
+    box-shadow: 0 4px 24px rgba(13,58,53,.1), 0 1px 6px rgba(0,0,0,.04);
+    border-color: rgba(13,58,53,.18);
+  }
+  .cw-input-wrap-centered .cw-input-box:focus-within {
+    border-color: rgba(13,58,53,.4);
+    box-shadow: 0 0 0 3px rgba(13,58,53,.08), 0 6px 28px rgba(13,58,53,.12);
   }
 
   .cw-textarea-row { display:flex; align-items:flex-end; gap:8px; }
@@ -1169,7 +1185,7 @@ const CW_STYLE = `
     font-family:var(--font); font-size:14px; color:var(--t1);
     resize:none; min-height:22px; max-height:120px;
     line-height:1.55; overflow-y:auto; scrollbar-width:thin;
-    caret-color: var(--accent);
+    caret-color: #0d3a35;
   }
   .cw-textarea::placeholder { color:var(--t3); }
   @media(max-width: 640px) {
@@ -1215,13 +1231,13 @@ const CW_STYLE = `
   /* send button */
   .cw-send {
     width:34px; height:34px; border-radius:50%;
-    background:var(--accent); border:none; cursor:pointer;
+    background:#0d3a35; border:none; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
     flex-shrink:0; color:#fff;
     transition:opacity .13s, box-shadow .13s, transform .1s;
   }
   .cw-send:hover:not(:disabled) {
-    opacity:.9; box-shadow:0 3px 14px rgba(193,127,42,.4); transform: scale(1.05);
+    opacity:.88; box-shadow:0 3px 14px rgba(13,58,53,.35); transform: scale(1.05);
   }
   .cw-send:disabled { opacity:.3; cursor:default; }
   .cw-send svg { width:15px; height:15px; }
@@ -1238,13 +1254,13 @@ const CW_STYLE = `
     transition: background .12s, color .12s, transform .12s;
   }
   .cw-mic-btn:hover {
-    background: rgba(108,92,231,0.1);
-    color: #6C5CE7;
+    background: rgba(13,58,53,0.08);
+    color: #0d3a35;
     transform: scale(1.08);
   }
   .cw-mic-btn.active {
-    color: #6C5CE7;
-    background: rgba(108,92,231,0.12);
+    color: #0d3a35;
+    background: rgba(13,58,53,0.1);
   }
 
   .cw-hint {
@@ -1362,7 +1378,7 @@ const CW_STYLE = `
     from { opacity: 0; transform: translateX(-50%) translateY(4px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
   }
-  .cw-selection-btn:hover { background: var(--accent); }
+  .cw-selection-btn:hover { background: #0d3a35; }
   .cw-selection-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
 `;
 
@@ -1414,13 +1430,118 @@ function AttachBubble({ file, sender, onImageClick }) {
   );
 }
 
+// ── Shared InputBox component used in both centered and bottom positions ──────
+function InputBox({
+  input, setInput, isThinking, isStreaming, pendingFiles, setPendingFiles,
+  showAttach, setShowAttach, attachRef, fileInputRef, canAddMore,
+  textareaRef, voiceOpen, setVoiceOpen, sendMessage, abortControllerRef,
+  setIsThinking, setIsStreaming, isCentered,
+}) {
+  return (
+    <div className={`cw-input-box${isCentered ? " cw-input-box-centered" : ""}`}>
+      <div className="cw-textarea-row">
+        <div className="cw-attach" ref={attachRef}>
+          <button
+            className={`cw-attach-btn${pendingFiles.length > 0 ? " has-files" : ""}`}
+            onClick={() => setShowAttach(v => !v)}
+            title="Attach file"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          {showAttach && (
+            <div className="cw-attach-menu">
+              {!canAddMore && <div className="cw-attach-menu-limit">Max 2 files per message</div>}
+              {canAddMore && (
+                <>
+                  <div className="cw-attach-menu-item" onClick={() => {
+                    if (!canAddMore) return;
+                    setShowAttach(false);
+                    fileInputRef.current.value = "";
+                    fileInputRef.current.setAttribute("accept", ATTACH_TYPES.image.accept);
+                    fileInputRef.current.click();
+                  }}>
+                    {ATTACH_TYPES.image.icon}
+                    <span>Image</span>
+                    <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>jpg · png · gif</span>
+                  </div>
+                  <div className="cw-attach-menu-sep" />
+                  <div className="cw-attach-menu-item" onClick={() => {
+                    if (!canAddMore) return;
+                    setShowAttach(false);
+                    fileInputRef.current.value = "";
+                    fileInputRef.current.setAttribute("accept", ATTACH_TYPES.document.accept);
+                    fileInputRef.current.click();
+                  }}>
+                    {ATTACH_TYPES.document.icon}
+                    <span>Document</span>
+                    <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>pdf · doc · txt</span>
+                  </div>
+                </>
+              )}
+              {pendingFiles.length > 0 && canAddMore && (
+                <>
+                  <div className="cw-attach-menu-sep" />
+                  <div className="cw-attach-menu-limit">{pendingFiles.length}/2 attached</div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
-export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, userPlan, setShowNotifPanel, totalBadgeCount }) {
+        <textarea
+          ref={textareaRef}
+          className="cw-textarea"
+          rows={1}
+          value={input}
+          placeholder={pendingFiles.length > 0 ? "Add a message about your files…" : "Message Eloria…"}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+        />
+
+        <button
+          className={`cw-mic-btn${voiceOpen ? " active" : ""}`}
+          onClick={() => setVoiceOpen(true)}
+          title="Voice mode"
+          aria-label="Open voice mode"
+        >
+          <MicIcon />
+        </button>
+
+        <button
+          className="cw-send"
+          onClick={(isThinking || isStreaming)
+            ? () => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); }
+            : sendMessage
+          }
+          disabled={!isThinking && !isStreaming && (!input.trim() && pendingFiles.length === 0)}
+          title={(isThinking || isStreaming) ? "Stop" : "Send"}
+          style={(isThinking || isStreaming) ? { background: "#0d3a35" } : {}}
+        >
+          {(isThinking || isStreaming) ? (
+            <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"/>
+              <polyline points="5 12 12 5 19 12"/>
+            </svg>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, userPlan, setShowNotifPanel, totalBadgeCount, allChats }) {
   const [input,          setInput]          = useState("");
   const [isThinking,     setIsThinking]     = useState(false);
   const [isStreaming,    setIsStreaming]     = useState(false);
   const [activityStep,   setActivityStep]   = useState(0);
-  const [activitySteps,  setActivitySteps]  = useState([]);     // context-aware steps for current request
+  const [activitySteps,  setActivitySteps]  = useState([]);
   const [showAttach,     setShowAttach]     = useState(false);
   const [pendingFiles,   setPendingFiles]   = useState([]);
   const [lightboxSrc,    setLightboxSrc]    = useState(null);
@@ -1429,13 +1550,12 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [voiceOpen,      setVoiceOpen]      = useState(false);
 
   const fileInputRef       = useRef(null);
-  const fileAcceptRef      = useRef("");
   const bodyRef            = useRef(null);
   const textareaRef        = useRef(null);
   const attachRef          = useRef(null);
   const messagesEndRef     = useRef(null);
   const abortControllerRef = useRef(null);
-  const activityTimerRef   = useRef(null);    // ← new
+  const activityTimerRef   = useRef(null);
 
   const messagesRef = useRef([]);
 
@@ -1443,17 +1563,30 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const showIntro = messages.length === 0;
   const canAddMore = pendingFiles.length < 2;
 
+  // ── Determine new vs returning user ──────────────────────────────────────────
+  // "New" = this account has no chat history at all across all chats
+  const isNewUser = useMemo(() => {
+    if (!allChats) return false;
+    return allChats.every(c => !c.messages || c.messages.length === 0);
+  }, [allChats]);
+
+  const displayName = auth.currentUser?.displayName
+    ? auth.currentUser.displayName.split(" ")[0]   // first name only
+    : null;
+
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   useEffect(() => {
-    if (!document.getElementById("eloria-cw-v3")) {
+    if (!document.getElementById("eloria-cw-v4")) {
       const tag = document.createElement("style");
-      tag.id = "eloria-cw-v3";
+      tag.id = "eloria-cw-v4";
       tag.textContent = CW_STYLE;
       document.head.appendChild(tag);
     }
-    const old = document.getElementById("eloria-cw");
+    const old = document.getElementById("eloria-cw-v3");
     if (old) old.remove();
+    const older = document.getElementById("eloria-cw");
+    if (older) older.remove();
   }, []);
 
   useEffect(() => {
@@ -1507,7 +1640,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     };
   }, []);
 
-  // ── Activity step cycling while thinking ─────────────────────────────────────
   useEffect(() => {
     if (isThinking) {
       setActivityStep(0);
@@ -1528,17 +1660,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       </main>
     );
   }
-
-  const openFilePicker = (kind) => {
-    if (!canAddMore) return;
-    setShowAttach(false);
-    fileAcceptRef.current = ATTACH_TYPES[kind].accept;
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-      fileInputRef.current.setAttribute("accept", fileAcceptRef.current);
-      fileInputRef.current.click();
-    }
-  };
 
   const onFileChange = (e) => {
     const files = Array.from(e.target.files || []);
@@ -1593,7 +1714,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       return v;
     }));
 
-  // ── Fetch URL content via backend proxy ──────────────────────────────────────
   const fetchUrlContent = async (url, token) => {
     try {
       const res = await fetch("https://eloria-trial.onrender.com/api/fetch-url", {
@@ -1621,16 +1741,13 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     const token = await auth.currentUser.getIdToken();
     setIsThinking(true);
 
-    // ── Detect and fetch URLs in user's message ────────────────────────────────
     const urls = extractUrls(input.trim());
     const hasFiles = pendingFiles.length > 0;
 
-    // Build context-aware activity steps and set them
     const steps = buildActivitySteps({ hasUrls: urls.length > 0, hasFiles });
     setActivitySteps(steps);
     let enrichedText = input.trim();
 
-    // Build initial userMsg with "loading" statuses so chips appear immediately
     const initialUrlStatuses = urls.length > 0
       ? Object.fromEntries(urls.map(u => [u, "loading"]))
       : undefined;
@@ -1664,7 +1781,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
 
     if (urls.length > 0) {
       const results = await Promise.all(urls.map(url => fetchUrlContent(url, token)));
-      // Update statuses on the message now that fetches are done
       const finalStatuses = Object.fromEntries(urls.map((u, i) => [u, results[i].status]));
       setChats(prev => prev.map(c =>
         c.id === chat.id
@@ -1677,7 +1793,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
       enrichedText = input.trim() + urlContents.join("");
     }
 
-    // Use enriched text (with URL content) when calling the API
     const apiMessages = newMessages.map((m, idx) => ({
       role: m.sender === "user" ? "user" : "assistant",
       content: idx === newMessages.length - 1 ? enrichedText : (m.text || ""),
@@ -1839,6 +1954,17 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
     ));
   };
 
+  // Shared input props object
+  const inputProps = {
+    input, setInput, isThinking, isStreaming,
+    pendingFiles, setPendingFiles,
+    showAttach, setShowAttach,
+    attachRef, fileInputRef, canAddMore,
+    textareaRef, voiceOpen, setVoiceOpen,
+    sendMessage, abortControllerRef,
+    setIsThinking, setIsStreaming,
+  };
+
   const renderMessage = (msg) => {
     const isUser = msg.sender === "user";
     const msgUrlStatuses = msg.urlStatuses || {};
@@ -1850,7 +1976,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
           <div className="cw-ai-avatar"><img src={logo} alt="Eloria" /></div>
         )}
         <div className={`cw-bubble-stack ${isUser ? "user" : "ai"}`}>
-          {/* URL fetch chips on user messages */}
           {isUser && urlEntries.length > 0 && (
             <div style={{ display:"flex", flexWrap:"wrap", gap:4, justifyContent:"flex-end" }}>
               {urlEntries.map(([url, status]) => (
@@ -1862,21 +1987,20 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
           {msg.files?.map(f => (
             <AttachBubble key={f.id} file={f} sender={msg.sender} onImageClick={setLightboxSrc} />
           ))}
-          {/* Permanent activity trail ABOVE the AI reply, Claude-style plain text */}
-{!isUser && msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
-  <ActivityTrail steps={msg.activityTrail} />
-)}
 
-{msg.text && (
-  <div className="cw-bubble">
-    {msg.sender === "ai"
-      ? <MarkdownMessage content={msg.text} />
-      : msg.text
-    }
-  </div>
-)}
+          {!isUser && msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
+            <ActivityTrail steps={msg.activityTrail} />
+          )}
 
-          {/* Download button on AI messages with code */}
+          {msg.text && (
+            <div className="cw-bubble">
+              {msg.sender === "ai"
+                ? <MarkdownMessage content={msg.text} />
+                : msg.text
+              }
+            </div>
+          )}
+
           {!isUser && msg.text && (
             <DownloadCodeButton text={msg.text} />
           )}
@@ -1888,7 +2012,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
               <button
                 onClick={() => regenerateMessage(msg.id)}
                 style={{ border:"none", background:"none", color:"var(--t3)", cursor:"pointer", fontSize:10, padding:0, fontFamily:"var(--font)", transition:"color .12s" }}
-                onMouseEnter={e => e.target.style.color="var(--accent)"}
+                onMouseEnter={e => e.target.style.color="#0d3a35"}
                 onMouseLeave={e => e.target.style.color="var(--t3)"}
               >
                 ↻ regenerate
@@ -1970,28 +2094,45 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
         </div>
       </header>
 
+      {/* ── BODY ── */}
       <div className="cw-body" ref={bodyRef}>
         {showIntro ? (
-          <div className="cw-intro">
-            <div className="cw-intro-logo"><img src={logo} alt="Eloria" /></div>
-            <div className="cw-intro-text">
-              <div className="cw-intro-headline">What can I help with?</div>
-              <div className="cw-intro-sub">Ask anything — Eloria is ready.</div>
+          <>
+            {/* Welcome greeting sits at the top of the body, above center */}
+            <div className="cw-empty-state">
+              <div className="cw-welcome-greeting">
+                <span className="cw-welcome-label">
+                  {isNewUser ? "Welcome" : "Welcome back"}
+                </span>
+                {displayName && (
+                  <span className="cw-welcome-name">{displayName}</span>
+                )}
+                <span className="cw-welcome-sub">
+                  {isNewUser
+                    ? "Ask me anything — I'm here to help."
+                    : "Ready when you are."}
+                </span>
+              </div>
             </div>
-            <div className="cw-cards">
-              {[
-                { icon:"", label:"Make me an assignment",        q:"Make me an assignment" },
-                { icon:"", label:"Business idea for students",   q:"Business idea for students" },
-                { icon:"", label:"Write a viral YouTube script", q:"Write a viral YouTube script" },
-                { icon:"", label:"Explain a complex topic",      q:"Explain quantum computing simply" },
-              ].map(c => (
-                <div key={c.q} className="cw-card" onClick={() => setInput(c.q)}>
-                  <span className="cw-card-icon">{c.icon}</span>
-                  {c.label}
+
+            {/* Centered input — absolutely positioned in the middle of body */}
+            <div className="cw-input-wrap-centered">
+              {pendingFiles.length > 0 && (
+                <div style={{ background:"var(--bg-chat)", borderRadius:"14px 14px 0 0", borderBottom:"none", paddingTop:2, maxWidth:720, margin:"0 auto" }}>
+                  <div className="cw-pending-strip" style={{ padding:"8px 12px 4px" }}>
+                    {pendingFiles.map(f => (
+                      <PendingChip key={f.id} file={f} onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))} />
+                    ))}
+                  </div>
+                  {pendingFiles.length >= 2 && (
+                    <div className="cw-pending-limit">Max 2 attachments per message</div>
+                  )}
                 </div>
-              ))}
+              )}
+              <InputBox {...inputProps} isCentered={true} />
+              <p className="cw-hint" style={{ marginTop: 6 }}>Eloria can make mistakes. Verify important information.</p>
             </div>
-          </div>
+          </>
         ) : (
           <div className="cw-messages">
             {messages.map(renderMessage)}
@@ -2000,7 +2141,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
                 <div className="cw-ai-avatar" style={{ width:28, height:28, borderRadius:8, overflow:"hidden", border:"1.5px solid rgba(193,127,42,.2)", background:"#faf8f4", flexShrink:0 }}>
                   <img src={logo} alt="Eloria" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                 </div>
-                {/* ── Activity bar replaces the old "thinking" dots ── */}
                 {isThinking && <ActivityBar step={activityStep} steps={activitySteps} />}
                 {isStreaming && <span className="cw-thinking-label">Eloria is responding…</span>}
                 <button
@@ -2065,107 +2205,27 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
         </div>
       )}
 
-      {pendingFiles.length > 0 && (
-        <div style={{ background:"var(--bg-chat)", borderTop:"1px solid var(--border-soft)", paddingTop:2 }}>
-          <div className="cw-pending-strip">
-            {pendingFiles.map(f => (
-              <PendingChip key={f.id} file={f} onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))} />
-            ))}
-          </div>
-          {pendingFiles.length >= 2 && (
-            <div className="cw-pending-limit">Max 2 attachments per message</div>
-          )}
-        </div>
-      )}
-
-      <div className="cw-input-wrap">
-        <div className="cw-input-box">
-          <div className="cw-textarea-row">
-
-            {/* Attach button */}
-            <div className="cw-attach" ref={attachRef}>
-              <button
-                className={`cw-attach-btn${pendingFiles.length > 0 ? " has-files" : ""}`}
-                onClick={() => setShowAttach(v => !v)}
-                title="Attach file"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-                </svg>
-              </button>
-              {showAttach && (
-                <div className="cw-attach-menu">
-                  {!canAddMore && <div className="cw-attach-menu-limit">Max 2 files per message</div>}
-                  {canAddMore && (
-                    <>
-                      <div className="cw-attach-menu-item" onClick={() => openFilePicker("image")}>
-                        {ATTACH_TYPES.image.icon}
-                        <span>Image</span>
-                        <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>jpg · png · gif</span>
-                      </div>
-                      <div className="cw-attach-menu-sep" />
-                      <div className="cw-attach-menu-item" onClick={() => openFilePicker("document")}>
-                        {ATTACH_TYPES.document.icon}
-                        <span>Document</span>
-                        <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>pdf · doc · txt</span>
-                      </div>
-                    </>
-                  )}
-                  {pendingFiles.length > 0 && canAddMore && (
-                    <>
-                      <div className="cw-attach-menu-sep" />
-                      <div className="cw-attach-menu-limit">{pendingFiles.length}/2 attached</div>
-                    </>
-                  )}
-                </div>
+      {/* ── BOTTOM INPUT (only shown when there are messages) ── */}
+      {!showIntro && (
+        <>
+          {pendingFiles.length > 0 && (
+            <div style={{ background:"var(--bg-chat)", borderTop:"1px solid var(--border-soft)", paddingTop:2 }}>
+              <div className="cw-pending-strip">
+                {pendingFiles.map(f => (
+                  <PendingChip key={f.id} file={f} onRemove={() => setPendingFiles(prev => prev.filter(item => item.id !== f.id))} />
+                ))}
+              </div>
+              {pendingFiles.length >= 2 && (
+                <div className="cw-pending-limit">Max 2 attachments per message</div>
               )}
             </div>
-
-            {/* Text input */}
-            <textarea
-              ref={textareaRef}
-              className="cw-textarea"
-              rows={1}
-              value={input}
-              placeholder={pendingFiles.length > 0 ? "Add a message about your files…" : "Message Eloria…"}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-            />
-
-            {/* Mic button */}
-            <button
-              className={`cw-mic-btn${voiceOpen ? " active" : ""}`}
-              onClick={() => setVoiceOpen(true)}
-              title="Voice mode"
-              aria-label="Open voice mode"
-            >
-              <MicIcon />
-            </button>
-
-            {/* Send / stop button */}
-            <button
-              className="cw-send"
-              onClick={(isThinking || isStreaming) ? () => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); } : sendMessage}
-              disabled={!isThinking && !isStreaming && (!input.trim() && pendingFiles.length === 0)}
-              title={(isThinking || isStreaming) ? "Stop" : "Send"}
-              style={(isThinking || isStreaming) ? { background: "#0d3a35" } : {}}
-            >
-              {(isThinking || isStreaming) ? (
-                <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
-                  <rect x="4" y="4" width="16" height="16" rx="2"/>
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="19" x2="12" y2="5"/>
-                  <polyline points="5 12 12 5 19 12"/>
-                </svg>
-              )}
-            </button>
-
+          )}
+          <div className="cw-input-wrap">
+            <InputBox {...inputProps} isCentered={false} />
+            <p className="cw-hint">Eloria can make mistakes. Verify important information.</p>
           </div>
-        </div>
-        <p className="cw-hint">Eloria can make mistakes. Verify important information.</p>
-      </div>
+        </>
+      )}
     </main>
   );
 }

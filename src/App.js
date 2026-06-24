@@ -379,6 +379,7 @@ export default function App() {
             setSidebarOpen={setSidebarOpen}
             setShowPricing={setShowPricing}
             userPlan={userPlan}
+            allChats={chats}
           />
         )}
 
