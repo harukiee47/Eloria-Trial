@@ -1549,6 +1549,10 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const messages  = useMemo(() => chat?.messages || [], [chat]);
   const showIntro = messages.length === 0;
   const canAddMore = pendingFiles.length < 2;
+const [interruptedMsgId, setInterruptedMsgId] = useState(null);
+const [editingMsgId,     setEditingMsgId]     = useState(null);
+const [editInput,        setEditInput]         = useState("");
+const [copiedMsgId,      setCopiedMsgId]       = useState(null);
 
 const greetingIdx = useMemo(
   () => Math.floor(Math.random() * GREETINGS.length),
@@ -1731,6 +1735,7 @@ const greeting = GREETINGS[greetingIdx];
     if (!input.trim() && pendingFiles.length === 0) return;
     if (isThinking) return;
     if (!auth.currentUser) { console.error("User not logged in"); return; }
+    setInterruptedMsgId(null);
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
@@ -1872,6 +1877,7 @@ const greeting = GREETINGS[greetingIdx];
     const lastUser = [...prevMsgs].reverse().find(m => m.sender === "user");
     if (!lastUser) return;
     if (!auth.currentUser) return;
+    setInterruptedMsgId(null);
 
     const token = await auth.currentUser.getIdToken();
     setIsThinking(true);
@@ -1923,6 +1929,101 @@ const greeting = GREETINGS[greetingIdx];
     } catch { setIsThinking(false); }
   };
 
+  const submitEdit = async (originalMsgId) => {
+  if (!editInput.trim()) return;
+  const idx = messages.findIndex(m => m.id === originalMsgId);
+  if (idx === -1) return;
+  const prevMsgs = messages.slice(0, idx);
+  if (!auth.currentUser) return;
+  const token = await auth.currentUser.getIdToken();
+
+  const editedMsg = {
+    id: Date.now(),
+    sender: "user",
+    text: editInput.trim(),
+    files: [],
+    time: getTimestamp(),
+  };
+
+  const newMessages = [...prevMsgs, editedMsg];
+  setEditingMsgId(null);
+  setEditInput("");
+  setInterruptedMsgId(null);
+  setIsThinking(true);
+
+  setChats(prev => prev.map(c =>
+    c.id === chat.id ? { ...c, messages: sanitizeForFirestore(newMessages) } : c
+  ));
+
+  const apiMessages = newMessages.map(m => ({
+    role: m.sender === "user" ? "user" : "assistant",
+    content: m.text || "",
+  }));
+
+  if (abortControllerRef.current) abortControllerRef.current.abort();
+  abortControllerRef.current = new AbortController();
+  const signal = abortControllerRef.current.signal;
+
+  try {
+    const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messages: apiMessages }),
+      signal,
+    });
+
+    if (res.status === 429) { setShowLimitModal(true); setIsThinking(false); return; }
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let aiText = "";
+    const aiMsgId = Date.now() + 1;
+
+    setChats(prev => prev.map(c =>
+      c.id === chat.id
+        ? { ...c, messages: [...newMessages, { id: aiMsgId, sender: "ai", text: "", time: getTimestamp() }] }
+        : c
+    ));
+    setIsThinking(false);
+    setIsStreaming(true);
+
+    while (true) {
+      if (signal.aborted) break;
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.startsWith("data: "));
+      for (const line of lines) {
+        try {
+          const json = JSON.parse(line.slice(6));
+          if (json.done) break;
+          if (json.error) throw new Error(json.error);
+          if (json.text) {
+            aiText += json.text;
+            const snapshot = aiText;
+            setChats(prev => prev.map(c =>
+              c.id === chat.id
+                ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, text: snapshot } : m) }
+                : c
+            ));
+          }
+        } catch {}
+      }
+    }
+    setIsStreaming(false);
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      setChats(prev => prev.map(c =>
+        c.id === chat.id
+          ? { ...c, messages: [...newMessages, { id: Date.now() + 2, sender: "ai", text: "Eloria couldn't respond. Check your connection.", time: getTimestamp() }] }
+          : c
+      ));
+    }
+    setIsThinking(false);
+    setIsStreaming(false);
+  }
+};
+
   // ── Voice helpers ─────────────────────────────────────────────────────────────
   const getVoiceMessages = () =>
     messagesRef.current.map(m => ({
@@ -1964,65 +2065,174 @@ const greeting = GREETINGS[greetingIdx];
   };
 
   const renderMessage = (msg) => {
-    const isUser = msg.sender === "user";
-    const msgUrlStatuses = msg.urlStatuses || {};
-    const urlEntries = Object.entries(msgUrlStatuses);
+  const isUser = msg.sender === "user";
+  const msgUrlStatuses = msg.urlStatuses || {};
+  const urlEntries = Object.entries(msgUrlStatuses);
 
-    return (
-      <div key={msg.id} className={`cw-msg-row ${msg.sender}`}>
-        {!isUser && (
-          <div className="cw-ai-avatar"><img src={logo} alt="Eloria" /></div>
+  return (
+    <div key={msg.id} className={`cw-msg-row ${msg.sender}`}>
+      {!isUser && (
+        <div className="cw-ai-avatar"><img src={logo} alt="Eloria" /></div>
+      )}
+      <div className={`cw-bubble-stack ${isUser ? "user" : "ai"}`}>
+
+        {/* ── USER MESSAGE ── */}
+        {isUser && (
+          <div
+            style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}
+            onMouseEnter={e => { const b = e.currentTarget.querySelector(".cw-edit-btn"); if (b) b.style.opacity = "1"; }}
+            onMouseLeave={e => { const b = e.currentTarget.querySelector(".cw-edit-btn"); if (b) b.style.opacity = "0"; }}
+          >
+            {editingMsgId === msg.id ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: 420 }}>
+                <textarea
+                  autoFocus
+                  value={editInput}
+                  onChange={e => setEditInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitEdit(msg.id); } }}
+                  style={{
+                    width: "100%", padding: "10px 13px", borderRadius: 14,
+                    border: "1.5px solid rgba(13,58,53,.35)", fontFamily: "var(--font)",
+                    fontSize: 13, color: "var(--t1)", background: "#fff", outline: "none",
+                    resize: "none", minHeight: 72, lineHeight: 1.5, boxSizing: "border-box",
+                    boxShadow: "0 0 0 3px rgba(13,58,53,.07)",
+                  }}
+                />
+                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => { setEditingMsgId(null); setEditInput(""); }}
+                    style={{
+                      padding: "5px 12px", borderRadius: 8, border: "1px solid var(--border)",
+                      background: "none", fontSize: 12, color: "var(--t2)",
+                      cursor: "pointer", fontFamily: "var(--font)", fontWeight: 500,
+                    }}
+                  >Cancel</button>
+                  <button
+                    onClick={() => submitEdit(msg.id)}
+                    style={{
+                      padding: "5px 12px", borderRadius: 8, border: "none",
+                      background: "#0d3a35", fontSize: 12, color: "#fff",
+                      cursor: "pointer", fontFamily: "var(--font)", fontWeight: 600,
+                    }}
+                  >Send</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
+                  <button
+                    className="cw-edit-btn"
+                    onClick={() => { setEditingMsgId(msg.id); setEditInput(msg.text); }}
+                    title="Edit message"
+                    style={{
+                      opacity: 0, transition: "opacity .15s",
+                      width: 26, height: 26, borderRadius: "50%",
+                      background: "none", border: "1px solid rgba(13,58,53,.15)",
+                      color: "var(--t3)", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  {msg.files?.map(f => (
+                    <AttachBubble key={f.id} file={f} sender={msg.sender} onImageClick={setLightboxSrc} />
+                  ))}
+                  {msg.text && <div className="cw-bubble">{msg.text}</div>}
+                </div>
+                {urlEntries.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
+                    {urlEntries.map(([url, status]) => (
+                      <UrlFetchChip key={url} url={url} status={status} />
+                    ))}
+                  </div>
+                )}
+                <div className="cw-msg-time">{msg.time}</div>
+              </>
+            )}
+          </div>
         )}
-        <div className={`cw-bubble-stack ${isUser ? "user" : "ai"}`}>
-          {isUser && urlEntries.length > 0 && (
-            <div style={{ display:"flex", flexWrap:"wrap", gap:4, justifyContent:"flex-end" }}>
-              {urlEntries.map(([url, status]) => (
-                <UrlFetchChip key={url} url={url} status={status} />
-              ))}
-            </div>
-          )}
 
-          {msg.files?.map(f => (
-            <AttachBubble key={f.id} file={f} sender={msg.sender} onImageClick={setLightboxSrc} />
-          ))}
+        {/* ── AI MESSAGE ── */}
+        {!isUser && (
+          <>
+            {msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
+              <ActivityTrail steps={msg.activityTrail} />
+            )}
 
-          {!isUser && msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
-            <ActivityTrail steps={msg.activityTrail} />
-          )}
+            {msg.text && (
+              <div className="cw-bubble">
+                <MarkdownMessage content={msg.text} />
+              </div>
+            )}
 
-          {msg.text && (
-            <div className="cw-bubble">
-              {msg.sender === "ai"
-                ? <MarkdownMessage content={msg.text} />
-                : msg.text
-              }
-            </div>
-          )}
+            {msg.text && <DownloadCodeButton text={msg.text} />}
 
-          {!isUser && msg.text && (
-            <DownloadCodeButton text={msg.text} />
-          )}
+            {/* Interrupted notice */}
+            {msg.id === interruptedMsgId && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "6px 10px", background: "#fff8f0",
+                border: "1px solid rgba(193,127,42,.25)",
+                borderRadius: 10, marginTop: 2, width: "fit-content",
+              }}>
+                <span style={{ fontSize: 11.5, color: "#a07040", fontFamily: "var(--font)" }}>
+                  Eloria was interrupted
+                </span>
+                <button
+                  onClick={() => { setInterruptedMsgId(null); regenerateMessage(msg.id); }}
+                  style={{
+                    fontSize: 11, fontWeight: 600, color: "#0d3a35",
+                    background: "#f0ede6", border: "1px solid rgba(13,58,53,.2)",
+                    borderRadius: 7, padding: "3px 9px", cursor: "pointer",
+                    fontFamily: "var(--font)", transition: "background .12s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#e4dfd6"}
+                  onMouseLeave={e => e.currentTarget.style.background = "#f0ede6"}
+                >Try again</button>
+              </div>
+            )}
 
-          {!isUser && (
             <div className="cw-msg-divider">
               <div style={{ flex:1, height:1, background:"linear-gradient(to right, rgba(13,58,53,.12), transparent)" }} />
               <span style={{ fontSize:10, color:"var(--t3)", fontFamily:"var(--font)", letterSpacing:".03em" }}>{msg.time}</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(msg.text || "");
+                  setCopiedMsgId(msg.id);
+                  setTimeout(() => setCopiedMsgId(null), 2000);
+                }}
+                style={{ border:"none", background:"none", color:"var(--t3)", cursor:"pointer", fontSize:10, padding:0, fontFamily:"var(--font)", transition:"color .12s", display:"flex", alignItems:"center", gap:3 }}
+                onMouseEnter={e => e.currentTarget.style.color="#0d3a35"}
+                onMouseLeave={e => e.currentTarget.style.color="var(--t3)"}
+              >
+                {copiedMsgId === msg.id ? "✓ copied" : (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width:10, height:10 }}>
+                      <rect x="9" y="9" width="13" height="13" rx="2"/>
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                    </svg>
+                    copy
+                  </>
+                )}
+              </button>
               <button
                 onClick={() => regenerateMessage(msg.id)}
                 style={{ border:"none", background:"none", color:"var(--t3)", cursor:"pointer", fontSize:10, padding:0, fontFamily:"var(--font)", transition:"color .12s" }}
                 onMouseEnter={e => e.target.style.color="#0d3a35"}
                 onMouseLeave={e => e.target.style.color="var(--t3)"}
-              >
-                ↻ regenerate
-              </button>
+              >↻ regenerate</button>
               <div style={{ flex:1, height:1, background:"linear-gradient(to left, rgba(13,58,53,.12), transparent)" }} />
             </div>
-          )}
-          {isUser && <div className="cw-msg-time">{msg.time}</div>}
-        </div>
+          </>
+        )}
+
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   return (
     <main className="cw-root">
@@ -2250,7 +2460,17 @@ const greeting = GREETINGS[greetingIdx];
                 {isThinking && <ActivityBar step={activityStep} steps={activitySteps} />}
                 {isStreaming && <span className="cw-thinking-label">Eloria is responding…</span>}
                 <button
-                  onClick={() => { abortControllerRef.current?.abort(); setIsThinking(false); setIsStreaming(false); }}
+                  onClick={() => {
+  abortControllerRef.current?.abort();
+  setIsThinking(false);
+  setIsStreaming(false);
+  setChats(prev => {
+    const c = prev.find(ch => ch.id === chat.id);
+    const lastAi = [...(c?.messages || [])].reverse().find(m => m.sender === "ai");
+    if (lastAi) setInterruptedMsgId(lastAi.id);
+    return prev;
+  });
+}}
                   title="Stop"
                   style={{
                     marginLeft: "auto", padding: "4px 8px",
