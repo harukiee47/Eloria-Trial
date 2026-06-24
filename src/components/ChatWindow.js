@@ -202,35 +202,65 @@ function ActivityBar({ step, steps }) {
   );
 }
 
-function ActivityTrail({ steps }) {
+function ActivityTrail({ steps, isOpen, onToggle }) {
   if (!steps || steps.length === 0) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: 10 }}>
-      {steps.map((s, i) => (
-        <div key={i} style={{ display: "flex", gap: 10, position: "relative" }}>
-          {i < steps.length - 1 && (
-            <div style={{
-              position: "absolute", left: 11, top: 26, bottom: -2,
-              width: 1, background: "rgba(0,0,0,0.08)",
-            }} />
-          )}
-          <div style={{
-            width: 24, height: 24, borderRadius: 6, flexShrink: 0, marginTop: 2,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(34,134,58,0.07)", border: "0.5px solid rgba(34,134,58,0.18)",
-          }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#22863a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="11" height="11">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </div>
-          <div style={{ paddingBottom: i < steps.length - 1 ? 10 : 6 }}>
-            <div style={{ fontSize: 12, color: "var(--t3)", fontFamily: "var(--font)", marginBottom: s.badge ? 3 : 0 }}>
-              {s.text}
+    <div style={{ marginBottom: 8 }}>
+      <button
+        onClick={onToggle}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          background: "none", border: "none", cursor: "pointer",
+          padding: "4px 0", fontFamily: "var(--font)",
+          color: "var(--t3)", fontSize: 12,
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round"
+          width="13" height="13"
+          style={{ transform: isOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .2s", flexShrink: 0 }}
+        >
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+        <span>{steps.length} reasoning {steps.length === 1 ? "step" : "steps"}</span>
+      </button>
+
+      {isOpen && (
+        <div style={{
+          marginTop: 6, paddingLeft: 2,
+          display: "flex", flexDirection: "column", gap: 0,
+        }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, position: "relative" }}>
+              {i < steps.length - 1 && (
+                <div style={{
+                  position: "absolute", left: 11, top: 26, bottom: -2,
+                  width: 1, background: "rgba(0,0,0,0.09)",
+                }} />
+              )}
+              <div style={{
+                width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 3,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(34,134,58,0.08)", border: "0.5px solid rgba(34,134,58,0.2)",
+              }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#22863a" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round" width="11" height="11">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <div style={{ paddingBottom: i < steps.length - 1 ? 12 : 4 }}>
+                <div style={{
+                  fontSize: 12, color: "var(--t2)",
+                  fontFamily: "var(--font)", marginBottom: s.badge ? 4 : 0,
+                }}>
+                  {s.text}
+                </div>
+                {s.badge && <TrailBadge label={s.badge} type={s.badgeType} />}
+              </div>
             </div>
-            {s.badge && <TrailBadge label={s.badge} type={s.badgeType} />}
-          </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -1629,6 +1659,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [selectionBtn,   setSelectionBtn]   = useState(null);
   const [voiceOpen,      setVoiceOpen]      = useState(false);
+  const [openTrails, setOpenTrails] = useState({});
 
   const fileInputRef       = useRef(null);
   const fileAcceptRef      = useRef("");   
@@ -2235,7 +2266,14 @@ const greeting = GREETINGS[greetingIdx];
                   {msg.files?.map(f => (
                     <AttachBubble key={f.id} file={f} sender={msg.sender} onImageClick={setLightboxSrc} />
                   ))}
-                  {msg.text && <div className="cw-bubble">{msg.text}</div>}
+                  {msg.text && (
+  <div className="cw-bubble">
+    {msg.text.includes("```")
+      ? <MarkdownMessage content={msg.text} />
+      : msg.text
+    }
+  </div>
+)}
                 </div>
                 {urlEntries.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
@@ -2254,8 +2292,15 @@ const greeting = GREETINGS[greetingIdx];
         {!isUser && (
           <>
             {msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
-              <ActivityTrail steps={msg.activityTrail} />
-            )}
+  <ActivityTrail
+    steps={msg.activityTrail}
+    isOpen={openTrails[msg.id] !== false}
+    onToggle={() => setOpenTrails(prev => ({
+      ...prev,
+      [msg.id]: prev[msg.id] === false ? true : false,
+    }))}
+  />
+)}
 
             {msg.text && (
               <div className="cw-bubble">
