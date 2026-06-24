@@ -165,6 +165,51 @@ function parseFilesFromAI(text) {
   return files;
 }
 
+// ─── FINAL PREVIEW BUILDER ───────────────────────────────────────────────────
+function buildFinalPreviewDoc(files) {
+  const codeFiles = (files || []).filter(f => !f.isPlan && f.code);
+  const htmlFile = codeFiles.find(f => ["html", "htm"].includes(getExt(f.name)));
+  if (!htmlFile) return null;
+
+  const cssFiles = codeFiles.filter(f => ["css", "scss", "sass", "less"].includes(getExt(f.name)));
+  const jsFiles  = codeFiles.filter(f => ["js", "mjs", "cjs"].includes(getExt(f.name)));
+
+  let doc = htmlFile.code;
+
+  // Strip any <link> tags pointing at our own css files so they don't 404 / double-load
+  cssFiles.forEach(f => {
+    const safeName = f.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`<link[^>]*href=["'][^"']*${safeName}["'][^>]*>`, "gi");
+    doc = doc.replace(re, "");
+  });
+
+  // Strip any <script src="..."> tags pointing at our own js files
+  jsFiles.forEach(f => {
+    const safeName = f.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`<script[^>]*src=["'][^"']*${safeName}["'][^>]*></script>`, "gi");
+    doc = doc.replace(re, "");
+  });
+
+  const styleTags  = cssFiles.map(f => `<style data-file="${f.name}">\n${f.code}\n</style>`).join("\n");
+  const scriptTags = jsFiles.map(f => `<script data-file="${f.name}">\n${f.code}\n</script>`).join("\n");
+
+  if (doc.includes("</head>")) {
+    doc = doc.replace("</head>", `${styleTags}\n</head>`);
+  } else if (doc.includes("<head>")) {
+    doc = doc.replace("<head>", `<head>\n${styleTags}`);
+  } else {
+    doc = `<!doctype html><html><head>${styleTags}</head><body>${doc}</body></html>`;
+  }
+
+  if (doc.includes("</body>")) {
+    doc = doc.replace("</body>", `${scriptTags}\n</body>`);
+  } else {
+    doc += scriptTags;
+  }
+
+  return doc;
+}
+
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const EC_STYLE = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -694,6 +739,7 @@ export default function EloriaCode() {
   }, [activeProject, rightFileId, activeFile]);
 
   const codeFiles = useMemo(() => (activeProject?.files || []).filter(f => !f.isPlan), [activeProject]);
+  const finalPreviewDoc = useMemo(() => buildFinalPreviewDoc(activeProject?.files), [activeProject?.files]);
   const doneFiles  = useMemo(() => (activeProject?.files || []).filter(f => f.status === "done"),       [activeProject]);
   const wipFiles   = useMemo(() => (activeProject?.files || []).filter(f => f.status === "in_progress"), [activeProject]);
   const pendFiles  = useMemo(() => (activeProject?.files || []).filter(f => f.status === "pending"),    [activeProject]);
@@ -1596,6 +1642,21 @@ IMPORTANT INSTRUCTIONS:
       );
     }
 
+    if (rightTab === "final") {
+      if (!finalPreviewDoc) {
+        return (
+          <div className="ec-preview-placeholder">
+            <div className="ec-preview-placeholder-icon">🖥</div>
+            <div className="ec-preview-placeholder-text">
+              Final Preview needs a built HTML file.<br/>
+              Build your HTML (and any CSS/JS) first — they'll combine here automatically.
+            </div>
+          </div>
+        );
+      }
+      return <iframe className="ec-preview-frame" srcDoc={finalPreviewDoc} title="Final Preview" sandbox="allow-scripts allow-same-origin" />;
+    }
+
     if (!rf) return <div className="ec-no-content"><div className="ec-no-content-icon"></div><div className="ec-no-content-text">Select a task to view code or preview.</div></div>;
 
     if (rightTab === "preview") {
@@ -2013,14 +2074,14 @@ IMPORTANT INSTRUCTIONS:
         <aside className="ec-right">
           <div className="ec-right-header">
             <div className="ec-right-tabs">
-              {[["preview","Preview"],["code","Code"],["summary","Summary"]].map(([tab, label]) => (
+              {[["preview","Preview"],["code","Code"],["final","Final Preview"],["summary","Summary"]].map(([tab, label]) => (
                 <button key={tab} className={`ec-right-tab${rightTab === tab ? " active" : ""}`} onClick={() => setRightTab(tab)}>
                   {label}
                   {tab === "summary" && summaryGenerating && <span style={{ marginLeft:4, fontSize:9, color:"var(--t3)" }}>●</span>}
                 </button>
               ))}
             </div>
-            {rightFile && rightFile.code && rightTab !== "summary" && (
+            {rightFile && rightFile.code && rightTab !== "summary" && rightTab !== "final" && (
               <button className="ec-download-btn" style={{ margin:"0 10px", fontSize:10.5 }} onClick={() => downloadFile(rightFile.name, rightFile.code)}>↓ {rightFile.name}</button>
             )}
           </div>

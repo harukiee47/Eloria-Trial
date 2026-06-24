@@ -1186,7 +1186,7 @@ const [codeProjects] = useState(() => {
             <div className="mcs-feature">
               <div className="mcs-feature-ic"><IconTerminal /></div>
               <div className="mcs-feature-text">
-                <strong>Live editor & terminal</strong>
+                <strong>Live editor</strong>
                 Multi-file editing with an integrated shell
               </div>
             </div>
@@ -1206,7 +1206,7 @@ const [codeProjects] = useState(() => {
             </div>
           </div>
           <p style={{ fontSize: 13, color: "var(--t3)", lineHeight: 1.6 }}>
-            Visit <strong style={{ color: "var(--accent)" }}>eloria.ai/code</strong> on your computer to begin.
+            Visit <strong style={{ color: "var(--accent)" }}>domain/code</strong> on your computer to begin.
           </p>
         </div>
       )}
@@ -1463,7 +1463,7 @@ const [codeProjects] = useState(() => {
             <div className="panel-list">
               {projects.length === 0
                 ? <div className="panel-empty">
-                    <span className="panel-empty-icon">📁</span>
+                    <span className="panel-empty-icon"></span>
                     <strong>No projects yet</strong>
                     Organise your chats into projects to keep things tidy.
                   </div>
