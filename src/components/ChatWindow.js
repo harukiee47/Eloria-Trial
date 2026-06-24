@@ -1550,14 +1550,11 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const showIntro = messages.length === 0;
   const canAddMore = pendingFiles.length < 2;
 
-  // ── Determine new vs returning user ──────────────────────────────────────────
-  // "New" = this account has no chat history at all across all chats
-  const isNewUser = useMemo(() => {
-    if (!allChats) return false;
-    return allChats.every(c => !c.messages || c.messages.length === 0);
-  }, [allChats]);
-
-  const greetingIdx = useMemo(() => Math.floor(Math.random() * GREETINGS.length), [chat?.id]);
+const greetingIdx = useMemo(
+  () => Math.floor(Math.random() * GREETINGS.length),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [chat?.id ?? ""]
+);
 const greeting = GREETINGS[greetingIdx];
 
   const displayName = auth.currentUser?.displayName
