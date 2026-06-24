@@ -1530,6 +1530,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [voiceOpen,      setVoiceOpen]      = useState(false);
 
   const fileInputRef       = useRef(null);
+  const fileAcceptRef      = useRef("");   
   const bodyRef            = useRef(null);
   const textareaRef        = useRef(null);
   const attachRef          = useRef(null);
