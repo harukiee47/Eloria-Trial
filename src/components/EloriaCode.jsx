@@ -755,9 +755,13 @@ export default function EloriaCode() {
 
   // Load summary when entering a project
   useEffect(() => {
-    if (!uid || !activeProject) { setProjectSummary(null); return; }
-    loadProjectSummary(uid, activeProject.id).then(s => setProjectSummary(s));
-  }, [uid, activeProject?.id]);
+  const projectId = activeProject?.id;        
+  if (!uid || !projectId) {                   
+    setProjectSummary(null);
+    return;
+  }
+  loadProjectSummary(uid, projectId).then(s => setProjectSummary(s));
+}, [uid, activeProject?.id]);                  
 
   const updateProjects = useCallback(async (updated) => {
     setProjects(updated);

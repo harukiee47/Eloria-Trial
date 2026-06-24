@@ -928,9 +928,9 @@ export default function Sidebar({
   const [showNewProj, setShowNewProj] = useState(false);
   const [addChatProj, setAddChatProj] = useState(null);
 
-  const [codeProjects, setCodeProjects] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("eloria_code_projects") || "[]"); } catch { return []; }
-  });
+const [codeProjects] = useState(() => {
+  try { return JSON.parse(localStorage.getItem("eloria_code_projects") || "[]"); } catch { return []; }
+});
 
   const desktopAcctRef = useRef(null);
   const [showCodeLockModal, setShowCodeLockModal] = useState(false);
