@@ -18,6 +18,7 @@ import { subscribeToMyProfile, setOnlineStatus } from "./services/userService";
 import { subscribeToNotifications } from "./services/notificationService";
 import NotificationsPanel from "./components/NotificationsPanel";
 import ProfileSetupModal from "./components/ProfileSetupModal";
+import AuthCallback from "./components/AuthCallback";
 
 if (window.location.pathname === "/code") {
   const root = document.getElementById("root");
@@ -120,6 +121,34 @@ export default function App() {
       document.head.appendChild(tag);
     }
   }, []);
+
+
+// ── Deep link handler for Google login (Tauri only) ──────────────────────
+useEffect(() => {
+  if (!window.__TAURI__) return;
+  import("@tauri-apps/api/event").then(({ listen }) => {
+    listen("deep-link", async (event) => {
+      try {
+        const url = event.payload.replace(/"/g, "");
+        const params = new URL(url).searchParams;
+        const error = params.get("error");
+        if (error) return;
+        const token      = params.get("token");
+        const uid        = params.get("uid");
+        const email      = params.get("email");
+        const displayName = params.get("displayName");
+        if (!token || !uid) return;
+        const { loginWithDeepLinkToken } = await import("./services/auth");
+        const u = await loginWithDeepLinkToken(token, uid, email, displayName);
+        setUser(u);
+        setStage(u.usernameSet ? "chat" : "profileSetup");
+      } catch (err) {
+        console.error("Deep link login failed:", err);
+      }
+    });
+  });
+}, []);
+
 
   // ── FIX: safe group lookup — fall back to null, never undefined ──
   const activeGroup = groups.find(g => g.id === activeGroupId) ?? null;
@@ -290,6 +319,10 @@ export default function App() {
   const activeChat = React.useMemo(() => {
     return chats.find(c => c.id === activeChatId) || null;
   }, [chats, activeChatId]);
+
+  if (window.location.pathname === "/auth/callback") {
+  return <AuthCallback />;
+}
 
   if (stage === "login") {
     return (

@@ -1,5 +1,5 @@
-import React, { useState } from "react"; 
-import { loginWithEmail, loginWithGoogle, signupWithEmail } from "../services/auth";
+import React, { useState } from "react";
+import { loginWithEmail, signupWithEmail } from "../services/auth";
 import "./Login.css";
 
 export default function Login({ onLogin }) {
@@ -9,11 +9,13 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState("");
   const [animating, setAnimating] = useState(false);
 
+  const isTauri = Boolean(window.__TAURI__);
+
   const handleSubmit = async () => {
     try {
       let user;
       if (isSignup) {
-        user = await signupWithEmail(email, password); 
+        user = await signupWithEmail(email, password);
       } else {
         user = await loginWithEmail(email, password);
       }
@@ -24,13 +26,24 @@ export default function Login({ onLogin }) {
   };
 
   const handleGoogle = async () => {
+  if (isTauri) {
     try {
-      const user = await loginWithGoogle();
-      onLogin(user);
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open("https://eloria-ai.vercel.app/auth/callback");
     } catch (err) {
-      setError(err.message);
+      console.error("Shell open error:", err);
+      setError("Failed to open browser: " + err.message);
     }
-  };
+    return;
+  }
+  try {
+    const { loginWithGoogle } = await import("../services/auth");
+    const user = await loginWithGoogle();
+    onLogin(user);
+  } catch (err) {
+    setError(err.message);
+  }
+};
 
   const toggleSignup = () => {
     setAnimating(true);
@@ -42,22 +55,15 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div
-      className="login-root"
-    >
+    <div className="login-root">
       <div className="login-overlay" />
-
-<div className="orb orb-1"></div>
-<div className="orb orb-2"></div>
-<div className="orb orb-3"></div>
+      <div className="orb orb-1"></div>
+      <div className="orb orb-2"></div>
+      <div className="orb orb-3"></div>
       <div className={`login-card ${animating ? "fade-slide-out" : "fade-slide-in"}`}>
         <div className="login-header">
           <div className="login-logo-wrap">
-            <img
-              src="/logo.png"
-              alt="Eloria"
-              className="login-logo"
-            />
+            <img src="/logo.png" alt="Eloria" className="login-logo" />
             <div className="login-wordmark">
               <h1>Eloria</h1>
               <div className="login-wordmark-line"></div>

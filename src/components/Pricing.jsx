@@ -2,14 +2,14 @@ import { useState, useEffect } from "react";
 import { auth } from "../services/firebase";
 import "./Pricing.css";
 
-
 export default function Pricing({ onBack }) {
+  const isTauri = Boolean(window.__TAURI__);
 
-useEffect(() => {
-  if (auth.currentUser) {
-    auth.currentUser.getIdToken().then(token => console.log("TOKEN:", token));
-  }
-}, []);
+  useEffect(() => {
+    if (auth.currentUser) {
+      auth.currentUser.getIdToken().then(token => console.log("TOKEN:", token));
+    }
+  }, []);
 
   const [status, setStatus] = useState("");
   const [isError, setIsError] = useState(false);
@@ -47,23 +47,31 @@ useEffect(() => {
         throw new Error(data.error || "Checkout failed.");
       }
 
-      window.location.href = data.url;
+      if (isTauri) {
+        // Open checkout in system browser on desktop
+        const { open } = await import("@tauri-apps/plugin-shell");
+        await open(data.url);
+        setStatus("Checkout opened in your browser. Come back after payment.");
+        setIsError(false);
+      } else {
+        window.location.href = data.url;
+      }
     } catch (err) {
       console.error(err);
       setStatus(err.message || "Something went wrong. Please try again.");
       setIsError(true);
+    } finally {
       setLoading(false);
     }
   }
 
-
   return (
     <div className="ec-pricing-page">
-          {onBack && (
-  <button onClick={onBack} style={{ margin: "16px 24px", background: "none", border: "none", cursor: "pointer", color: "var(--ec-ink)", fontSize: 14 }}>
-    ← Back
-  </button>
-)}
+      {onBack && (
+        <button onClick={onBack} style={{ margin: "16px 24px", background: "none", border: "none", cursor: "pointer", color: "var(--ec-ink)", fontSize: 14 }}>
+          ← Back
+        </button>
+      )}
       <header className="ec-pricing-header">
         <span className="ec-eyebrow ec-display">Eloria Plans</span>
         <h1 className="ec-display">Pick how far you want to go</h1>
@@ -86,26 +94,13 @@ useEffect(() => {
             <div className="ec-plan-tagline">
               For everyday questions and casual use.
             </div>
-
             <ul className="ec-features">
-              <li>
-                <span className="ec-check">✓</span> 50 chat messages per day
-              </li>
-              <li>
-                <span className="ec-check">✓</span> 4 image generations per
-                day
-              </li>
-              <li>
-                <span className="ec-check">✓</span> Standard response speed
-              </li>
-              <li className="ec-locked">
-                <span className="ec-check">—</span> Eloria Code access
-              </li>
-              <li className="ec-locked">
-                <span className="ec-check">—</span> Priority limits
-              </li>
+              <li><span className="ec-check">✓</span> 50 chat messages per day</li>
+              <li><span className="ec-check">✓</span> 4 image generations per day</li>
+              <li><span className="ec-check">✓</span> Standard response speed</li>
+              <li className="ec-locked"><span className="ec-check">—</span> Eloria Code access</li>
+              <li className="ec-locked"><span className="ec-check">—</span> Priority limits</li>
             </ul>
-
             <button className="ec-cta" disabled>
               Your current plan
             </button>
@@ -121,29 +116,13 @@ useEffect(() => {
             <div className="ec-plan-tagline">
               For builders who need more room and Eloria Code.
             </div>
-
             <ul className="ec-features">
-              <li>
-                <span className="ec-check">✓</span> 100 chat messages per day
-              </li>
-              <li>
-                <span className="ec-check">✓</span> 25 Eloria Code requests
-                per day
-              </li>
-              <li>
-                <span className="ec-check">✓</span> 12 image generations per
-                day
-              </li>
-              <li>
-                <span className="ec-check">✓</span> Full access to Eloria
-                Code, tuned for software development
-              </li>
-              <li>
-                <span className="ec-check">✓</span> Priority over free-tier
-                usage
-              </li>
+              <li><span className="ec-check">✓</span> 100 chat messages per day</li>
+              <li><span className="ec-check">✓</span> 25 Eloria Code requests per day</li>
+              <li><span className="ec-check">✓</span> 12 image generations per day</li>
+              <li><span className="ec-check">✓</span> Full access to Eloria Code, tuned for software development</li>
+              <li><span className="ec-check">✓</span> Priority over free-tier usage</li>
             </ul>
-
             <button
               className="ec-cta ec-cta-pro"
               onClick={handleUpgrade}
@@ -162,10 +141,9 @@ useEffect(() => {
       </main>
 
       <footer className="ec-pricing-footer">
-        Already Pro? Manage your subscription from the link in your purchase
-        email.
+        Already Pro? Manage your subscription from the link in your purchase email.
         <br />
-        Questions — <button onClick={() => {}} style={{ background:"none", border:"none", cursor:"pointer", padding:0 }}>contact support</button>
+        Questions — <button onClick={() => {}} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>contact support</button>
       </footer>
     </div>
   );
