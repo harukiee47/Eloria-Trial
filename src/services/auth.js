@@ -165,17 +165,6 @@ export const loginWithGoogle = async () => {
 
 // ── Google Login via deep link token (Tauri only) ─────────────────────────────
 export const loginWithDeepLinkToken = async (idToken, uid, email, displayName) => {
-  // Use REST API to verify and sign in
-  const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, returnSecureToken: true }),
-    }
-  );
-
-  // Ensure Firestore profile exists
   const ref  = doc(db, "users", uid);
   const snap = await getDoc(ref);
 
