@@ -50,10 +50,14 @@
       "debugApplicationIdSuffix": ".debug"
     },
     "windows": {
-      "nsis": {
-        "displayLanguageSelector": false,
-        "installMode": "currentUser"
-      }
+    "nsis": {
+      "displayLanguageSelector": false,
+      "installMode": "currentUser",
+      "headerImage": "nsis/header.bmp",
+      "sidebarImage": "nsis/sidebar.bmp",
+      "installerIcon": "icons/icon.ico",
+      "uninstallerIcon": "icons/icon.ico"
+    }
     }
   }
 }
