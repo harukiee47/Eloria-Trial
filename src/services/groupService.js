@@ -145,7 +145,20 @@ export async function clearUnread(groupId, uid) {
 }
 
 // ── Invite a user by email ────────────────────────────────────────────────────
-export async function inviteToGroup(groupId, user, targetEmail, userPlan) {
+export async function inviteToGroup(groupId, user, targetUsername, userPlan) {
+  // 1. Look up the target user by username
+  const usersSnap = await getDocs(
+    query(collection(db, "users"), where("username", "==", targetUsername))
+  );
+  if (usersSnap.empty) {
+    throw new Error(`No user found with username "@${targetUsername}".`);
+  }
+  const targetUserDoc = usersSnap.docs[0];
+  const targetUid   = targetUserDoc.id;
+  const targetData  = targetUserDoc.data();
+  const targetEmail = targetData.email || "";
+
+  // 2. Check group limits
   const groupSnap = await getDoc(doc(db, "groups", groupId));
   if (!groupSnap.exists()) throw new Error("Group not found.");
   const group = groupSnap.data();
@@ -154,21 +167,28 @@ export async function inviteToGroup(groupId, user, targetEmail, userPlan) {
   if (group.members.length >= limits.maxMembers) {
     throw new Error(`This group is full (max ${limits.maxMembers} members on ${userPlan} plan).`);
   }
-  if (group.memberEmails?.includes(targetEmail)) {
-    throw new Error("That person is already in the group.");
+  if (group.members.includes(targetUid)) {
+    throw new Error("That user is already in the group.");
   }
-  if (group.pendingInvites?.includes(targetEmail)) {
-    throw new Error("An invite is already pending for that email.");
+  if (group.pendingInvites?.includes(targetUid)) {
+    throw new Error("An invite is already pending for that user.");
+  }
+  if (targetUid === user.uid) {
+    throw new Error("You can't invite yourself.");
   }
 
+  // 3. Add to pendingInvites and create invite doc
   await updateDoc(doc(db, "groups", groupId), {
-    pendingInvites: arrayUnion(targetEmail),
+    pendingInvites: arrayUnion(targetUid),
   });
 
   await addDoc(collection(db, "invites"), {
-    fromUid: user.uid,
-    fromEmail: user.email,
-    toEmail: targetEmail,
+    fromUid:      user.uid,
+    fromEmail:    user.email    || "",
+    fromUsername: user.username || user.displayName || "",
+    toUid:        targetUid,
+    toEmail:      targetEmail,
+    toUsername:   targetUsername,
     groupId,
     groupName: group.name,
     createdAt: serverTimestamp(),
@@ -177,10 +197,12 @@ export async function inviteToGroup(groupId, user, targetEmail, userPlan) {
 }
 
 // ── Subscribe to pending invites for a user ──────────────────────────────────
-export function subscribeToInvites(userEmail, callback) {
+export function subscribeToInvites(userEmail, callback, userUid) {
+  const field = userUid ? "toUid" : "toEmail";
+  const value = userUid || userEmail;
   const q = query(
     collection(db, "invites"),
-    where("toEmail", "==", userEmail),
+    where(field, "==", value),
     where("status", "==", "pending")
   );
   return onSnapshot(
@@ -207,7 +229,7 @@ export async function acceptInvite(inviteId, user) {
     members: arrayUnion(user.uid),
     memberEmails: arrayUnion(user.email),
     [`memberNames.${user.uid}`]: user.displayName || user.email,
-    pendingInvites: arrayRemove(user.email),
+    pendingInvites: arrayRemove(user.uid),
     [`memberJoinedAt.${user.uid}`]: joinedAtISO,
   });
 
@@ -221,13 +243,13 @@ export async function acceptInvite(inviteId, user) {
 }
 
 // ── Decline an invite ─────────────────────────────────────────────────────────
-export async function declineInvite(inviteId, userEmail) {
+export async function declineInvite(inviteId, useruid) {
   const inviteSnap = await getDoc(doc(db, "invites", inviteId));
   if (!inviteSnap.exists()) return;
   const invite = inviteSnap.data();
 
   await updateDoc(doc(db, "groups", invite.groupId), {
-    pendingInvites: arrayRemove(userEmail),
+    pendingInvites: arrayRemove(userUid),
   });
   await updateDoc(doc(db, "invites", inviteId), { status: "declined" });
 }

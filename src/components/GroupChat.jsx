@@ -1214,9 +1214,10 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   // ── Group management ─────────────────────────────────────────
   const handleInvite = async () => {
   if (!inviteEmail.trim()) return;
+  if (!user?.uid) { setInviteFeedback({ msg: "You must be logged in to invite.", ok: false }); return; }
   setInviting(true); setInviteFeedback(null);
   try {
-    await inviteToGroup(group.id, user.displayName || user.email, inviteEmail.trim(), userPlan, "username");
+    await inviteToGroup(group.id, user, inviteEmail.trim(), userPlan);
     setInviteFeedback({ msg: `Invite sent to @${inviteEmail.trim()}!`, ok: true });
     setInviteEmail("");
     } catch (err) {
@@ -1358,7 +1359,7 @@ return (
       <div className="gc-messages">
         {messages.length === 0 ? (
           <div className="gc-empty">
-            <div className="gc-empty-icon">💬</div>
+            <div className="gc-empty-icon"></div>
             <div className="gc-empty-title">Start the conversation</div>
             <p>Say hi to the group. Mention <code>@eloria</code> anywhere in a message to get an AI reply.</p>
           </div>
@@ -1644,7 +1645,7 @@ return (
               })}
             </div>
             <div className="gc-info-section">
-              <div className="gc-info-label">Invite by Email</div>
+              <div className="gc-info-label">Invite by Username</div>
               <div className="gc-invite-row">
                <input className="gc-invite-input" type="text" placeholder="@username" value={inviteEmail} onChange={e => setInviteEmail(e.target.value.replace(/^@/, ""))} onKeyDown={e => e.key === "Enter" && handleInvite()} />
 <button className="gc-invite-btn" onClick={handleInvite} disabled={!inviteEmail.trim() || inviting}>{inviting ? "…" : "Invite"}</button>
