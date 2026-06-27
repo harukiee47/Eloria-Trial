@@ -29,7 +29,7 @@ export default function Login({ onLogin }) {
   if (isTauri) {
     try {
       const { open } = await import("@tauri-apps/plugin-shell");
-      await open("https://eloria-ai.vercel.app/auth/callback");
+      await open("https://eloria-trial.vercel.app/auth/callback");
     } catch (err) {
       console.error("Shell open error:", err);
       setError("Failed to open browser: " + err.message);

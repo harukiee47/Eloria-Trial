@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDmfVTBxzZgqdshD6ld91XSTImZ-LsS39A",
-  authDomain: "localhost",
+  authDomain: "speed-eb68b.firebaseapp.com",
   projectId: "speed-eb68b",
   storageBucket: "speed-eb68b.firebasestorage.app",
   messagingSenderId: "253379248208",
