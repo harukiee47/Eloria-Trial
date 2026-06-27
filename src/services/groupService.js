@@ -243,7 +243,7 @@ export async function acceptInvite(inviteId, user) {
 }
 
 // ── Decline an invite ─────────────────────────────────────────────────────────
-export async function declineInvite(inviteId, useruid) {
+export async function declineInvite(inviteId, userUid) {
   const inviteSnap = await getDoc(doc(db, "invites", inviteId));
   if (!inviteSnap.exists()) return;
   const invite = inviteSnap.data();
