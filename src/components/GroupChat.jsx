@@ -238,30 +238,35 @@ const GC_STYLE = `
   .gc-msg-img:hover { opacity: .9; }
 
   .gc-msg-doc-chip {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 11px; border-radius: 10px;
-    background: rgba(255,255,255,.15);
-    border: 1px solid rgba(255,255,255,.25);
-    cursor: pointer; margin-bottom: 4px;
-    transition: background .12s;
-    max-width: 220px;
-  }
-  .gc-bubble.other .gc-msg-doc-chip {
-    background: #f5f4f0;
-    border: 1px solid var(--border-soft);
-  }
-  .gc-msg-doc-chip:hover { opacity: .85; }
-  .gc-msg-doc-ext {
-    width: 30px; height: 30px; border-radius: 7px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 8px; font-weight: 800; flex-shrink: 0;
-  }
-  .gc-msg-doc-name {
-    font-size: 12px; font-weight: 600;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    flex: 1; min-width: 0;
-  }
-  .gc-msg-doc-meta { font-size: 10px; opacity: .65; margin-top: 1px; }
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 14px;
+  max-width: 260px; min-width: 160px;
+  cursor: pointer; margin-bottom: 4px;
+  transition: opacity .12s;
+}
+.gc-bubble.other .gc-msg-doc-chip {
+  background: #faf9f6;
+  border: 1.5px solid #ececea;
+  box-shadow: 0 1px 6px rgba(0,0,0,.06);
+}
+.gc-bubble.self .gc-msg-doc-chip,
+.gc-bubble.eloria .gc-msg-doc-chip {
+  background: rgba(255,255,255,.18);
+  border: 1.5px solid rgba(255,255,255,.3);
+}
+.gc-msg-doc-chip:hover { opacity: .85; }
+.gc-msg-doc-ext {
+  width: 38px; height: 38px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 800; letter-spacing: -.01em; flex-shrink: 0;
+}
+.gc-msg-doc-name {
+  font-size: 12.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.gc-msg-doc-meta { font-size: 10.5px; margin-top: 2px; color: rgba(255,255,255,.65); }
+.gc-bubble.other .gc-msg-doc-meta { color: var(--t3); }
 
   .gc-typing {
     display: flex; align-items: center; gap: 6px;
@@ -736,9 +741,20 @@ const GC_STYLE = `
   @media (max-width: 640px) {
     /* FIX: full-viewport height, rigid flex column — nothing escapes */
     .gc-wrap {
-      height: 100dvh;
-      height: -webkit-fill-available;
-    }
+  height: 100dvh;
+  height: -webkit-fill-available;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+  .gc-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg-panel);
+}
 
     .gc-header { padding: 10px 12px; gap: 8px; }
     .gc-header-back, .gc-icon-btn {
@@ -750,10 +766,9 @@ const GC_STYLE = `
     .gc-header-members { font-size: 10.5px; }
 
     .gc-messages {
-      padding: 12px 10px;
-      /* extra bottom space so last messages aren't hidden behind fixed input */
-      padding-bottom: 20px;
-    }
+  padding: 12px 10px;
+  padding-bottom: 120px;
+}
     .gc-msg-content { max-width: 84%; }
     .gc-msg-avatar { width: 26px; height: 26px; font-size: 10.5px; }
     .gc-bubble { font-size: 14.5px; padding: 9px 12px; }
@@ -1273,7 +1288,9 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
 
   // ── Render attachment inside a bubble ─────────────────────────
   const renderMsgFile = (file, isSelf) => {
-    if (file.kind === "image" && file.url) {
+    if (file.kind === "image") {
+  const src = file.url || file.previewUrl;  
+  if (!src) return null;                     
       return (
         <img
           key={file.id}
@@ -1287,7 +1304,11 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
     const ext  = getExt(file.name);
     const di   = docIconStyle(ext);
     return (
-      <div key={file.id} className="gc-msg-doc-chip" onClick={() => file.url && window.open(file.url, "_blank")}>
+      <div
+        key={file.id}
+        className="gc-msg-doc-chip"
+        onClick={() => (file.url || file.base64) && window.open(file.url || file.base64, "_blank")}
+      >
         <div className="gc-msg-doc-ext" style={{ background: di.bg, color: di.color }}>{ext.slice(0,3)}</div>
         <div>
           <div className="gc-msg-doc-name" style={{ color: isSelf ? "#fff" : "var(--t1)" }}>{file.name}</div>
@@ -1657,7 +1678,7 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
       {limitModal && (
         <div className="gc-limit-backdrop" onClick={() => setLimitModal(null)}>
           <div className="gc-limit-modal" onClick={e => e.stopPropagation()}>
-            <div className="gc-limit-icon">⚠️</div>
+            <div className="gc-limit-icon"></div>
             <div className="gc-limit-title">Limit Reached</div>
             <div className="gc-limit-msg">{limitModal.message}</div>
             <button className="gc-limit-close" onClick={() => setLimitModal(null)}>Got it</button>

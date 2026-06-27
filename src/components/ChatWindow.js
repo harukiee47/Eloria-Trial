@@ -1023,7 +1023,7 @@ const CW_STYLE = `
 }
 @media(max-width: 640px) {
   .cw-bubble { font-size: 16px; padding: 10px 14px; }
-  .cw-msg-row.ai .cw-bubble { font-size: 16px; } /* was 14.5px */
+  .cw-msg-row.ai .cw-bubble { font-size: 14.5px; }
 }
   .cw-msg-row.user .cw-bubble {
     background: var(--accent);
