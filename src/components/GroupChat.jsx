@@ -12,6 +12,8 @@ const GC_STYLE = `
   .gc-wrap {
     display: flex;
     flex-direction: column;
+    /* FIX: use full viewport height and clip overflow so only the
+       messages area scrolls — header/footer never disappear */
     height: 100%;
     min-height: 0;
     overflow: hidden;
@@ -27,18 +29,18 @@ const GC_STYLE = `
   }
 
   /* ── HEADER ─────────────────────────────────────────────── */
-.gc-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-panel);
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
+  .gc-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    /* FIX: flex-shrink:0 ensures header never collapses */
+    flex-shrink: 0;
+    /* sticky within the flex column — not needed since parent clips */
+    z-index: 10;
+  }
   .gc-header-back {
     background: none; border: none; cursor: pointer;
     color: var(--t3); padding: 4px; border-radius: 6px;
@@ -71,9 +73,11 @@ const GC_STYLE = `
 
   /* ── MESSAGES ────────────────────────────────────────────── */
   .gc-messages {
+    /* FIX: flex:1 + min-height:0 means this is the ONLY scrolling area */
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 16px 16px 8px;
     display: flex; flex-direction: column; gap: 2px;
     scrollbar-width: thin; scrollbar-color: #e0e0da transparent;
@@ -222,6 +226,43 @@ const GC_STYLE = `
     margin-top: 3px; padding: 0 3px;
   }
 
+  /* ── IMAGE ATTACHMENT in bubble ──────────────────────────── */
+  .gc-msg-img {
+    max-width: 220px; max-height: 200px;
+    border-radius: 10px; display: block;
+    cursor: pointer; object-fit: cover;
+    margin-bottom: 4px;
+    border: 1px solid rgba(0,0,0,.08);
+    transition: opacity .12s;
+  }
+  .gc-msg-img:hover { opacity: .9; }
+
+  .gc-msg-doc-chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 11px; border-radius: 10px;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    cursor: pointer; margin-bottom: 4px;
+    transition: background .12s;
+    max-width: 220px;
+  }
+  .gc-bubble.other .gc-msg-doc-chip {
+    background: #f5f4f0;
+    border: 1px solid var(--border-soft);
+  }
+  .gc-msg-doc-chip:hover { opacity: .85; }
+  .gc-msg-doc-ext {
+    width: 30px; height: 30px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 800; flex-shrink: 0;
+  }
+  .gc-msg-doc-name {
+    font-size: 12px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; min-width: 0;
+  }
+  .gc-msg-doc-meta { font-size: 10px; opacity: .65; margin-top: 1px; }
+
   .gc-typing {
     display: flex; align-items: center; gap: 6px;
     padding: 6px 0 4px;
@@ -313,17 +354,62 @@ const GC_STYLE = `
   .gc-reply-bar-close:hover { color: var(--t1); background: #deeee8; }
   .gc-reply-bar-close svg { width: 13px; height: 13px; }
 
-  /* ── INPUT ───────────────────────────────────────────────── */
-  .gc-input-bar {
-    padding: 10px 14px 14px;
+  /* ── FILE PREVIEW STRIP ──────────────────────────────────── */
+  .gc-file-strip {
+    display: flex; gap: 7px; flex-wrap: wrap;
+    padding: 8px 14px 4px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border-soft);
+    flex-shrink: 0;
+    animation: replyBarIn .13s ease;
+  }
+  .gc-file-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 9px 5px 7px;
+    background: #faf8f3;
+    border: 1.5px solid rgba(13,58,53,.18);
+    border-radius: 10px; max-width: 180px;
+    font-size: 11.5px; font-family: var(--font);
+  }
+  .gc-file-chip-thumb {
+    width: 28px; height: 28px; border-radius: 6px;
+    object-fit: cover; flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,.06);
+  }
+  .gc-file-chip-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 800; flex-shrink: 0;
+  }
+  .gc-file-chip-name {
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--t1); font-weight: 500;
+  }
+  .gc-file-chip-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--t3); font-size: 13px; padding: 0 2px;
+    flex-shrink: 0; transition: color .1s;
+    display: flex; align-items: center;
+  }
+  .gc-file-chip-remove:hover { color: #e05252; }
+
+  /* ── INPUT AREA ──────────────────────────────────────────── */
+  .gc-input-area {
+    /* FIX: flex-shrink:0 keeps input always visible at the bottom */
+    flex-shrink: 0;
     background: var(--bg-panel);
     border-top: 1px solid var(--border);
-    flex-shrink: 0;
-    position: relative;
-    max-width: 760px;    
-  width: 100%;        
-  margin: 0 auto;     
-  align-self: center;  
+  }
+
+  /* ── INPUT BAR ───────────────────────────────────────────── */
+  .gc-input-bar {
+    padding: 10px 14px 14px;
+    /* FIX DESKTOP: wider, rounded container with soft card look */
+    max-width: 760px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
   }
   .gc-eloria-note {
     font-size: 11px; color: var(--t3); text-align: center;
@@ -333,34 +419,86 @@ const GC_STYLE = `
     background: var(--accent-bg); color: var(--accent);
     padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 11px;
   }
+
+  /* FIX DESKTOP: rounded card wrapping the whole composer */
+  .gc-input-card {
+    background: #fafaf8;
+    border: 1.5px solid rgba(13,58,53,.15);
+    border-radius: 18px;
+    padding: 8px 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.04);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .gc-input-card:focus-within {
+    border-color: rgba(13,58,53,.32);
+    box-shadow: 0 0 0 3px rgba(13,58,53,.07), 0 2px 10px rgba(0,0,0,.06);
+    background: #fff;
+  }
+
   .gc-input-row {
     display: flex; gap: 8px; align-items: flex-end;
   }
-  .gc-textarea {
-    flex: 1; resize: none; border: 1.5px solid var(--border);
-    border-radius: 14px; padding: 10px 14px;
-    font-size: 14px; font-family: var(--font); color: var(--t1);
-    background: #fff; outline: none; min-height: 44px; max-height: 140px;
-    line-height: 1.5; transition: border-color .13s;
-    scrollbar-width: thin;
+
+  /* ── ATTACH BUTTON ───────────────────────────────────────── */
+  .gc-attach-wrap { position: relative; flex-shrink: 0; }
+  .gc-attach-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--t3); transition: background .12s, color .12s;
   }
-  .gc-textarea:focus { border-color: var(--accent); }
+  .gc-attach-btn:hover { background: #f0ede6; color: var(--accent); }
+  .gc-attach-btn.has-files { color: var(--accent); }
+  .gc-attach-btn svg { width: 17px; height: 17px; }
+  .gc-attach-menu {
+    position: absolute; bottom: calc(100% + 8px); left: 0;
+    background: #fff; border: 1px solid #e8e6e0;
+    border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.12);
+    padding: 5px; min-width: 160px; z-index: 200;
+    animation: ctxIn .12s ease;
+  }
+  .gc-attach-menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; font-size: 13px; color: var(--t1);
+    border-radius: 10px; cursor: pointer;
+    transition: background .11s; font-family: var(--font); font-weight: 500;
+  }
+  .gc-attach-menu-item:hover { background: #faf7f2; color: var(--accent); }
+  .gc-attach-menu-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .gc-attach-menu-sep { height: 1px; background: #f0ede8; margin: 3px 8px; }
+
+  .gc-textarea {
+    flex: 1; resize: none; border: none;
+    padding: 6px 10px;
+    font-size: 14px; font-family: var(--font); color: var(--t1);
+    background: transparent; outline: none;
+    min-height: 22px; max-height: 140px;
+    line-height: 1.5;
+    scrollbar-width: thin;
+    caret-color: #0d3a35;
+  }
   .gc-textarea::placeholder { color: var(--t3); }
+
   .gc-send-btn {
-    width: 42px; height: 42px; border-radius: 12px;
+    width: 34px; height: 34px; border-radius: 50%;
     background: var(--accent); border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    color: #fff; flex-shrink: 0; transition: opacity .13s;
+    color: #fff; flex-shrink: 0;
+    transition: opacity .13s, transform .1s, box-shadow .13s;
   }
-  .gc-send-btn:hover { opacity: .87; }
+  .gc-send-btn:hover:not(:disabled) {
+    opacity: .87;
+    transform: scale(1.05);
+    box-shadow: 0 3px 12px rgba(13,58,53,.3);
+  }
   .gc-send-btn:disabled { opacity: .4; cursor: not-allowed; }
-  .gc-send-btn svg { width: 17px; height: 17px; }
+  .gc-send-btn svg { width: 15px; height: 15px; }
 
   /* ── @MENTION DROPDOWN ───────────────────────────────────── */
   .gc-mention-dropdown {
     position: absolute;
     bottom: calc(100% + 4px);
-    left: 14px; right: 14px;
+    left: 0; right: 0;
     background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: var(--r-md);
@@ -388,6 +526,27 @@ const GC_STYLE = `
     flex-shrink: 0;
   }
   .gc-mention-email { font-size: 12px; color: var(--t3); }
+
+  /* ── LIGHTBOX ────────────────────────────────────────────── */
+  .gc-lightbox {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,.88);
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn .18s ease; cursor: zoom-out;
+  }
+  .gc-lightbox img {
+    max-width: 90vw; max-height: 88vh;
+    border-radius: 12px; object-fit: contain; cursor: default;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .gc-lightbox-close {
+    position: absolute; top: 20px; right: 20px;
+    background: rgba(255,255,255,.12); border: none; border-radius: 50%;
+    width: 38px; height: 38px; cursor: pointer; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: background .12s;
+  }
+  .gc-lightbox-close:hover { background: rgba(255,255,255,.22); }
 
   /* ── LIMIT MODAL ─────────────────────────────────────────── */
   .gc-limit-backdrop {
@@ -426,7 +585,6 @@ const GC_STYLE = `
     transition: opacity .12s;
   }
   .gc-limit-close:hover { opacity: .87; }
-
 
   /* ── CONFIRM MODAL ───────────────────────────────────────── */
   .gc-confirm-backdrop {
@@ -576,6 +734,12 @@ const GC_STYLE = `
      MOBILE OPTIMIZATIONS
      ══════════════════════════════════════════════════════════ */
   @media (max-width: 640px) {
+    /* FIX: full-viewport height, rigid flex column — nothing escapes */
+    .gc-wrap {
+      height: 100dvh;
+      height: -webkit-fill-available;
+    }
+
     .gc-header { padding: 10px 12px; gap: 8px; }
     .gc-header-back, .gc-icon-btn {
       padding: 9px; min-width: 40px; min-height: 40px; touch-action: manipulation;
@@ -584,17 +748,41 @@ const GC_STYLE = `
     .gc-header-avatar { width: 32px; height: 32px; font-size: 12px; }
     .gc-header-name { font-size: 14px; }
     .gc-header-members { font-size: 10.5px; }
-    .gc-messages { padding: 12px 10px 6px; }
+
+    .gc-messages {
+      padding: 12px 10px;
+      /* extra bottom space so last messages aren't hidden behind fixed input */
+      padding-bottom: 20px;
+    }
     .gc-msg-content { max-width: 84%; }
     .gc-msg-avatar { width: 26px; height: 26px; font-size: 10.5px; }
     .gc-bubble { font-size: 14.5px; padding: 9px 12px; }
+    .gc-msg-img { max-width: 180px; max-height: 160px; }
+
     .gc-reply-bar { padding: 8px 10px; }
-    .gc-input-bar {
-      padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    .gc-file-strip { padding: 6px 10px 3px; }
+
+    /* FIX: pin the whole input area to the bottom of the viewport */
+    .gc-input-area {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      z-index: 50;
     }
-    .gc-eloria-note { font-size: 10.5px; margin-bottom: 6px; }
-    .gc-textarea { font-size: 16px; padding: 10px 12px; border-radius: 18px; }
-    .gc-send-btn { width: 44px; height: 44px; border-radius: 14px; touch-action: manipulation; }
+
+    .gc-input-bar {
+      padding: 8px 10px 10px;
+    }
+
+    /* On mobile keep the card style but with tighter radius */
+    .gc-input-card {
+      border-radius: 18px;
+      padding: 6px 8px;
+    }
+
+    .gc-textarea { font-size: 16px; }
+    .gc-send-btn { width: 36px; height: 36px; touch-action: manipulation; }
+
     .gc-ctx-backdrop {
       display: block; position: fixed; inset: 0;
       background: rgba(0,0,0,.25); z-index: 799;
@@ -632,9 +820,13 @@ const GC_STYLE = `
     .gc-danger-btn { padding: 12px; font-size: 14px; touch-action: manipulation; }
     .gc-limit-modal { width: calc(100% - 32px); }
     .gc-mention-dropdown { left: 10px; right: 10px; }
+    .gc-lightbox img { max-width: 95vw; max-height: 80vh; border-radius: 8px; }
+    .gc-lightbox-close { top: 14px; right: 14px; width: 34px; height: 34px; }
+    .gc-attach-menu { left: 0; }
   }
 `;
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function formatTime(ts) {
   if (!ts) return "";
   const d = ts?.toDate ? ts.toDate() : new Date(ts);
@@ -651,7 +843,27 @@ function formatDay(ts) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-// Render message text with @email mentions highlighted
+function formatBytes(b) {
+  if (b < 1024) return `${b}B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)}KB`;
+  return `${(b / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function getExt(name) {
+  const p = (name || "").split(".");
+  return p.length > 1 ? p[p.length - 1].toUpperCase() : "FILE";
+}
+
+function docIconStyle(ext) {
+  const map = {
+    PDF:  { bg: "#fff1f1", color: "#e53e3e" },
+    TXT:  { bg: "#f0f4ff", color: "#4a6cf7" },
+    DOC:  { bg: "#eff6ff", color: "#2563eb" },
+    DOCX: { bg: "#eff6ff", color: "#2563eb" },
+  };
+  return map[ext] || { bg: "#f5f5f0", color: "#888" };
+}
+
 function renderTextWithMentions(text) {
   if (!text) return text;
   const parts = text.split(/(@[\w.]+)/g);
@@ -662,55 +874,51 @@ function renderTextWithMentions(text) {
   );
 }
 
+// ── Main component ────────────────────────────────────────────────────────────
 export default function GroupChat({ group, user, userPlan, onBack }) {
-  const [messages, setMessages]         = useState([]);
-  const [input, setInput]               = useState("");
-  const [sending, setSending]           = useState(false);
-  const [eloriaTyping, setEloriaTyping] = useState(false);
-  const [showInfo, setShowInfo]         = useState(false);
-  const [renameVal, setRenameVal]       = useState(group.name);
-  const [inviteEmail, setInviteEmail]   = useState("");
+  const [messages, setMessages]             = useState([]);
+  const [input, setInput]                   = useState("");
+  const [sending, setSending]               = useState(false);
+  const [eloriaTyping, setEloriaTyping]     = useState(false);
+  const [showInfo, setShowInfo]             = useState(false);
+  const [renameVal, setRenameVal]           = useState(group.name);
+  const [inviteEmail, setInviteEmail]       = useState("");
   const [inviteFeedback, setInviteFeedback] = useState(null);
-  const [inviting, setInviting]         = useState(false);
+  const [inviting, setInviting]             = useState(false);
+  const [limitModal, setLimitModal]         = useState(null);
+  const [confirmModal, setConfirmModal]     = useState(null);
+  const [mentionResults, setMentionResults] = useState([]);
+  const [mentionActive, setMentionActive]   = useState(-1);
+  const [ctxMenu, setCtxMenu]               = useState(null);
+  const [replyTo, setReplyTo]               = useState(null);
+  const [pressedMsgId, setPressedMsgId]     = useState(null);
+  const [lightboxSrc, setLightboxSrc]       = useState(null);
+  const [showAttach, setShowAttach]         = useState(false);
+  const [pendingFiles, setPendingFiles]     = useState([]);
 
-  // ── Limit modal (replaces alert() for group/member limits) ──
-  const [limitModal, setLimitModal]     = useState(null); // { message: string }
-
-  // ── Confirm modal (replaces window.confirm for destructive actions) ──
-  const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
-
-  // ── @mention dropdown ────────────────────────────────────────
-  const [mentionResults, setMentionResults] = useState([]); // filtered members
-  const [mentionActive, setMentionActive]   = useState(-1); // keyboard nav index
-
-  const [ctxMenu, setCtxMenu]   = useState(null);
-  const ctxRef = useRef(null);
-
-  const [replyTo, setReplyTo]   = useState(null);
-
-  const [pressedMsgId, setPressedMsgId]   = useState(null);
+  const ctxRef         = useRef(null);
+  const bottomRef      = useRef(null);
+  const textareaRef    = useRef(null);
+  const fileInputRef   = useRef(null);
+  const attachWrapRef  = useRef(null);
   const longPressTimer = useRef(null);
   const longPressPos   = useRef(null);
 
-  const bottomRef   = useRef(null);
-  const textareaRef = useRef(null);
   const uid       = user?.uid;
   const isCreator = group.creatorId === uid;
-
-  // All member emails for @mention
-  const memberEmails = group.memberEmails || [];
-  const memberNames  = group.memberNames  || {};
-
+  const memberEmails    = group.memberEmails    || [];
+  const memberNames     = group.memberNames     || {};
   const memberUsernames = group.memberUsernames || {};
 
-const mentionableMembers = (group.members || [])
-  .filter(uid => uid !== user.uid)
-  .map(uid => ({
-    uid,
-    username: memberUsernames[uid] || memberNames[uid]?.split("@")[0] || "Unknown",
-    email: memberEmails[group.members?.indexOf(uid)] || "",
-  }));
+  const mentionableMembers = (group.members || [])
+    .filter(u => u !== uid)
+    .map(u => ({
+      uid: u,
+      username: memberUsernames[u] || memberNames[u]?.split("@")[0] || "Unknown",
+      email: memberEmails[group.members?.indexOf(u)] || "",
+    }));
 
+  // ── Style injection ─────────────────────────────────────────
   useEffect(() => {
     if (!document.getElementById("gc-style")) {
       const tag = document.createElement("style");
@@ -720,6 +928,7 @@ const mentionableMembers = (group.members || [])
     }
   }, []);
 
+  // ── Realtime messages ───────────────────────────────────────
   useEffect(() => {
     const joinedAt = group.memberJoinedAt?.[uid]
       ? new Date(group.memberJoinedAt[uid])
@@ -736,6 +945,7 @@ const mentionableMembers = (group.members || [])
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, eloriaTyping]);
 
+  // ── Auto-grow textarea ──────────────────────────────────────
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -743,6 +953,7 @@ const mentionableMembers = (group.members || [])
     ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
   }, [input]);
 
+  // ── Close context menu on outside click ─────────────────────
   useEffect(() => {
     if (!ctxMenu) return;
     const close = (e) => {
@@ -757,47 +968,84 @@ const mentionableMembers = (group.members || [])
     };
   }, [ctxMenu]);
 
+  // ── Escape to cancel reply ──────────────────────────────────
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape" && replyTo) setReplyTo(null); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [replyTo]);
 
-  // ── @mention: update dropdown when input changes ─────────────
+  // ── Close attach menu on outside click ──────────────────────
+  useEffect(() => {
+    if (!showAttach) return;
+    const close = (e) => {
+      if (attachWrapRef.current && !attachWrapRef.current.contains(e.target)) {
+        setShowAttach(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [showAttach]);
+
+  // ── @mention dropdown ───────────────────────────────────────
   const handleInputChange = (e) => {
-  const val = e.target.value;
-  setInput(val);
-
-  const cursorPos    = e.target.selectionStart;
-  const textToCursor = val.slice(0, cursorPos);
-  const mentionMatch = textToCursor.match(/@([\w.]*)$/);
-
-  if (mentionMatch) {
-    const q = mentionMatch[1].toLowerCase();
-    const filtered = mentionableMembers.filter(m =>
-      m.username.toLowerCase().includes(q)
-    );
-    setMentionResults(filtered.map(m => m.username));
-    setMentionActive(-1);
-    return;
-  }
-  setMentionResults([]);
-};
+    const val = e.target.value;
+    setInput(val);
+    const cursorPos    = e.target.selectionStart;
+    const textToCursor = val.slice(0, cursorPos);
+    const mentionMatch = textToCursor.match(/@([\w.]*)$/);
+    if (mentionMatch) {
+      const q = mentionMatch[1].toLowerCase();
+      const filtered = mentionableMembers.filter(m => m.username.toLowerCase().includes(q));
+      setMentionResults(filtered.map(m => m.username));
+      setMentionActive(-1);
+      return;
+    }
+    setMentionResults([]);
+  };
 
   const insertMention = (username) => {
-  const cursorPos    = textareaRef.current?.selectionStart ?? input.length;
-  const textToCursor = input.slice(0, cursorPos);
-  const replaced     = textToCursor.replace(/@[\w.]*$/, `@${username} `);
-  const newVal       = replaced + input.slice(cursorPos);
-  setInput(newVal);
-  setMentionResults([]);
-  setMentionActive(-1);
-  setTimeout(() => {
-    const ta = textareaRef.current;
-    if (ta) { ta.focus(); ta.selectionStart = ta.selectionEnd = replaced.length; }
-  }, 0);
-};
+    const cursorPos    = textareaRef.current?.selectionStart ?? input.length;
+    const textToCursor = input.slice(0, cursorPos);
+    const replaced     = textToCursor.replace(/@[\w.]*$/, `@${username} `);
+    const newVal       = replaced + input.slice(cursorPos);
+    setInput(newVal);
+    setMentionResults([]);
+    setMentionActive(-1);
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (ta) { ta.focus(); ta.selectionStart = ta.selectionEnd = replaced.length; }
+    }, 0);
+  };
 
+  // ── File selection ──────────────────────────────────────────
+  const onFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    const slots = 4 - pendingFiles.length;
+    files.slice(0, slots).forEach(f => {
+      const isImage = f.type.startsWith("image/");
+      const maxSize = isImage ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+      if (f.size > maxSize) {
+        setLimitModal({ message: `"${f.name}" is too large. Max ${isImage ? "5MB for images" : "10MB for documents"}.` });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPendingFiles(prev => [...prev, {
+          id: Date.now() + Math.random(),
+          name: f.name,
+          size: f.size,
+          kind: isImage ? "image" : "document",
+          previewUrl: isImage ? ev.target.result : null,
+          base64: ev.target.result,
+        }]);
+      };
+      reader.readAsDataURL(f);
+    });
+    e.target.value = "";
+  };
+
+  // ── Context menu ─────────────────────────────────────────────
   const handleContextMenu = useCallback((e, msg) => {
     e.preventDefault();
     if (msg.deleted) return;
@@ -827,9 +1075,8 @@ const mentionableMembers = (group.members || [])
     if (!longPressPos.current) return;
     const touch = e.touches[0];
     if (!touch) return;
-    const dx = Math.abs(touch.clientX - longPressPos.current.x);
-    const dy = Math.abs(touch.clientY - longPressPos.current.y);
-    if (dx > 10 || dy > 10) clearLongPress();
+    if (Math.abs(touch.clientX - longPressPos.current.x) > 10 ||
+        Math.abs(touch.clientY - longPressPos.current.y) > 10) clearLongPress();
   }, [clearLongPress]);
 
   const handleTouchEnd = useCallback(() => { clearLongPress(); }, [clearLongPress]);
@@ -844,62 +1091,57 @@ const mentionableMembers = (group.members || [])
 
   const handleCopyMsg = async () => {
     if (!ctxMenu) return;
-    const { msg } = ctxMenu;
     setCtxMenu(null);
-    try { await navigator.clipboard.writeText(msg.text || ""); }
-    catch (err) { console.error("Copy error:", err); }
+    try { await navigator.clipboard.writeText(ctxMenu.msg.text || ""); } catch {}
   };
 
   const handleDeleteMsg = async () => {
     if (!ctxMenu) return;
     const { msg } = ctxMenu;
     setCtxMenu(null);
-    try { await deleteGroupMessage(group.id, msg.id); }
-    catch (err) { console.error("Delete error:", err); }
+    try { await deleteGroupMessage(group.id, msg.id); } catch (err) { console.error(err); }
   };
 
+  // ── Send ─────────────────────────────────────────────────────
   const handleSend = async () => {
-  const text = input.trim();
-  if (!text || sending) return;
-  setInput("");
-  setMentionResults([]);
-  const currentReply = replyTo;
-  setReplyTo(null);
-  setSending(true);
-  try {
-    await sendGroupMessage(group.id, user, text, currentReply || null);
+    const text = input.trim();
+    if ((!text && pendingFiles.length === 0) || sending) return;
+    setInput("");
+    setMentionResults([]);
+    const currentReply = replyTo;
+    const currentFiles = [...pendingFiles];
+    setReplyTo(null);
+    setPendingFiles([]);
+    setSending(true);
+    try {
+      // Pass files to sendGroupMessage — update that service function if needed
+      await sendGroupMessage(group.id, user, text, currentReply || null, currentFiles);
 
-    // Detect @username mentions and notify those users
-    const mentionMatches = text.match(/@([\w.]+)/g) || [];
-    for (const mention of mentionMatches) {
-      const username = mention.slice(1); // strip the @
-      if (username.toLowerCase() === "eloria") continue;
-      const member = mentionableMembers.find(
-        m => m.username.toLowerCase() === username.toLowerCase()
-      );
-      if (member) {
-        writeMentionNotification(
-          group.id,
-          group.name,
-          user.uid,
-          user.username || user.email,
-          member.uid,
-          text
-        ).catch(console.error);
+      // @mention notifications
+      const mentionMatches = text.match(/@([\w.]+)/g) || [];
+      for (const mention of mentionMatches) {
+        const username = mention.slice(1);
+        if (username.toLowerCase() === "eloria") continue;
+        const member = mentionableMembers.find(m => m.username.toLowerCase() === username.toLowerCase());
+        if (member) {
+          writeMentionNotification(
+            group.id, group.name, user.uid,
+            user.username || user.email, member.uid, text
+          ).catch(console.error);
+        }
       }
-    }
 
-    if (text.toLowerCase().includes("@eloria")) {
-      const question = text.replace(/@eloria/gi, "").trim();
-      setEloriaTyping(true);
-      await callEloriaReply(question);
+      if (text.toLowerCase().includes("@eloria")) {
+        const question = text.replace(/@eloria/gi, "").trim();
+        setEloriaTyping(true);
+        await callEloriaReply(question);
+      }
+    } catch (err) {
+      console.error("Send error:", err);
+    } finally {
+      setSending(false);
     }
-  } catch (err) {
-    console.error("Send error:", err);
-  } finally {
-    setSending(false);
-  }
-};
+  };
 
   const callEloriaReply = async (question) => {
     try {
@@ -938,14 +1180,12 @@ const mentionableMembers = (group.members || [])
     window.matchMedia("(pointer: coarse)").matches;
 
   const handleKeyDown = (e) => {
-    // Navigate mention dropdown
     if (mentionResults.length > 0) {
       if (e.key === "ArrowDown") { e.preventDefault(); setMentionActive(i => Math.min(i + 1, mentionResults.length - 1)); return; }
       if (e.key === "ArrowUp")   { e.preventDefault(); setMentionActive(i => Math.max(i - 1, 0)); return; }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        const idx = mentionActive >= 0 ? mentionActive : 0;
-        insertMention(mentionResults[idx]);
+        insertMention(mentionResults[mentionActive >= 0 ? mentionActive : 0]);
         return;
       }
       if (e.key === "Escape") { setMentionResults([]); return; }
@@ -956,24 +1196,21 @@ const mentionableMembers = (group.members || [])
     }
   };
 
+  // ── Group management ─────────────────────────────────────────
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
-    setInviting(true);
-    setInviteFeedback(null);
+    setInviting(true); setInviteFeedback(null);
     try {
       await inviteToGroup(group.id, user.displayName || user.email, inviteEmail.trim(), userPlan);
       setInviteFeedback({ msg: `Invite sent to ${inviteEmail.trim()}!`, ok: true });
       setInviteEmail("");
     } catch (err) {
-      // Show limit errors as modal popup, other errors inline
       if (err.message.toLowerCase().includes("full") || err.message.toLowerCase().includes("max")) {
         setLimitModal({ message: err.message });
       } else {
         setInviteFeedback({ msg: err.message, ok: false });
       }
-    } finally {
-      setInviting(false);
-    }
+    } finally { setInviting(false); }
   };
 
   const handleKick = (targetUid, targetEmail, targetName) => {
@@ -998,18 +1235,13 @@ const mentionableMembers = (group.members || [])
     });
   };
 
-  // FIX 5: After delete, call onBack() so user goes to normal chat, not blank screen
   const handleDelete = () => {
     setConfirmModal({
       message: `Delete "${group.name}"? This cannot be undone.`,
       onConfirm: async () => {
         setConfirmModal(null);
-        try {
-          await deleteGroup(group.id);
-          onBack();
-        } catch (err) {
-          setLimitModal({ message: err.message });
-        }
+        try { await deleteGroup(group.id); onBack(); }
+        catch (err) { setLimitModal({ message: err.message }); }
       }
     });
   };
@@ -1020,6 +1252,7 @@ const mentionableMembers = (group.members || [])
     catch (err) { setLimitModal({ message: err.message }); }
   };
 
+  // ── Group messages by day ─────────────────────────────────────
   const grouped = [];
   let lastDay = null;
   messages.forEach((msg, i) => {
@@ -1032,15 +1265,50 @@ const mentionableMembers = (group.members || [])
   });
 
   const ctxStyle = ctxMenu ? (() => {
-    const menuW = 160, menuH = 110;
+    const menuW = 160, menuH = 120;
     const x = Math.min(ctxMenu.x, window.innerWidth  - menuW - 8);
     const y = Math.min(ctxMenu.y, window.innerHeight - menuH - 8);
     return { top: y, left: x };
   })() : {};
 
+  // ── Render attachment inside a bubble ─────────────────────────
+  const renderMsgFile = (file, isSelf) => {
+    if (file.kind === "image" && file.url) {
+      return (
+        <img
+          key={file.id}
+          className="gc-msg-img"
+          src={file.url}
+          alt={file.name}
+          onClick={() => setLightboxSrc(file.url)}
+        />
+      );
+    }
+    const ext  = getExt(file.name);
+    const di   = docIconStyle(ext);
+    return (
+      <div key={file.id} className="gc-msg-doc-chip" onClick={() => file.url && window.open(file.url, "_blank")}>
+        <div className="gc-msg-doc-ext" style={{ background: di.bg, color: di.color }}>{ext.slice(0,3)}</div>
+        <div>
+          <div className="gc-msg-doc-name" style={{ color: isSelf ? "#fff" : "var(--t1)" }}>{file.name}</div>
+          <div className="gc-msg-doc-meta">{formatBytes(file.size)}</div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="gc-wrap">
-      {/* Header */}
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        style={{ display: "none" }}
+        multiple
+        onChange={onFileChange}
+      />
+
+      {/* ── HEADER ── */}
       <div className="gc-header">
         <button className="gc-header-back" onClick={onBack} title="Back to groups">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -1065,7 +1333,7 @@ const mentionableMembers = (group.members || [])
         </div>
       </div>
 
-      {/* Messages */}
+      {/* ── MESSAGES ── */}
       <div className="gc-messages">
         {messages.length === 0 ? (
           <div className="gc-empty">
@@ -1084,7 +1352,7 @@ const mentionableMembers = (group.members || [])
             return (
               <div
                 key={item.key}
-                className={`gc-msg-row${isSelf ? " self" : ""}${pressedMsgId && pressedMsgId === msg.id ? " pressing" : ""}`}
+                className={`gc-msg-row${isSelf ? " self" : ""}${pressedMsgId === msg.id ? " pressing" : ""}`}
                 onContextMenu={(e) => handleContextMenu(e, msg)}
                 onTouchStart={(e) => handleTouchStart(e, msg)}
                 onTouchMove={handleTouchMove}
@@ -1097,9 +1365,7 @@ const mentionableMembers = (group.members || [])
                   </div>
                 )}
                 <div className="gc-msg-content">
-                  {!isSelf && (
-                    <div className="gc-sender-name">{isEloria ? "Eloria" : msg.senderName}</div>
-                  )}
+                  {!isSelf && <div className="gc-sender-name">{isEloria ? "Eloria" : msg.senderName}</div>}
                   <div className={`gc-bubble${isSelf ? " self" : isEloria ? " eloria" : " other"}${msg.deleted ? " deleted" : ""}`}>
                     {isEloria && !msg.deleted && <div className="eloria-tag">Eloria AI</div>}
                     {!msg.deleted && msg.replyTo && (
@@ -1108,7 +1374,12 @@ const mentionableMembers = (group.members || [])
                         <span className="gc-reply-quote-text">{msg.replyTo.text}</span>
                       </div>
                     )}
-                    {msg.deleted ? "This message was deleted" : renderTextWithMentions(msg.text)}
+                    {/* Render attached files */}
+                    {!msg.deleted && (msg.files || []).map(f => renderMsgFile(f, isSelf))}
+                    {msg.deleted
+                      ? "This message was deleted"
+                      : msg.text ? renderTextWithMentions(msg.text) : null
+                    }
                   </div>
                   <div className="gc-msg-time">{formatTime(msg.timestamp)}</div>
                 </div>
@@ -1134,68 +1405,149 @@ const mentionableMembers = (group.members || [])
         <div ref={bottomRef} />
       </div>
 
-      {/* Reply preview bar */}
-      {replyTo && (
-        <div className="gc-reply-bar">
-          <div className="gc-reply-bar-line" />
-          <div className="gc-reply-bar-body">
-            <div className="gc-reply-bar-label">Replying to {replyTo.senderName}</div>
-            <div className="gc-reply-bar-text">{replyTo.text}</div>
-          </div>
-          <button className="gc-reply-bar-close" onClick={() => setReplyTo(null)} title="Cancel reply">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-      )}
+      {/* ── BOTTOM INPUT AREA (flex-shrink:0 — always visible) ── */}
+      <div className="gc-input-area">
 
-      {/* Input */}
-      <div className="gc-input-bar">
-        {/* @mention dropdown */}
-        {mentionResults.length > 0 && (
-  <div className="gc-mention-dropdown">
-    {mentionResults.map((username, i) => {
-      const member = mentionableMembers.find(m => m.username === username);
-      return (
-        <div
-          key={username}
-          className={`gc-mention-item${i === mentionActive ? " active" : ""}`}
-          onMouseDown={(e) => { e.preventDefault(); insertMention(username); }}
-        >
-          <div className="gc-mention-av">{username[0].toUpperCase()}</div>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>@{username}</div>
-            {member?.email && <div className="gc-mention-email">{member.email}</div>}
+        {/* Reply bar */}
+        {replyTo && (
+          <div className="gc-reply-bar">
+            <div className="gc-reply-bar-line" />
+            <div className="gc-reply-bar-body">
+              <div className="gc-reply-bar-label">Replying to {replyTo.senderName}</div>
+              <div className="gc-reply-bar-text">{replyTo.text}</div>
+            </div>
+            <button className="gc-reply-bar-close" onClick={() => setReplyTo(null)} title="Cancel reply">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
-        </div>
-      );
-    })}
-  </div>
-)}
-        <div className="gc-eloria-note">
-          Type <code>@eloria</code> to get an AI reply · Type <code>@username</code> to mention someone
-        </div>
-        <div className="gc-input-row">
-          <textarea
-            ref={textareaRef}
-            className="gc-textarea"
-            placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Message the group…"}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            rows={1}
-          />
-          <button className="gc-send-btn" onClick={handleSend} disabled={!input.trim() || sending}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
+        )}
+
+        {/* Pending file chips */}
+        {pendingFiles.length > 0 && (
+          <div className="gc-file-strip">
+            {pendingFiles.map(f => {
+              const ext = getExt(f.name);
+              const di  = docIconStyle(ext);
+              return (
+                <div key={f.id} className="gc-file-chip">
+                  {f.kind === "image" && f.previewUrl
+                    ? <img className="gc-file-chip-thumb" src={f.previewUrl} alt={f.name} />
+                    : <div className="gc-file-chip-icon" style={{ background: di.bg, color: di.color }}>{ext.slice(0,3)}</div>
+                  }
+                  <span className="gc-file-chip-name">{f.name}</span>
+                  <button className="gc-file-chip-remove" onClick={() => setPendingFiles(p => p.filter(x => x.id !== f.id))}>✕</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Main composer */}
+        <div className="gc-input-bar">
+          {/* @mention dropdown (positioned relative to input-bar) */}
+          <div style={{ position: "relative" }}>
+            {mentionResults.length > 0 && (
+              <div className="gc-mention-dropdown">
+                {mentionResults.map((username, i) => {
+                  const member = mentionableMembers.find(m => m.username === username);
+                  return (
+                    <div
+                      key={username}
+                      className={`gc-mention-item${i === mentionActive ? " active" : ""}`}
+                      onMouseDown={(e) => { e.preventDefault(); insertMention(username); }}
+                    >
+                      <div className="gc-mention-av">{username[0].toUpperCase()}</div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>@{username}</div>
+                        {member?.email && <div className="gc-mention-email">{member.email}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="gc-eloria-note">
+            Type <code>@eloria</code> to get an AI reply · Type <code>@username</code> to mention someone
+          </div>
+
+          {/* Rounded card wrapping attach + textarea + send */}
+          <div className="gc-input-card">
+            <div className="gc-input-row">
+              {/* Attach button */}
+              <div className="gc-attach-wrap" ref={attachWrapRef}>
+                <button
+                  className={`gc-attach-btn${pendingFiles.length > 0 ? " has-files" : ""}`}
+                  onClick={() => setShowAttach(v => !v)}
+                  title="Attach file"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                  </svg>
+                </button>
+                {showAttach && (
+                  <div className="gc-attach-menu">
+                    <div className="gc-attach-menu-item" onClick={() => {
+                      setShowAttach(false);
+                      fileInputRef.current.setAttribute("accept", "image/jpeg,image/png,image/gif,image/webp");
+                      fileInputRef.current.click();
+                    }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                      <span>Image</span>
+                      <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--t3)" }}>jpg · png · gif</span>
+                    </div>
+                    <div className="gc-attach-menu-sep" />
+                    <div className="gc-attach-menu-item" onClick={() => {
+                      setShowAttach(false);
+                      fileInputRef.current.setAttribute("accept", ".pdf,.doc,.docx,.txt");
+                      fileInputRef.current.click();
+                    }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                      </svg>
+                      <span>Document</span>
+                      <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--t3)" }}>pdf · doc · txt</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <textarea
+                ref={textareaRef}
+                className="gc-textarea"
+                placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Message the group…"}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                rows={1}
+              />
+
+              <button
+                className="gc-send-btn"
+                onClick={handleSend}
+                disabled={(!input.trim() && pendingFiles.length === 0) || sending}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"/>
+                  <polyline points="5 12 12 5 19 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Context menu */}
+      {/* ── CONTEXT MENU ── */}
       {ctxMenu && (
         <>
           <div className="gc-ctx-backdrop" onClick={() => setCtxMenu(null)} />
@@ -1233,7 +1585,7 @@ const mentionableMembers = (group.members || [])
         </>
       )}
 
-      {/* Info panel */}
+      {/* ── INFO PANEL ── */}
       {showInfo && (
         <div className="gc-info-backdrop" onClick={() => setShowInfo(false)}>
           <div className="gc-info-panel" onClick={e => e.stopPropagation()}>
@@ -1246,13 +1598,7 @@ const mentionableMembers = (group.members || [])
               <div className="gc-info-section">
                 <div className="gc-info-label">Group Name</div>
                 <div className="gc-rename-row">
-                  <input
-                    className="gc-rename-input"
-                    value={renameVal}
-                    onChange={e => setRenameVal(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && handleRename()}
-                    placeholder="Group name…"
-                  />
+                  <input className="gc-rename-input" value={renameVal} onChange={e => setRenameVal(e.target.value)} onKeyDown={e => e.key === "Enter" && handleRename()} placeholder="Group name…" />
                   <button className="gc-rename-save" onClick={handleRename}>Save</button>
                 </div>
               </div>
@@ -1279,26 +1625,11 @@ const mentionableMembers = (group.members || [])
             <div className="gc-info-section">
               <div className="gc-info-label">Invite by Email</div>
               <div className="gc-invite-row">
-                <input
-                  className="gc-invite-input"
-                  type="email"
-                  placeholder="friend@email.com"
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleInvite()}
-                />
-                <button className="gc-invite-btn" onClick={handleInvite} disabled={!inviteEmail.trim() || inviting}>
-                  {inviting ? "…" : "Invite"}
-                </button>
+                <input className="gc-invite-input" type="email" placeholder="friend@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleInvite()} />
+                <button className="gc-invite-btn" onClick={handleInvite} disabled={!inviteEmail.trim() || inviting}>{inviting ? "…" : "Invite"}</button>
               </div>
-              {inviteFeedback && (
-                <div className={`gc-invite-feedback ${inviteFeedback.ok ? "ok" : "err"}`}>
-                  {inviteFeedback.msg}
-                </div>
-              )}
-              <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 8 }}>
-                They'll see a notification next time they open Eloria.
-              </div>
+              {inviteFeedback && <div className={`gc-invite-feedback ${inviteFeedback.ok ? "ok" : "err"}`}>{inviteFeedback.msg}</div>}
+              <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 8 }}>They'll see a notification next time they open Eloria.</div>
             </div>
             <div className="gc-info-section">
               {!isCreator && <button className="gc-danger-btn" onClick={handleLeave}>Leave Group</button>}
@@ -1308,7 +1639,7 @@ const mentionableMembers = (group.members || [])
         </div>
       )}
 
-      {/* ── CONFIRM MODAL (replaces window.confirm for destructive actions) ── */}
+      {/* ── CONFIRM MODAL ── */}
       {confirmModal && (
         <div className="gc-confirm-backdrop" onClick={() => setConfirmModal(null)}>
           <div className="gc-confirm-modal" onClick={e => e.stopPropagation()}>
@@ -1322,15 +1653,23 @@ const mentionableMembers = (group.members || [])
         </div>
       )}
 
-      {/* ── LIMIT MODAL (replaces browser alert for group/member limits) ── */}
+      {/* ── LIMIT MODAL ── */}
       {limitModal && (
         <div className="gc-limit-backdrop" onClick={() => setLimitModal(null)}>
           <div className="gc-limit-modal" onClick={e => e.stopPropagation()}>
-            <div className="gc-limit-icon"></div>
+            <div className="gc-limit-icon">⚠️</div>
             <div className="gc-limit-title">Limit Reached</div>
             <div className="gc-limit-msg">{limitModal.message}</div>
             <button className="gc-limit-close" onClick={() => setLimitModal(null)}>Got it</button>
           </div>
+        </div>
+      )}
+
+      {/* ── IMAGE LIGHTBOX ── */}
+      {lightboxSrc && (
+        <div className="gc-lightbox" onClick={() => setLightboxSrc(null)}>
+          <img src={lightboxSrc} alt="preview" onClick={e => e.stopPropagation()} />
+          <button className="gc-lightbox-close" onClick={() => setLightboxSrc(null)}>✕</button>
         </div>
       )}
     </div>
