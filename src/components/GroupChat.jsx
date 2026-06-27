@@ -1213,12 +1213,12 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
 
   // ── Group management ─────────────────────────────────────────
   const handleInvite = async () => {
-    if (!inviteEmail.trim()) return;
-    setInviting(true); setInviteFeedback(null);
-    try {
-      await inviteToGroup(group.id, user.displayName || user.email, inviteEmail.trim(), userPlan);
-      setInviteFeedback({ msg: `Invite sent to ${inviteEmail.trim()}!`, ok: true });
-      setInviteEmail("");
+  if (!inviteEmail.trim()) return;
+  setInviting(true); setInviteFeedback(null);
+  try {
+    await inviteToGroup(group.id, user.displayName || user.email, inviteEmail.trim(), userPlan, "username");
+    setInviteFeedback({ msg: `Invite sent to @${inviteEmail.trim()}!`, ok: true });
+    setInviteEmail("");
     } catch (err) {
       if (err.message.toLowerCase().includes("full") || err.message.toLowerCase().includes("max")) {
         setLimitModal({ message: err.message });
@@ -1289,17 +1289,17 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
   // ── Render attachment inside a bubble ─────────────────────────
   const renderMsgFile = (file, isSelf) => {
     if (file.kind === "image") {
-  const src = file.url || file.previewUrl;  
-  if (!src) return null;                     
-      return (
-        <img
-          key={file.id}
-          className="gc-msg-img"
-          src={file.url}
-          alt={file.name}
-          onClick={() => setLightboxSrc(file.url)}
-        />
-      );
+ const src = file.url || file.previewUrl;
+if (!src) return null;
+return (
+  <img
+    key={file.id}
+    className="gc-msg-img"
+    src={src}                        
+    alt={file.name}
+    onClick={() => setLightboxSrc(src)} 
+  />
+);
     }
     const ext  = getExt(file.name);
     const di   = docIconStyle(ext);
@@ -1646,11 +1646,11 @@ export default function GroupChat({ group, user, userPlan, onBack }) {
             <div className="gc-info-section">
               <div className="gc-info-label">Invite by Email</div>
               <div className="gc-invite-row">
-                <input className="gc-invite-input" type="email" placeholder="friend@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleInvite()} />
-                <button className="gc-invite-btn" onClick={handleInvite} disabled={!inviteEmail.trim() || inviting}>{inviting ? "…" : "Invite"}</button>
+               <input className="gc-invite-input" type="text" placeholder="@username" value={inviteEmail} onChange={e => setInviteEmail(e.target.value.replace(/^@/, ""))} onKeyDown={e => e.key === "Enter" && handleInvite()} />
+<button className="gc-invite-btn" onClick={handleInvite} disabled={!inviteEmail.trim() || inviting}>{inviting ? "…" : "Invite"}</button>
               </div>
               {inviteFeedback && <div className={`gc-invite-feedback ${inviteFeedback.ok ? "ok" : "err"}`}>{inviteFeedback.msg}</div>}
-              <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 8 }}>They'll see a notification next time they open Eloria.</div>
+             <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 8 }}>Enter username.</div>
             </div>
             <div className="gc-info-section">
               {!isCreator && <button className="gc-danger-btn" onClick={handleLeave}>Leave Group</button>}
