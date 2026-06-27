@@ -27,6 +27,8 @@ if (window.location.pathname === "/code") {
   });
 }
 
+const FIREBASE_API_KEY = "AIzaSyDmfVTBxzZgqdshD6ld91XSTImZ-LsS39A";
+
 /* ── inline styles for the group-limit popup ── */
 const limitModalStyles = `
   .app-limit-backdrop {
@@ -78,9 +80,7 @@ export default function App() {
   const [notifications, setNotifications]   = useState([]);
   const totalBadgeCount = pendingInviteCount + notifications.length;
   const [groupInvites, setGroupInvites] = useState([]);
-
-  // ── Group creation limit modal ───────────────────────────────
-  const [groupLimitModal, setGroupLimitModal] = useState(null); // { message }
+  const [groupLimitModal, setGroupLimitModal] = useState(null);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -97,12 +97,9 @@ export default function App() {
   useEffect(() => {
     if (!user?.uid) return;
     setOnlineStatus(user.uid, true).catch(console.error);
-
-    // Heartbeat: refreshes lastSeen every 30s while the tab is open
     const heartbeat = setInterval(() => {
       setOnlineStatus(user.uid, true).catch(() => {});
     }, 30000);
-
     const handleUnload = () => setOnlineStatus(user.uid, false).catch(() => {});
     window.addEventListener("beforeunload", handleUnload);
     return () => {
@@ -112,7 +109,6 @@ export default function App() {
     };
   }, [user]);
 
-  // Inject limit modal CSS once
   useEffect(() => {
     if (!document.getElementById("app-limit-style")) {
       const tag = document.createElement("style");
@@ -122,38 +118,53 @@ export default function App() {
     }
   }, []);
 
+  // ── Deep link handler for Google login (Tauri only) ──────────────────────
+  useEffect(() => {
+    if (!window.__TAURI__) return;
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen("deep-link", async (event) => {
+        try {
+          const url = event.payload.replace(/"/g, "");
+          const params = new URL(url).searchParams;
+          const error = params.get("error");
+          if (error) { console.error("Google login error:", error); return; }
 
-// ── Deep link handler for Google login (Tauri only) ──────────────────────
-useEffect(() => {
-  if (!window.__TAURI__) return;
-  import("@tauri-apps/api/event").then(({ listen }) => {
-    listen("deep-link", async (event) => {
-      try {
-        const url = event.payload.replace(/"/g, "");
-        const params = new URL(url).searchParams;
-        const error = params.get("error");
-        if (error) return;
-        const token      = params.get("token");
-        const uid        = params.get("uid");
-        const email      = params.get("email");
-        const displayName = params.get("displayName");
-        if (!token || !uid) return;
-        const { loginWithDeepLinkToken } = await import("./services/auth");
-        const u = await loginWithDeepLinkToken(token, uid, email, displayName);
-        setUser(u);
-        setStage(u.usernameSet ? "chat" : "profileSetup");
-      } catch (err) {
-        console.error("Deep link login failed:", err);
-      }
+          const token       = params.get("token");
+          const uid         = params.get("uid");
+          const email       = decodeURIComponent(params.get("email") || "");
+          const displayName = decodeURIComponent(params.get("displayName") || "");
+          if (!token || !uid) return;
+
+          // Sign into Firebase SDK via Google IDP so auth state is set
+          const res = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                requestUri: "http://localhost",
+                postBody: `id_token=${token}&providerId=google.com`,
+                returnSecureToken: true,
+                returnIdpCredential: true,
+              }),
+            }
+          );
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+
+          const { loginWithDeepLinkToken } = await import("./services/auth");
+          const u = await loginWithDeepLinkToken(token, uid, email, displayName);
+          setUser(u);
+          setStage(u.usernameSet ? "chat" : "profileSetup");
+        } catch (err) {
+          console.error("Deep link login failed:", err);
+        }
+      });
     });
-  });
-}, []);
+  }, []);
 
-
-  // ── FIX: safe group lookup — fall back to null, never undefined ──
   const activeGroup = groups.find(g => g.id === activeGroupId) ?? null;
 
-  // ── FIX: when the active group disappears (deleted), go back to chat ──
   useEffect(() => {
     if (mode === "group" && activeGroupId && !activeGroup) {
       setMode("chat");
@@ -161,14 +172,13 @@ useEffect(() => {
     }
   }, [groups, activeGroupId, activeGroup, mode]);
 
-  // ── FIX: wrapped createGroup that shows modal instead of alert ──
   const handleCreateGroup = async (user, groupName, userPlan) => {
     try {
       const id = await createGroup(user, groupName, userPlan);
       return id;
     } catch (err) {
       setGroupLimitModal({ message: err.message });
-      throw err; // re-throw so Sidebar knows it failed
+      throw err;
     }
   };
 
@@ -176,7 +186,6 @@ useEffect(() => {
     if (!activeChatId && chats.length > 0) setActiveChatId(chats[0].id);
   }, [chats, activeChatId]);
 
-  // ── CHAT HISTORY LOAD ─────────────────────────────────────────
   useEffect(() => {
     if (!user?.uid) return;
     const fetchChats = async () => {
@@ -300,7 +309,6 @@ useEffect(() => {
     return unsubscribe;
   }, []);
 
-  // ── CHAT HISTORY SAVE (debounced) ─────────────────────────────
   useEffect(() => {
     if (!user?.uid) return;
     if (!chats || chats.length === 0) return;
@@ -321,8 +329,8 @@ useEffect(() => {
   }, [chats, activeChatId]);
 
   if (window.location.pathname === "/auth/callback") {
-  return <AuthCallback />;
-}
+    return <AuthCallback />;
+  }
 
   if (stage === "login") {
     return (
@@ -444,8 +452,6 @@ useEffect(() => {
         />
       )}
 
-
-      {/* ── Group creation limit modal ── */}
       {groupLimitModal && (
         <div className="app-limit-backdrop" onClick={() => setGroupLimitModal(null)}>
           <div className="app-limit-modal" onClick={e => e.stopPropagation()}>
