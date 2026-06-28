@@ -124,26 +124,26 @@ useEffect(() => {
     listen("deep-link", async (event) => {
       try {
         const url = event.payload.replace(/"/g, "");
+        alert("Deep link received: " + url); // ← temporary debug
         const params = new URL(url).searchParams;
         const error = params.get("error");
-        if (error) { console.error("Google login error:", error); return; }
+        if (error) { alert("Error: " + error); return; }
 
         const token       = params.get("token");
         const googleToken = decodeURIComponent(params.get("googleToken") || "");
         const uid         = params.get("uid");
         const email       = decodeURIComponent(params.get("email") || "");
         const displayName = decodeURIComponent(params.get("displayName") || "");
-        if (!token || !uid) return;
+        
+        alert(`token: ${!!token}, uid: ${uid}, email: ${email}`); // ← debug
 
         const { loginWithDeepLinkToken } = await import("./services/auth");
         const u = await loginWithDeepLinkToken(token, googleToken, uid, email, displayName);
-        
-        // Force set user and stage directly
+        alert("Login success: " + JSON.stringify(u)); // ← debug
         setUser(u);
         setStage(u.usernameSet ? "chat" : "profileSetup");
-        
       } catch (err) {
-        console.error("Deep link login failed:", err);
+        alert("Deep link error: " + err.message); // ← debug
       }
     });
   });
