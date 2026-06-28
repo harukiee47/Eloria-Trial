@@ -14,6 +14,7 @@
     "windows": [
       {
         "title": "Eloria AI",
+         "devtools": true,
         "width": 1400,
         "height": 900,
         "minWidth": 1100,
