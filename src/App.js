@@ -27,7 +27,6 @@ if (window.location.pathname === "/code") {
   });
 }
 
-const FIREBASE_API_KEY = "AIzaSyDmfVTBxzZgqdshD6ld91XSTImZ-LsS39A";
 
 /* ── inline styles for the group-limit popup ── */
 const limitModalStyles = `
