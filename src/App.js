@@ -136,9 +136,9 @@ useEffect(() => {
         if (!token || !uid) return;
 
         const { loginWithDeepLinkToken } = await import("./services/auth");
-        const u = await loginWithDeepLinkToken(token, googleToken, uid, email, displayName);
-        setUser(u);
-        setStage(u.usernameSet ? "chat" : "profileSetup");
+        // Just call this for Firestore profile — onAuthStateChanged handles the rest
+        await loginWithDeepLinkToken(token, googleToken, uid, email, displayName);
+        // Don't setUser or setStage here — checkAuth's onAuthStateChanged will fire automatically
       } catch (err) {
         console.error("Deep link login failed:", err);
       }
