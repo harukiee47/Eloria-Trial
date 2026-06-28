@@ -165,11 +165,28 @@ export const loginWithGoogle = async () => {
 
 // ── Google Login via deep link token (Tauri only) ─────────────────────────────
 export const loginWithDeepLinkToken = async (idToken, googleToken, uid, email, displayName) => {
-  // Sign into Firebase SDK so auth state is set and Firestore rules pass
+  // Exchange Google idToken for Firebase session via REST (bypasses origin/domain issues)
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestUri: "http://localhost",
+        postBody: `id_token=${idToken}&providerId=google.com`,
+        returnSecureToken: true,
+      }),
+    }
+  );
+  const restData = await response.json();
+  if (restData.error) throw new Error(restData.error.message);
+
+  // Now sign into Firebase SDK using the fresh idToken from REST response
   const { GoogleAuthProvider, signInWithCredential } = await import("firebase/auth");
-  const credential = GoogleAuthProvider.credential(idToken, googleToken);
+  const credential = GoogleAuthProvider.credential(restData.idToken);
   await signInWithCredential(auth, credential);
 
+  // onAuthStateChanged will fire automatically after this — just return profile
   const ref  = doc(db, "users", uid);
   const snap = await getDoc(ref);
 
