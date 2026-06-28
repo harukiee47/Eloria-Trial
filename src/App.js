@@ -119,49 +119,42 @@ export default function App() {
   }, []);
 
   // ── Deep link handler for Google login (Tauri only) ──────────────────────
-  useEffect(() => {
-    if (!window.__TAURI__) return;
-    import("@tauri-apps/api/event").then(({ listen }) => {
-      listen("deep-link", async (event) => {
-        try {
-          const url = event.payload.replace(/"/g, "");
-          const params = new URL(url).searchParams;
-          const error = params.get("error");
-          if (error) { console.error("Google login error:", error); return; }
+  // ── Deep link handler for Google login (Tauri only) ──────────────────────
+useEffect(() => {
+  if (!window.__TAURI__) return;
+  import("@tauri-apps/api/event").then(({ listen }) => {
+    listen("deep-link", async (event) => {
+      try {
+        const url = event.payload.replace(/"/g, "");
+        const params = new URL(url).searchParams;
+        const error = params.get("error");
+        if (error) { console.error("Google login error:", error); return; }
 
-          const token       = params.get("token");
-          const uid         = params.get("uid");
-          const email       = decodeURIComponent(params.get("email") || "");
-          const displayName = decodeURIComponent(params.get("displayName") || "");
-          if (!token || !uid) return;
+        const token       = params.get("token");
+        const googleToken = decodeURIComponent(params.get("googleToken") || "");
+        const uid         = params.get("uid");
+        const email       = decodeURIComponent(params.get("email") || "");
+        const displayName = decodeURIComponent(params.get("displayName") || "");
+        if (!token || !uid) return;
 
-          // Sign into Firebase SDK via Google IDP so auth state is set
-          const res = await fetch(
-            `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                requestUri: "http://localhost",
-                postBody: `id_token=${token}&providerId=google.com`,
-                returnSecureToken: true,
-                returnIdpCredential: true,
-              }),
-            }
-          );
-          const data = await res.json();
-          if (data.error) throw new Error(data.error.message);
+        // Sign into Firebase SDK using Google credential
+        const { GoogleAuthProvider, signInWithCredential } = await import("firebase/auth");
+        const { auth } = await import("./services/firebase");
+        
+        const credential = GoogleAuthProvider.credential(token, googleToken);
+        await signInWithCredential(auth, credential);
 
-          const { loginWithDeepLinkToken } = await import("./services/auth");
-          const u = await loginWithDeepLinkToken(token, uid, email, displayName);
-          setUser(u);
-          setStage(u.usernameSet ? "chat" : "profileSetup");
-        } catch (err) {
-          console.error("Deep link login failed:", err);
-        }
-      });
+        // Now update Firestore profile
+        const { loginWithDeepLinkToken } = await import("./services/auth");
+        const u = await loginWithDeepLinkToken(token, uid, email, displayName);
+        setUser(u);
+        setStage(u.usernameSet ? "chat" : "profileSetup");
+      } catch (err) {
+        console.error("Deep link login failed:", err);
+      }
     });
-  }, []);
+  });
+}, []);
 
   const activeGroup = groups.find(g => g.id === activeGroupId) ?? null;
 

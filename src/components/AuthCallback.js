@@ -8,7 +8,16 @@ export default function AuthCallback() {
       try {
         const result = await signInWithPopup(auth, googleProvider);
         const token = await result.user.getIdToken();
-        window.location.href = `eloria://auth?token=${token}&uid=${result.user.uid}&email=${encodeURIComponent(result.user.email)}&displayName=${encodeURIComponent(result.user.displayName || "")}`;
+        const uid = result.user.uid;
+        const email = encodeURIComponent(result.user.email || "");
+        const displayName = encodeURIComponent(result.user.displayName || "");
+        
+        // Get the Google OAuth access token too
+        const { GoogleAuthProvider } = await import("firebase/auth");
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const googleToken = credential?.accessToken || "";
+
+        window.location.href = `eloria://auth?token=${token}&googleToken=${encodeURIComponent(googleToken)}&uid=${uid}&email=${email}&displayName=${displayName}`;
       } catch (err) {
         window.location.href = `eloria://auth?error=${encodeURIComponent(err.message)}`;
       }
