@@ -164,7 +164,12 @@ export const loginWithGoogle = async () => {
 };
 
 // ── Google Login via deep link token (Tauri only) ─────────────────────────────
-export const loginWithDeepLinkToken = async (idToken, uid, email, displayName) => {
+export const loginWithDeepLinkToken = async (idToken, googleToken, uid, email, displayName) => {
+  // Sign into Firebase SDK so auth state is set and Firestore rules pass
+  const { GoogleAuthProvider, signInWithCredential } = await import("firebase/auth");
+  const credential = GoogleAuthProvider.credential(idToken, googleToken);
+  await signInWithCredential(auth, credential);
+
   const ref  = doc(db, "users", uid);
   const snap = await getDoc(ref);
 

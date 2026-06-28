@@ -118,7 +118,6 @@ export default function App() {
   }, []);
 
   // ── Deep link handler for Google login (Tauri only) ──────────────────────
-  // ── Deep link handler for Google login (Tauri only) ──────────────────────
 useEffect(() => {
   if (!window.__TAURI__) return;
   import("@tauri-apps/api/event").then(({ listen }) => {
@@ -136,16 +135,8 @@ useEffect(() => {
         const displayName = decodeURIComponent(params.get("displayName") || "");
         if (!token || !uid) return;
 
-        // Sign into Firebase SDK using Google credential
-        const { GoogleAuthProvider, signInWithCredential } = await import("firebase/auth");
-        const { auth } = await import("./services/firebase");
-        
-        const credential = GoogleAuthProvider.credential(token, googleToken);
-        await signInWithCredential(auth, credential);
-
-        // Now update Firestore profile
         const { loginWithDeepLinkToken } = await import("./services/auth");
-        const u = await loginWithDeepLinkToken(token, uid, email, displayName);
+        const u = await loginWithDeepLinkToken(token, googleToken, uid, email, displayName);
         setUser(u);
         setStage(u.usernameSet ? "chat" : "profileSetup");
       } catch (err) {
