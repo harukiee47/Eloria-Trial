@@ -7,17 +7,23 @@ export default function AuthCallback() {
     async function doGoogleLogin() {
       try {
         const result = await signInWithPopup(auth, googleProvider);
-        const token = await result.user.getIdToken();
+        const idToken = await result.user.getIdToken();
         const uid = result.user.uid;
         const email = encodeURIComponent(result.user.email || "");
         const displayName = encodeURIComponent(result.user.displayName || "");
-        
-        // Get the Google OAuth access token too
-        const { GoogleAuthProvider } = await import("firebase/auth");
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const googleToken = credential?.accessToken || "";
 
-        window.location.href = `eloria://auth?token=${token}&googleToken=${encodeURIComponent(googleToken)}&uid=${uid}&email=${email}&displayName=${displayName}`;
+        // Exchange idToken for a custom token from your secure backend
+        const res = await fetch("https://eloria-trial.onrender.com/api/auth/custom-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to get custom token");
+
+        window.location.href = `eloria://auth?customToken=${encodeURIComponent(data.customToken)}&uid=${uid}&email=${email}&displayName=${displayName}`;
       } catch (err) {
         window.location.href = `eloria://auth?error=${encodeURIComponent(err.message)}`;
       }

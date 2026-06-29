@@ -9,17 +9,12 @@ import paymentsRoutes from "./routes/payments.js";
 import groupChatRoutes from "./routes/groupChat.js";
 import voiceRoutes from "./routes/voice.js";
 import fetchUrlRoutes from "./routes/fetchUrl.route.js";
+import authRoutes from "./routes/auth.js";
 
 const app = express();
 
 app.use(cors());
 
-/**
- * Payments routes are mounted BEFORE the global express.json() because
- * the /webhook endpoint needs the raw request body for Lemon Squeezy
- * signature verification. The /checkout endpoint inside payments.js
- * applies express.json() itself for that single route.
- */
 app.use("/api/payments", paymentsRoutes);
 
 app.use(express.json({ limit: "5mb" }));
@@ -35,6 +30,7 @@ app.use("/api/membership", membershipRoutes);
 app.use("/api/group-chat", groupChatRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/fetch-url", fetchUrlRoutes);
+app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 5001;
 

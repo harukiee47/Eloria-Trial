@@ -128,16 +128,14 @@ useEffect(() => {
         const error = params.get("error");
         if (error) return;
 
-        const token       = params.get("token");
-        const googleToken = decodeURIComponent(params.get("googleToken") || "");
+        const customToken = decodeURIComponent(params.get("customToken") || "");
         const uid         = params.get("uid");
         const email       = decodeURIComponent(params.get("email") || "");
         const displayName = decodeURIComponent(params.get("displayName") || "");
-        if (!token || !uid) return;
+        if (!customToken || !uid) return;
 
         const { loginWithDeepLinkToken } = await import("./services/auth");
-        const u = await loginWithDeepLinkToken(token, googleToken, uid, email, displayName);
-        
+        const u = await loginWithDeepLinkToken(customToken, uid, email, displayName);
         setUser(u);
         setStage(u.usernameSet ? "chat" : "profileSetup");
       } catch (err) {
