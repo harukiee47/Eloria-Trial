@@ -347,7 +347,7 @@ export function initVoiceModal({
   function playAudio(base64) {
     setState("speaking");
 
-    const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
+    const audio = new Audio(`data:audio/wav;base64,${base64}`);
     currentAudio = audio;
 
     // Hook analyser to TTS output so the orb reacts

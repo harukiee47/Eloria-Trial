@@ -1079,8 +1079,13 @@ const [codeProjects] = useState(() => {
   };
 
   const openCodeWorkspace = (projectId) => {
-    window.open(projectId ? `/code?project=${projectId}` : "/code", "_blank");
-  };
+  const url = projectId ? `/code?project=${projectId}` : "/code";
+  if (window.__TAURI__) {
+    window.location.href = url;
+  } else {
+    window.open(url, "_blank");
+  }
+};
 
   const handleCodeClick = () => {
     if (userPlan !== "pro" && userPlan !== "admin") {

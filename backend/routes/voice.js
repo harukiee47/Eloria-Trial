@@ -118,31 +118,21 @@ async function getClaudeReply(messages, transcript) {
 // Voice ID: "Rachel" — a warm, clear, neutral English voice.
 // Change ELEVENLABS_VOICE_ID in your .env to swap voices without touching code.
 async function synthesiseSpeech(text) {
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel
-
   const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
+    "https://api.deepgram.com/v1/speak?model=aura-asteria-en",
     {
       method: "POST",
       headers: {
-        "xi-api-key": process.env.ELEVENLABS_API_KEY,
+        Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
         "Content-Type": "application/json",
-        Accept: "audio/mpeg",
       },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_turbo_v2", // fastest ElevenLabs model — lowest latency
-        voice_settings: {
-          stability: 0.45,
-          similarity_boost: 0.75,
-        },
-      }),
+      body: JSON.stringify({ text }),
     }
   );
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`ElevenLabs error ${response.status}: ${err}`);
+    throw new Error(`Deepgram TTS error ${response.status}: ${err}`);
   }
 
   const arrayBuffer = await response.arrayBuffer();
