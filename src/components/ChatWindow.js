@@ -378,25 +378,55 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
 
 useEffect(() => {
   if (!isOpen) return;
-  const handleVisibilityChange = () => {
-    if (document.hidden && voiceStateRef.current !== "idle") {
-      if (Notification.permission === "default") Notification.requestPermission();
-      if (Notification.permission === "granted") {
-        const label = voiceStateRef.current === "listening" ? "Listening…"
-                    : voiceStateRef.current === "speaking"  ? "Speaking…"
-                    : "Thinking…";
-        new Notification("Eloria Voice", {
-          body: label,
-          icon: "/logo.png",
-          tag: "eloria-voice",
-          renotify: true,
-          silent: true,
+
+  let activeNotif = null;
+
+  const showNotif = () => {
+    if (!document.hidden) return;
+    if (Notification.permission !== "granted") return;
+    const label = voiceStateRef.current === "listening" ? "🎙 Listening to you…"
+                : voiceStateRef.current === "speaking"  ? "🔊 Speaking…"
+                : voiceStateRef.current === "processing"? "💭 Thinking…"
+                : "Voice active";
+    activeNotif = new Notification("Eloria Voice is active", {
+      body: label,
+      icon: "/logo.png",
+      tag: "eloria-voice-active",
+      renotify: true,
+      silent: true,
+      requireInteraction: true,
+    });
+    activeNotif.onclick = () => {
+      window.focus();
+      activeNotif.close();
+    };
+  };
+
+  const handleVisibility = () => {
+    if (document.hidden) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission().then(p => {
+          if (p === "granted") showNotif();
         });
+      } else {
+        showNotif();
       }
+    } else {
+      if (activeNotif) { activeNotif.close(); activeNotif = null; }
     }
   };
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-  return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+  // Update notification when voice state changes
+  const interval = setInterval(() => {
+    if (document.hidden && voiceStateRef.current !== "idle") showNotif();
+  }, 2000);
+
+  document.addEventListener("visibilitychange", handleVisibility);
+  return () => {
+    document.removeEventListener("visibilitychange", handleVisibility);
+    clearInterval(interval);
+    if (activeNotif) activeNotif.close();
+  };
 }, [isOpen]);
 
   const STATE_LABELS = {
@@ -565,8 +595,13 @@ if (voiceStateRef.current === "processing") return;
   }, []);
 
   const startListening = useCallback(async () => {
-    if (voiceStateRef.current === "processing") return;
-if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; analyserRef.current = null; }
+   if (voiceStateRef.current === "processing") return;
+if (audioRef.current) {
+  audioRef.current.pause();
+  audioRef.current = null;
+  analyserRef.current = null;
+  setState("idle");
+}
     let micStream;
     try { micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
     catch { setErrorMsg("Microphone access denied."); return; }
