@@ -638,20 +638,9 @@ if (audioRef.current) {
 const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
     recorderRef.current = recorder;
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-    recorder.onstop = async () => {
+  recorder.onstop = async () => {
   if (streamRef.current) { streamRef.current.getTracks().forEach(t=>t.stop()); streamRef.current = null; }
   analyserRef.current = null;
-
-  // Check transcript for screen keywords before submitting
-  const SCREEN_KEYWORDS = [
-    "check my screen", "look at my screen", "what do you see",
-    "what's on my screen", "whats on my screen", "see my screen",
-    "analyze my screen", "look at this", "what is on screen",
-    "screen share", "share screen",
-  ];
-  const tempBlob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
-  // We can't read transcript yet, so we check after STT
-  // Instead trigger on keyword detection post-transcript via a flag
   submitAudio(mimeType);
 };
     recorder.start();
