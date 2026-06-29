@@ -317,12 +317,6 @@ function UrlFetchChip({ url, status }) {
 }
 
 // ── Voice state config (molecule orb) ────────────────────────────────────────
-const VOICE_STATE_CFG = {
-  idle:       { label: "idle",       dotColor: "rgba(255,255,255,0.2)", colors: ["#2d2b55","#3b2d6b","#1e1b4b","#312e81","#2d2b55","#1e1b4b","#3b2d6b"] },
-  listening:  { label: "listening",  dotColor: "#00ff88",               colors: ["#6C5CE7","#a78bfa","#4c3fa0","#8b5cf6","#7c3aed","#5b21b6","#4338ca"] },
-  processing: { label: "thinking…",  dotColor: "#f59e0b",               colors: ["#6b7280","#9ca3af","#4b5563","#d1d5db","#6b7280","#374151","#9ca3af"] },
-  speaking:   { label: "speaking",   dotColor: "#00D9C0",               colors: ["#00D9C0","#06b6d4","#0891b2","#22d3ee","#0e7490","#00b4d8","#48cae4"] },
-};
 
 function hexToRgb(hex) {
   return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
@@ -387,6 +381,13 @@ function hexRgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+const WAVE_COLORS = {
+    idle:       ["#0d3a35","#1a5a52","#0a2e29"],
+    listening:  ["#0d6a5e","#00b894","#055a52"],
+    processing: ["#2d6a4f","#52b788","#1b4332"],
+    speaking:   ["#00b894","#55efc4","#0d6a5e"],
+  };
+
 function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
   const canvasRef      = useRef(null);
   const animIdRef      = useRef(null);
@@ -408,13 +409,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   const [previewingId,  setPreviewingId]  = useState(null);
   const [timerSecs,     setTimerSecs]     = useState(0);
   const timerIntervalRef = useRef(null);
-
-  const WAVE_COLORS = {
-    idle:       ["#0d3a35","#1a5a52","#0a2e29"],
-    listening:  ["#0d6a5e","#00b894","#055a52"],
-    processing: ["#2d6a4f","#52b788","#1b4332"],
-    speaking:   ["#00b894","#55efc4","#0d6a5e"],
-  };
 
   const STATE_LABELS = {
     idle: "tap to speak", listening: "listening…", processing: "thinking…", speaking: "speaking…",
