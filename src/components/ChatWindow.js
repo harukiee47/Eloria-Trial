@@ -347,6 +347,13 @@ const WAVE_COLORS = {
     speaking:   ["#00b894","#55efc4","#0d6a5e"],
   };
 
+
+  function getSupportedMimeType() {
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
+  return types.find(t => MediaRecorder.isTypeSupported(t)) || "";
+}
+
+
 function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
   const canvasRef      = useRef(null);
   const animIdRef      = useRef(null);
@@ -539,7 +546,8 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     analyserRef.current = an;
     setState("listening"); setErrorMsg(""); setTranscript("");
     chunksRef.current = [];
-    const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
+    const mimeType = getSupportedMimeType();
+const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
     recorderRef.current = recorder;
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     recorder.onstop = () => {
