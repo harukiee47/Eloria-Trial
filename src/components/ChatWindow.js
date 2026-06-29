@@ -366,6 +366,14 @@ function getSupportedMimeType() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Voice Modal
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Voice options ─────────────────────────────────────────────────────────────
+const VOICE_OPTIONS = [
+  { id: "aura-asteria-en",  label: "Asteria", gender: "Female", tone: "Warm" },
+  { id: "aura-luna-en",     label: "Luna",    gender: "Female", tone: "Soft" },
+  { id: "aura-orion-en",    label: "Orion",   gender: "Male",   tone: "Clear" },
+  { id: "aura-zeus-en",     label: "Zeus",    gender: "Male",   tone: "Deep" },
+];
+
 function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
   const canvasRef     = useRef(null);
   const miniCanvasRef = useRef(null);
@@ -382,12 +390,20 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   const voiceStateRef = useRef("idle");
   const timerRef      = useRef(null);
 
-  const [voiceState,  setVoiceState]  = useState("idle");
-  const [transcript,  setTranscript]  = useState("");
-  const [errorMsg,    setErrorMsg]    = useState("");
-  const [micMuted,    setMicMuted]    = useState(false);
-  const [minimized,   setMinimized]   = useState(false);
-  const [timerSecs,   setTimerSecs]   = useState(0);
+  const [voiceState,    setVoiceState]    = useState("idle");
+  const [transcript,    setTranscript]    = useState("");
+  const [errorMsg,      setErrorMsg]      = useState("");
+  const [micMuted,      setMicMuted]      = useState(false);
+  const [minimized,     setMinimized]     = useState(false);
+  const [timerSecs,     setTimerSecs]     = useState(0);
+  const [selectedVoice, setSelectedVoice] = useState(() => localStorage.getItem("eloria_voice") || "aura-asteria-en");
+  const [showVoicePicker, setShowVoicePicker] = useState(false);
+
+  const selectedVoiceRef = useRef(selectedVoice);
+  useEffect(() => {
+    selectedVoiceRef.current = selectedVoice;
+    localStorage.setItem("eloria_voice", selectedVoice);
+  }, [selectedVoice]);
 
   const setState = useCallback((s) => {
     voiceStateRef.current = s;
@@ -502,7 +518,7 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     if (isOpen) {
       setState("idle");
       setTranscript(""); setErrorMsg(""); setMicMuted(false);
-      setMinimized(false); setTimerSecs(0);
+      setMinimized(false); setTimerSecs(0); setShowVoicePicker(false);
       molsRef.current = buildMolecules();
       timerRef.current = setInterval(() => setTimerSecs(s => s + 1), 1000);
       startAnimation();
@@ -577,6 +593,7 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     const formData = new FormData();
     formData.append("audio", blob, "recording.webm");
     formData.append("messages", JSON.stringify(getMessages()));
+    formData.append("voice", selectedVoiceRef.current); // ← send selected voice
     let token;
     try { token = await getAuthToken(); }
     catch { setErrorMsg("Auth error."); setState("idle"); return; }
@@ -597,7 +614,7 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
 
   const playAudio = useCallback((base64) => {
     setState("speaking");
-    const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
+    const audio = new Audio(`data:audio/wav;base64,${base64}`);
     audioRef.current = audio;
     try {
       const actx = new AudioContext();
@@ -638,6 +655,7 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
 
   const formatTime = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
   const cfg = VOICE_STATE_CFG[voiceState] || VOICE_STATE_CFG.idle;
+  const currentVoice = VOICE_OPTIONS.find(v => v.id === selectedVoice) || VOICE_OPTIONS[0];
 
   if (!isOpen) return null;
 
@@ -674,8 +692,10 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
       <style>{`
         @keyframes evFadeIn { from{opacity:0} to{opacity:1} }
         @keyframes evPulse  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+        @keyframes voicePickerIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
 
+      {/* ── TOP BAR ── */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"0 28px", boxSizing:"border-box" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ width:8, height:8, borderRadius:"50%", background:cfg.dotColor, boxShadow:`0 0 8px ${cfg.dotColor}`, flexShrink:0 }} />
@@ -694,6 +714,7 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
         </button>
       </div>
 
+      {/* ── ORB + TRANSCRIPT ── */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:20, width:"100%" }}>
         <canvas
           ref={canvasRef}
@@ -717,6 +738,91 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
         </div>
       </div>
 
+      {/* ── VOICE PICKER ── */}
+      <div style={{ position:"relative", marginBottom:16 }}>
+        <button
+          onClick={() => setShowVoicePicker(v => !v)}
+          style={{
+            display:"flex", alignItems:"center", gap:8,
+            padding:"8px 16px", borderRadius:20,
+            background:"rgba(255,255,255,0.06)",
+            border:"1px solid rgba(255,255,255,0.12)",
+            color:"rgba(255,255,255,0.7)", cursor:"pointer",
+            fontSize:12.5, fontFamily:"inherit",
+            transition:"all .2s",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+            <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+          <span style={{ color:"rgba(255,255,255,0.45)", fontSize:11 }}>Voice:</span>
+          <span style={{ fontWeight:600 }}>{currentVoice.label}</span>
+          <span style={{ color:"rgba(255,255,255,0.35)", fontSize:11 }}>{currentVoice.gender} · {currentVoice.tone}</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+            style={{ transform: showVoicePicker ? "rotate(180deg)" : "rotate(0deg)", transition:"transform .2s" }}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+
+        {showVoicePicker && (
+          <div style={{
+            position:"absolute", bottom:"calc(100% + 10px)", left:"50%",
+            transform:"translateX(-50%)",
+            background:"#0f1117",
+            border:"1px solid rgba(255,255,255,0.12)",
+            borderRadius:16, padding:6, minWidth:240,
+            boxShadow:"0 16px 48px rgba(0,0,0,0.7)",
+            animation:"voicePickerIn .15s ease",
+            zIndex:10,
+          }}>
+            <div style={{ padding:"6px 10px 8px", fontSize:10, color:"rgba(255,255,255,0.3)", letterSpacing:"0.08em", textTransform:"uppercase", fontWeight:600 }}>
+              Choose Voice
+            </div>
+            {VOICE_OPTIONS.map(v => (
+              <button
+                key={v.id}
+                onClick={() => { setSelectedVoice(v.id); setShowVoicePicker(false); }}
+                style={{
+                  display:"flex", alignItems:"center", gap:12,
+                  width:"100%", padding:"10px 12px",
+                  background: selectedVoice === v.id ? "rgba(255,255,255,0.08)" : "none",
+                  border: selectedVoice === v.id ? "1px solid rgba(255,255,255,0.12)" : "1px solid transparent",
+                  borderRadius:10, cursor:"pointer",
+                  color:"rgba(255,255,255,0.85)", fontFamily:"inherit",
+                  transition:"all .15s", textAlign:"left",
+                  marginBottom:2,
+                }}
+                onMouseEnter={e => { if (selectedVoice !== v.id) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseLeave={e => { if (selectedVoice !== v.id) e.currentTarget.style.background = "none"; }}
+              >
+                <div style={{
+                  width:36, height:36, borderRadius:10, flexShrink:0,
+                  background: v.gender === "Female" ? "rgba(108,92,231,0.2)" : "rgba(0,217,192,0.15)",
+                  border: `1px solid ${v.gender === "Female" ? "rgba(108,92,231,0.3)" : "rgba(0,217,192,0.25)"}`,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:15,
+                }}>
+                  {v.gender === "Female" ? "♀" : "♂"}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13.5, fontWeight:600, lineHeight:1.3 }}>{v.label}</div>
+                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:1 }}>{v.gender} · {v.tone}</div>
+                </div>
+                {selectedVoice === v.id && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00D9C0" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── CONTROLS ── */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:24, width:"100%" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:28 }}>
           <button
@@ -779,17 +885,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
         </div>
       </div>
     </div>
-  );
-}
-
-function MicIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width:16, height:16 }}>
-      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-      <path d="M19 10v2a7 7 0 01-14 0v-2"/>
-      <line x1="12" y1="19" x2="12" y2="23"/>
-      <line x1="8"  y1="23" x2="16" y2="23"/>
-    </svg>
   );
 }
 

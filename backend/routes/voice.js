@@ -56,7 +56,7 @@ Your mission: help users learn, create, solve problems, and achieve their goals 
 // ─── Deepgram STT ─────────────────────────────────────────────────────────────
 async function transcribeAudio(audioBuffer, mimeType) {
   const response = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=en",
+    "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=multi",
     {
       method: "POST",
       headers: {
@@ -96,7 +96,7 @@ async function getClaudeReply(messages, transcript) {
   // Non-streaming: we need the complete text before sending to TTS
   const response = await anthropic.messages.create({
     model: MODELS.CHAT,
-    max_tokens: 1024,
+    max_tokens: 300,
     system: ELORIA_VOICE_SYSTEM_PROMPT,
     messages: anthropicMessages,
   });
@@ -117,9 +117,9 @@ async function getClaudeReply(messages, transcript) {
 // ─── ElevenLabs TTS ───────────────────────────────────────────────────────────
 // Voice ID: "Rachel" — a warm, clear, neutral English voice.
 // Change ELEVENLABS_VOICE_ID in your .env to swap voices without touching code.
-async function synthesiseSpeech(text) {
+async function synthesiseSpeech(text, voice = "aura-asteria-en") {
   const response = await fetch(
-    "https://api.deepgram.com/v1/speak?model=aura-asteria-en",
+    `https://api.deepgram.com/v1/speak?model=${voice}`,
     {
       method: "POST",
       headers: {
@@ -189,13 +189,16 @@ router.post(
       }
 
       // ── 4. TTS ─────────────────────────────────────────────────────────────
-      let audioBase64;
-      try {
-        audioBase64 = await synthesiseSpeech(replyText);
-      } catch (err) {
-        console.error("TTS error:", err.message);
-        return res.status(500).json({ error: "Speech synthesis failed." });
-      }
+      const voice = req.body.voice || "aura-asteria-en";
+
+// ── 4. TTS ─────────────────────────────────────────────────────────────
+let audioBase64;
+try {
+  audioBase64 = await synthesiseSpeech(replyText, voice);
+} catch (err) {
+  console.error("TTS error:", err.message);
+  return res.status(500).json({ error: "Speech synthesis failed." });
+}
 
       // ── 5. Increment voice usage ────────────────────────────────────────────
       try {
