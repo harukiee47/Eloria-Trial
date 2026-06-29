@@ -129,10 +129,6 @@ function parseMarkdownDoc(raw) {
   });
 }
 
-function parseSlides(raw) {
-  return raw.split(/\n---\n/).map(slide => parseMarkdownDoc(slide));
-}
-
 async function generateDocx(rawText, filename) {
   const res = await fetch("/api/docs/generate-doc", {
     method: "POST",
