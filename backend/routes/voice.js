@@ -214,4 +214,17 @@ router.post(
   }
 );
 
+// ─── Voice Preview (for voice selection screen) ───────────────────────────────
+router.post("/preview", verifyUser, express.json(), async (req, res) => {
+  try {
+    const { text, voice = "aura-asteria-en" } = req.body;
+    if (!text) return res.status(400).json({ error: "No text." });
+    const audioBase64 = await synthesiseSpeech(text.slice(0, 120), voice);
+    return res.json({ audioBase64 });
+  } catch (err) {
+    console.error("Preview error:", err.message);
+    return res.status(500).json({ error: "Preview failed." });
+  }
+});
+
 export default router;

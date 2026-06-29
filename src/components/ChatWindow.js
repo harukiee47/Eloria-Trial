@@ -608,38 +608,7 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     } catch(err) { setErrorMsg(err.message||"Something went wrong."); setState("idle"); return; }
     if (data.transcript) { setTranscript(`"${data.transcript}"`); if (onTranscript) onTranscript(data.transcript); }
     if (data.replyText && onReply) onReply(data.replyText);
-    if (data.audioBase64) {
-  playAudio(data.audioBase64);
-} else if (data.replyText) {
-  setState("speaking");
-  const speak = () => {
-    const voices = window.speechSynthesis.getVoices();
-    const utterance = new SpeechSynthesisUtterance(data.replyText);
-    utterance.rate = 0.95;
-    utterance.pitch = 1;
-    const urduVoice = voices.find(v => v.lang.startsWith("ur"));
-    const hindiVoice = voices.find(v => v.lang.startsWith("hi"));
-    const anyVoice = voices.find(v => v.lang.startsWith("en")) || voices[0];
-    utterance.voice = urduVoice || hindiVoice || anyVoice || null;
-    utterance.onend = () => {
-      setState("idle");
-      setTimeout(startListening, 400);
-    };
-    utterance.onerror = (e) => {
-      console.error("SpeechSynthesis error:", e);
-      setState("idle");
-    };
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  };
-  if (window.speechSynthesis.getVoices().length === 0) {
-    window.speechSynthesis.onvoiceschanged = () => { speak(); };
-  } else {
-    speak();
-  }
-} else {
-  setState("idle");
-}
+    if (data.audioBase64) playAudio(data.audioBase64); else setState("idle");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAuthToken, getMessages, onTranscript, onReply, apiBase]);
 
