@@ -3,8 +3,6 @@ import logo from "../assets/logo.png";
 import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
-import htmlDocx from "html-docx-js/dist/html-docx";
-import PptxGenJS from "pptxgenjs";
 
 const GREETINGS = [
   { label: "Good to have you back.", name: true,  sub: "What can I help you with today?" },
@@ -135,58 +133,32 @@ function parseSlides(raw) {
   return raw.split(/\n---\n/).map(slide => parseMarkdownDoc(slide));
 }
 
-function generateDocx(rawText, filename) {
-  const lines = parseMarkdownDoc(rawText);
-  const htmlLines = lines.map(line => {
-    switch (line.type) {
-      case "h1": return `<h1>${line.text}</h1>`;
-      case "h2": return `<h2>${line.text}</h2>`;
-      case "h3": return `<h3>${line.text}</h3>`;
-      case "bold": return `<p><strong>${line.text}</strong></p>`;
-      case "bullet": return `<li>${line.text}</li>`;
-      default: return `<p>${line.text}</p>`;
-    }
+async function generateDocx(rawText, filename) {
+  const res = await fetch("/api/docs/generate-doc", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: rawText, filename }),
   });
-
-  // Wrap bullet runs in <ul>
-  const wrapped = [];
-  let inList = false;
-  htmlLines.forEach((line, i) => {
-    const isBullet = lines[i].type === "bullet";
-    if (isBullet && !inList) { wrapped.push("<ul>"); inList = true; }
-    if (!isBullet && inList) { wrapped.push("</ul>"); inList = false; }
-    wrapped.push(line);
-  });
-  if (inList) wrapped.push("</ul>");
-
-  const html = `<!DOCTYPE html><html><body>${wrapped.join("")}</body></html>`;
-  const blob = htmlDocx.asBlob(html);
+  if (!res.ok) { alert("Failed to generate document"); return; }
+  const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
-function generatePptx(rawText, filename) {
-  const slides = parseSlides(rawText);
-  const pptx = new PptxGenJS();
-  slides.forEach(lines => {
-    const slide = pptx.addSlide();
-    let y = 0.5;
-    lines.forEach(line => {
-      if (line.type === "h1") {
-        slide.addText(line.text, { x: 0.5, y, fontSize: 28, bold: true, w: 9 });
-        y += 1;
-      } else if (line.type === "bullet") {
-        slide.addText(line.text, { x: 0.7, y, fontSize: 16, bullet: true, w: 8.5 });
-        y += 0.5;
-      } else {
-        slide.addText(line.text, { x: 0.5, y, fontSize: 16, w: 9 });
-        y += 0.5;
-      }
-    });
+async function generatePptx(rawText, filename) {
+  const res = await fetch("/api/docs/generate-pptx", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: rawText, filename }),
   });
-  pptx.writeFile({ fileName: filename });
+  if (!res.ok) { alert("Failed to generate presentation"); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
 }
 
 function classifyMessage({ text, hasFiles }) {

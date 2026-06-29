@@ -9,6 +9,7 @@ import paymentsRoutes from "./routes/payments.js";
 import groupChatRoutes from "./routes/groupChat.js";
 import voiceRoutes from "./routes/voice.js";
 import fetchUrlRoutes from "./routes/fetchUrl.route.js";
+import docsRoutes from "./routes/docs.js";
 import authRoutes from "./routes/auth.js";
 
 const app = express();
@@ -30,6 +31,7 @@ app.use("/api/membership", membershipRoutes);
 app.use("/api/group-chat", groupChatRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/fetch-url", fetchUrlRoutes);
+app.use("/api/docs", docsRoutes);
 app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 5001;
