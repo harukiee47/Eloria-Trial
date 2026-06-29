@@ -1,19 +1,6 @@
 /**
  * routes/voice.js
  * POST /api/voice/turn
- *
- * Pipeline: audio blob → Deepgram STT → Claude (brain) → ElevenLabs TTS → base64 audio back to client
- *
- * Request:  multipart/form-data
- *   - audio: audio blob (webm/ogg from MediaRecorder)
- *   - messages: JSON string — same conversation history format as /api/chat
- *
- * Response: JSON
- *   {
- *     transcript: string,   // what the user said
- *     replyText: string,    // what Eloria replied
- *     audioBase64: string,  // mp3 audio, base64-encoded
- *   }
  */
 
 import express from "express";
@@ -27,12 +14,8 @@ import { buildAnthropicMessages } from "../utils/anthropicMessages.js";
 
 const router = express.Router();
 
-// Store audio in memory (voice clips are short — a few seconds max)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ─── Voice-optimised system prompt ────────────────────────────────────────────
-// Identical identity/rules to chat, but formatting stripped for TTS:
-// no markdown, no bullet symbols, no emojis — just clean spoken prose.
 const ELORIA_VOICE_SYSTEM_PROMPT = `
 You are Eloria AI, an advanced conversational AI assistant built for real-world use.
 
@@ -49,9 +32,25 @@ Rules for voice responses:
 - Keep replies concise — aim for 2 to 4 sentences for simple questions, up to a short paragraph for complex ones.
 - Use natural spoken transitions: "First", "Also", "And", "So", "For example" — not hyphens or symbols.
 - Sound like a knowledgeable friend speaking, not a document being read.
+- IMPORTANT: Always reply in the same language the user spoke in. If they spoke Urdu, reply in Urdu. If Hindi, reply in Hindi. Match their language exactly.
 
 Your mission: help users learn, create, solve problems, and achieve their goals through accurate, honest, helpful guidance.
 `;
+
+// ─── Detect if text is English ─────────────────────────────────────────────
+function isEnglishText(text) {
+  // Check if text contains non-Latin characters (Urdu, Arabic, Hindi, Chinese, etc.)
+  const nonLatinRegex = /[\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/;
+  if (nonLatinRegex.test(text)) return false;
+
+  // Count Latin characters vs total characters
+  const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
+  const totalChars = (text.match(/\S/g) || []).length;
+  if (totalChars === 0) return true;
+
+  // If less than 60% Latin characters, treat as non-English
+  return (latinChars / totalChars) >= 0.6;
+}
 
 // ─── Deepgram STT ─────────────────────────────────────────────────────────────
 async function transcribeAudio(audioBuffer, mimeType) {
@@ -76,16 +75,18 @@ async function transcribeAudio(audioBuffer, mimeType) {
   const transcript =
     data?.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
 
+  const detectedLanguage =
+    data?.results?.channels?.[0]?.detected_language ?? "en";
+
   if (!transcript.trim()) {
     throw new Error("No speech detected. Please try again.");
   }
 
-  return transcript.trim();
+  return { transcript: transcript.trim(), detectedLanguage };
 }
 
 // ─── Claude (brain) ───────────────────────────────────────────────────────────
 async function getClaudeReply(messages, transcript) {
-  // Append the transcribed user turn to the conversation history
   const fullMessages = [
     ...messages,
     { role: "user", content: transcript },
@@ -93,10 +94,9 @@ async function getClaudeReply(messages, transcript) {
 
   const anthropicMessages = buildAnthropicMessages(fullMessages);
 
-  // Non-streaming: we need the complete text before sending to TTS
   const response = await anthropic.messages.create({
     model: MODELS.CHAT,
-    max_tokens: 300,
+    max_tokens: 150,
     system: ELORIA_VOICE_SYSTEM_PROMPT,
     messages: anthropicMessages,
   });
@@ -114,9 +114,7 @@ async function getClaudeReply(messages, transcript) {
   return replyText;
 }
 
-// ─── ElevenLabs TTS ───────────────────────────────────────────────────────────
-// Voice ID: "Rachel" — a warm, clear, neutral English voice.
-// Change ELEVENLABS_VOICE_ID in your .env to swap voices without touching code.
+// ─── Deepgram TTS ─────────────────────────────────────────────────────────────
 async function synthesiseSpeech(text, voice = "aura-asteria-en") {
   const response = await fetch(
     `https://api.deepgram.com/v1/speak?model=${voice}`,
@@ -141,12 +139,6 @@ async function synthesiseSpeech(text, voice = "aura-asteria-en") {
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────
-/**
- * POST /api/voice/turn
- * multipart/form-data fields:
- *   audio    — audio blob from MediaRecorder (webm/ogg)
- *   messages — JSON string of prior conversation (same shape as /api/chat)
- */
 router.post(
   "/turn",
   verifyUser,
@@ -154,7 +146,6 @@ router.post(
   upload.single("audio"),
   async (req, res) => {
     try {
-      // ── 1. Validate inputs ──────────────────────────────────────────────────
       if (!req.file) {
         return res.status(400).json({ error: "No audio file received." });
       }
@@ -171,9 +162,9 @@ router.post(
       const mimeType = req.file.mimetype || "audio/webm";
 
       // ── 2. STT ─────────────────────────────────────────────────────────────
-      let transcript;
+      let transcript, detectedLanguage;
       try {
-        transcript = await transcribeAudio(req.file.buffer, mimeType);
+        ({ transcript, detectedLanguage } = await transcribeAudio(req.file.buffer, mimeType));
       } catch (err) {
         console.error("STT error:", err.message);
         return res.status(422).json({ error: err.message });
@@ -188,23 +179,27 @@ router.post(
         return res.status(500).json({ error: "AI response failed." });
       }
 
-      // ── 4. TTS ─────────────────────────────────────────────────────────────
+      // ── 4. TTS — skip for non-English, Deepgram TTS only supports English ──
       const voice = req.body.voice || "aura-asteria-en";
+      const englishReply = isEnglishText(replyText);
+      let audioBase64 = null;
 
-// ── 4. TTS ─────────────────────────────────────────────────────────────
-let audioBase64;
-try {
-  audioBase64 = await synthesiseSpeech(replyText, voice);
-} catch (err) {
-  console.error("TTS error:", err.message);
-  return res.status(500).json({ error: "Speech synthesis failed." });
-}
+      if (englishReply) {
+        try {
+          audioBase64 = await synthesiseSpeech(replyText, voice);
+        } catch (err) {
+          console.error("TTS error:", err.message);
+          // Non-fatal: return text without audio
+          audioBase64 = null;
+        }
+      } else {
+        console.log(`Non-English response detected (${detectedLanguage}), skipping TTS.`);
+      }
 
       // ── 5. Increment voice usage ────────────────────────────────────────────
       try {
         await incrementUsage(req.user.uid, "voiceTurns");
       } catch (err) {
-        // Non-fatal: log but don't fail the request
         console.error("Failed to increment voiceTurns:", err);
       }
 
