@@ -482,7 +482,8 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   // ── Open/close ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
-      setScreen("greet");
+      const saved = localStorage.getItem("eloria_voice");
+      setScreen(saved ? "main" : "greet");
       setTranscript(""); setErrorMsg(""); setMinimized(false);
       setTimerSecs(0); setState("idle"); phaseRef.current = 0;
     } else {
@@ -655,13 +656,16 @@ const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAuthToken, apiBase, playAudio, startListening]);
 
-  const endCall = useCallback(() => {
+const endCall = useCallback(() => {
     stopAll(); stopAnim();
     clearInterval(timerIntervalRef.current);
+    const mins = String(Math.floor(timerSecs/60)).padStart(2,"0");
+    const secs = String(timerSecs%60).padStart(2,"0");
+    if (onReply) onReply(`🎙 Voice call ended · ${mins}:${secs}`);
     setState("idle"); setScreen("greet");
     onClose();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stopAll, stopAnim, onClose]);
+  }, [stopAll, stopAnim, onClose, timerSecs, onReply]);
 
   const formatTime = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
@@ -669,27 +673,97 @@ const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
 
   // ── MINIMIZED PILL ────────────────────────────────────────────────────────
   if (minimized) {
-    return (
-      <div style={{
-        position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-        zIndex: 9999, display: "flex", alignItems: "center", gap: 10,
-        background: "#0d3a35", borderRadius: 40, padding: "10px 18px",
-        boxShadow: "0 8px 32px rgba(13,58,53,0.45)",
-        animation: "vmSlideUp .2s ease",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      }}>
-        <style>{`@keyframes vmSlideUp { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }`}</style>
-        <div style={{ width:8, height:8, borderRadius:"50%", background: voiceState === "listening" ? "#00ff88" : voiceState === "speaking" ? "#00b894" : "#55efc4", boxShadow:`0 0 8px currentColor`, animation:"vmPulse 1.5s ease-in-out infinite" }} />
-        <span style={{ color:"#f5f0e8", fontSize:13, fontWeight:600 }}>Eloria Voice · {formatTime(timerSecs)}</span>
-        <button onClick={() => setMinimized(false)} title="Restore" style={{ width:28, height:28, borderRadius:"50%", background:"rgba(255,255,255,0.12)", border:"none", color:"rgba(255,255,255,0.7)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"background .15s" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-        </button>
-        <button onClick={endCall} title="Close" style={{ width:28, height:28, borderRadius:"50%", background:"rgba(255,255,255,0.12)", border:"none", color:"rgba(255,255,255,0.7)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"background .15s" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+  return (
+    <div style={{
+      position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)",
+      zIndex: 9999, display: "flex", alignItems: "center", gap: 12,
+      background: "rgba(13,58,53,0.96)", backdropFilter: "blur(20px)",
+      borderRadius: 50, padding: "10px 14px 10px 12px",
+      boxShadow: "0 8px 40px rgba(13,58,53,0.35), 0 2px 12px rgba(0,0,0,0.2)",
+      border: "1px solid rgba(255,255,255,0.1)",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      minWidth: 220,
+    }}>
+      <style>{`
+        @keyframes vmSlideUp { from{opacity:0;transform:translateX(-50%) translateY(14px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+        @keyframes vmBarBounce { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+        @keyframes vmPulseRing { 0%{transform:scale(1);opacity:0.6} 100%{transform:scale(1.5);opacity:0} }
+      `}</style>
+
+      {/* Animated waveform bars */}
+      <div style={{ display:"flex", alignItems:"center", gap:2, padding:"0 4px" }}>
+        {[0.4,0.7,1,0.6,0.9,0.5,0.8].map((h, i) => (
+          <div key={i} style={{
+            width: 3, borderRadius: 2,
+            background: voiceState === "speaking" ? "#00b894"
+                      : voiceState === "listening" ? "#55efc4"
+                      : "rgba(255,255,255,0.4)",
+            height: voiceState === "idle" ? 4 : undefined,
+            animation: voiceState !== "idle" ? `vmBarBounce ${0.6 + i * 0.1}s ease-in-out ${i * 0.08}s infinite` : "none",
+            transformOrigin: "center",
+            minHeight: 4,
+            maxHeight: 20,
+            ...(voiceState !== "idle" ? { height: `${10 + h * 14}px` } : {}),
+          }} />
+        ))}
       </div>
-    );
-  }
+
+      {/* Label + timer */}
+      <div style={{ display:"flex", flexDirection:"column", gap:1, flex:1 }}>
+        <span style={{ color:"#fff", fontSize:12.5, fontWeight:600, letterSpacing:"0.01em", lineHeight:1.2 }}>
+          Eloria Voice
+        </span>
+        <span style={{ color:"rgba(255,255,255,0.5)", fontSize:10.5, fontVariantNumeric:"tabular-nums" }}>
+          {voiceState === "listening" ? "Listening…"
+         : voiceState === "speaking"  ? "Speaking…"
+         : voiceState === "processing"? "Thinking…"
+         : formatTime(timerSecs)}
+        </span>
+      </div>
+
+      {/* Restore button */}
+      <button
+        onClick={() => setMinimized(false)}
+        title="Expand"
+        style={{
+          width:32, height:32, borderRadius:"50%",
+          background:"rgba(255,255,255,0.1)",
+          border:"1px solid rgba(255,255,255,0.15)",
+          color:"rgba(255,255,255,0.8)", cursor:"pointer",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          transition:"all .15s", flexShrink:0,
+        }}
+        onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.2)"}
+        onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+      </button>
+
+      {/* End button */}
+      <button
+        onClick={endCall}
+        title="End"
+        style={{
+          width:32, height:32, borderRadius:"50%",
+          background:"rgba(229,62,62,0.25)",
+          border:"1px solid rgba(229,62,62,0.4)",
+          color:"#ff6b6b", cursor:"pointer",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          transition:"all .15s", flexShrink:0,
+        }}
+        onMouseEnter={e => e.currentTarget.style.background="rgba(229,62,62,0.45)"}
+        onMouseLeave={e => e.currentTarget.style.background="rgba(229,62,62,0.25)"}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  );
+}
 
   // ── GREETING SCREEN ───────────────────────────────────────────────────────
   if (screen === "greet") {
@@ -700,11 +774,13 @@ const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
         display:"flex", alignItems:"center", justifyContent:"center",
         fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         overflow:"hidden",
+         animation:"vmFadeScale .25s ease",
       }}>
         <style>{`
           @keyframes vmFadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
           @keyframes vmPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
           @keyframes vmBg { 0%{opacity:0.7} 100%{opacity:1} }
+          @keyframes vmFadeScale { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
           .vm-voice-card:hover { border-color: rgba(13,58,53,0.4) !important; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(13,58,53,0.12) !important; }
         `}</style>
 
@@ -713,10 +789,7 @@ const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
 
         <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:24, padding:"32px 20px", width:"100%", maxWidth:500, animation:"vmFadeUp .4s ease" }}>
 
-          {/* Badge */}
-          <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:"#0d3a35", background:"rgba(13,58,53,0.1)", border:"1px solid rgba(13,58,53,0.18)", padding:"5px 16px", borderRadius:20 }}>
-            Eloria Voice
-          </div>
+    
 
           {/* Big greeting */}
           <div style={{ textAlign:"center" }}>
@@ -794,6 +867,7 @@ const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
       background:"#f5f0e8",
       display:"flex", flexDirection:"column",
       fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      animation:"vmFadeScale .25s ease",
     }}>
       <style>{`
         @keyframes vmFadeIn { from{opacity:0} to{opacity:1} }
@@ -811,6 +885,19 @@ const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
           <span style={{ fontSize:11, color:"rgba(13,58,53,0.4)", fontVariantNumeric:"tabular-nums" }}>{formatTime(timerSecs)}</span>
         </div>
         <div style={{ display:"flex", gap:8 }}>
+  <button
+    className="vm-ctrl-btn"
+    onClick={() => { stopAll(); clearInterval(timerIntervalRef.current); setTimerSecs(0); setState("idle"); setScreen("greet"); }}
+    title="Change voice"
+    style={{ width:34, height:34, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1px solid rgba(13,58,53,0.14)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}
+  >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+      <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+      <line x1="8" y1="23" x2="16" y2="23"/>
+    </svg>
+  </button>
           <button className="vm-ctrl-btn" onClick={() => setMinimized(true)} title="Minimize" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1px solid rgba(13,58,53,0.14)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
