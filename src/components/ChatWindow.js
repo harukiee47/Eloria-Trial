@@ -611,19 +611,36 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     if (data.audioBase64) {
   playAudio(data.audioBase64);
 } else if (data.replyText) {
-  // Non-English reply — use browser TTS
-  const utterance = new SpeechSynthesisUtterance(data.replyText);
-  utterance.rate = 0.95;
-  utterance.pitch = 1;
   setState("speaking");
-  utterance.onend = () => {
-    setState("idle");
-    setTimeout(startListening, 400);
+  const speak = () => {
+    const utterance = new SpeechSynthesisUtterance(data.replyText);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+
+    // Try to find a matching voice, fall back to any available
+    const voices = window.speechSynthesis.getVoices();
+    const urduVoice = voices.find(v => v.lang.startsWith("ur"));
+    const anyVoice = voices.find(v => v.lang.startsWith("en")) || voices[0];
+    utterance.voice = urduVoice || anyVoice || null;
+
+    utterance.onend = () => {
+      setState("idle");
+      setTimeout(startListening, 400);
+    };
+    utterance.onerror = (e) => {
+      console.error("SpeechSynthesis error:", e);
+      setState("idle");
+    };
+    window.speechSynthesis.cancel(); // clear any pending
+    window.speechSynthesis.speak(utterance);
   };
-  utterance.onerror = () => {
-    setState("idle");
-  };
-  window.speechSynthesis.speak(utterance);
+
+  // Voices may not be loaded yet — wait for them
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = () => { speak(); };
+  } else {
+    speak();
+  }
 } else {
   setState("idle");
 }
