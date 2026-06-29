@@ -118,17 +118,6 @@ function detectPresentationBlocks(text) {
   return blocks;
 }
 
-function parseMarkdownDoc(raw) {
-  return raw.split("\n").filter(l => l.trim()).map(line => {
-    if (line.startsWith("# ")) return { type: "h1", text: line.slice(2) };
-    if (line.startsWith("## ")) return { type: "h2", text: line.slice(3) };
-    if (line.startsWith("### ")) return { type: "h3", text: line.slice(4) };
-    if (line.startsWith("- ")) return { type: "bullet", text: line.slice(2) };
-    if (/^\*\*(.+)\*\*/.test(line.trim())) return { type: "bold", text: line.trim().replace(/\*\*/g, "") };
-    return { type: "text", text: line };
-  });
-}
-
 async function generateDocx(rawText, filename) {
   const res = await fetch("/api/docs/generate-doc", {
     method: "POST",
