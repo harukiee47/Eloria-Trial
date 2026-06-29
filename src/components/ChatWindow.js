@@ -3,7 +3,7 @@ import logo from "../assets/logo.png";
 import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
-import { Document, Packer, Paragraph, HeadingLevel, TextRun } from "docx";
+import htmlDocx from "html-docx-js/dist/html-docx";
 import PptxGenJS from "pptxgenjs";
 
 const GREETINGS = [
@@ -135,20 +135,32 @@ function parseSlides(raw) {
   return raw.split(/\n---\n/).map(slide => parseMarkdownDoc(slide));
 }
 
-async function generateDocx(rawText, filename) {
+function generateDocx(rawText, filename) {
   const lines = parseMarkdownDoc(rawText);
-  const children = lines.map(line => {
+  const htmlLines = lines.map(line => {
     switch (line.type) {
-      case "h1": return new Paragraph({ text: line.text, heading: HeadingLevel.TITLE });
-      case "h2": return new Paragraph({ text: line.text, heading: HeadingLevel.HEADING_1 });
-      case "h3": return new Paragraph({ text: line.text, heading: HeadingLevel.HEADING_2 });
-      case "bold": return new Paragraph({ children: [new TextRun({ text: line.text, bold: true })] });
-      case "bullet": return new Paragraph({ text: line.text, bullet: { level: 0 } });
-      default: return new Paragraph({ text: line.text });
+      case "h1": return `<h1>${line.text}</h1>`;
+      case "h2": return `<h2>${line.text}</h2>`;
+      case "h3": return `<h3>${line.text}</h3>`;
+      case "bold": return `<p><strong>${line.text}</strong></p>`;
+      case "bullet": return `<li>${line.text}</li>`;
+      default: return `<p>${line.text}</p>`;
     }
   });
-  const doc = new Document({ sections: [{ children }] });
-  const blob = await Packer.toBlob(doc);
+
+  // Wrap bullet runs in <ul>
+  const wrapped = [];
+  let inList = false;
+  htmlLines.forEach((line, i) => {
+    const isBullet = lines[i].type === "bullet";
+    if (isBullet && !inList) { wrapped.push("<ul>"); inList = true; }
+    if (!isBullet && inList) { wrapped.push("</ul>"); inList = false; }
+    wrapped.push(line);
+  });
+  if (inList) wrapped.push("</ul>");
+
+  const html = `<!DOCTYPE html><html><body>${wrapped.join("")}</body></html>`;
+  const blob = htmlDocx.asBlob(html);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = filename; a.click();
