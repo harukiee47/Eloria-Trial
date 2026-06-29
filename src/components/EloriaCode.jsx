@@ -1703,7 +1703,7 @@ IMPORTANT INSTRUCTIONS:
     }
 
     if (rightTab === "code") {
-      if (!rf.code) return <div className="ec-no-content"><div className="ec-no-content-icon">{rf.status === "pending" ? "⏳" : "💬"}</div><div className="ec-no-content-text">{rf.status === "pending" ? "Pending generation." : "No code yet."}</div></div>;
+      if (!rf.code) return <div className="ec-no-content"><div className="ec-no-content-icon">{rf.status === "pending" ? "" : ""}</div><div className="ec-no-content-text">{rf.status === "pending" ? "Pending generation." : "No code yet."}</div></div>;
       return <CodeViewer code={rf.code} filename={rf.name} />;
     }
   };

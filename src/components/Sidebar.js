@@ -1391,7 +1391,7 @@ const [codeProjects] = useState(() => {
             <div className="panel-list">
               {filtered.length === 0
                 ? <div className="panel-empty">
-                    <span className="panel-empty-icon">💬</span>
+                    <span className="panel-empty-icon"></span>
                     <strong>No chats yet</strong>
                     Hit New above to start your first conversation.
                   </div>
@@ -1578,7 +1578,7 @@ const [codeProjects] = useState(() => {
             <div className="panel-list">
               {groups.length === 0
                 ? <div className="grp-empty">
-                    <span className="grp-empty-icon">💬</span>
+                    <span className="grp-empty-icon"></span>
                     <div className="grp-empty-title">No groups yet</div>
                     <p>Create one above or wait for an invite from someone.</p>
                   </div>
@@ -1723,7 +1723,7 @@ const [codeProjects] = useState(() => {
           <div className="sb-lock-modal" onClick={e => e.stopPropagation()}>
             <div className="sb-lock-top">
               <button className="sb-lock-close" onClick={() => setShowGroupLockModal(false)}>✕</button>
-              <div className="sb-lock-icon">💬</div>
+              <div className="sb-lock-icon"></div>
               <div className="sb-lock-title">Groups</div>
               <div className="sb-lock-sub">Available on the Pro plan</div>
             </div>

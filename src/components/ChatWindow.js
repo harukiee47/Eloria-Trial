@@ -364,145 +364,150 @@ function getSupportedMimeType() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Voice Modal
+// VOICE MODAL — Gemini-inspired, Eloria dark green + cream theme
+// Replace the entire VoiceModal function in ChatWindow.js with this
 // ─────────────────────────────────────────────────────────────────────────────
-// ── Voice options ─────────────────────────────────────────────────────────────
+
 const VOICE_OPTIONS = [
-  { id: "aura-asteria-en",  label: "Asteria", gender: "Female", tone: "Warm" },
-  { id: "aura-luna-en",     label: "Luna",    gender: "Female", tone: "Soft" },
-  { id: "aura-orion-en",    label: "Orion",   gender: "Male",   tone: "Clear" },
-  { id: "aura-zeus-en",     label: "Zeus",    gender: "Male",   tone: "Deep" },
+  { id: "aura-asteria-en", label: "Asteria", gender: "Female", tone: "Warm",  greeting: "Hey, I'm Asteria — warm and ready. What's on your mind?" },
+  { id: "aura-luna-en",    label: "Luna",    gender: "Female", tone: "Soft",  greeting: "Hi there, I'm Luna — soft and calm. Let's talk." },
+  { id: "aura-orion-en",   label: "Orion",   gender: "Male",   tone: "Clear", greeting: "Hey, I'm Orion — clear and focused. Ask me anything." },
+  { id: "aura-zeus-en",    label: "Zeus",    gender: "Male",   tone: "Deep",  greeting: "I'm Zeus — deep and direct. What do you need?" },
 ];
 
-function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
-  const canvasRef     = useRef(null);
-  const miniCanvasRef = useRef(null);
-  const animIdRef     = useRef(null);
-  const analyserRef   = useRef(null);
-  const recorderRef   = useRef(null);
-  const streamRef     = useRef(null);
-  const audioRef      = useRef(null);
-  const chunksRef     = useRef([]);
-  const molsRef       = useRef(buildMolecules());
-  const phaseRef      = useRef(0);
-  const curColorsRef  = useRef(VOICE_STATE_CFG.idle.colors.map(hexToRgb));
-  const tgtColorsRef  = useRef(VOICE_STATE_CFG.idle.colors.map(hexToRgb));
-  const voiceStateRef = useRef("idle");
-  const timerRef      = useRef(null);
+const OPEN_GREETINGS = [
+  "Hey, good to hear from you.",
+  "Hello! Ready to listen.",
+  "Hi there — I'm all ears.",
+  "Hey — what's on your mind?",
+];
 
+function hexRgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
+  const canvasRef      = useRef(null);
+  const animIdRef      = useRef(null);
+  const analyserRef    = useRef(null);
+  const recorderRef    = useRef(null);
+  const streamRef      = useRef(null);
+  const audioRef       = useRef(null);
+  const chunksRef      = useRef([]);
+  const phaseRef       = useRef(0);
+  const voiceStateRef  = useRef("idle");
+  const selectedVoiceRef = useRef(localStorage.getItem("eloria_voice") || "aura-asteria-en");
+
+  const [screen,        setScreen]        = useState("greet"); // greet | main
   const [voiceState,    setVoiceState]    = useState("idle");
   const [transcript,    setTranscript]    = useState("");
   const [errorMsg,      setErrorMsg]      = useState("");
-  const [micMuted,      setMicMuted]      = useState(false);
   const [minimized,     setMinimized]     = useState(false);
-  const [timerSecs,     setTimerSecs]     = useState(0);
   const [selectedVoice, setSelectedVoice] = useState(() => localStorage.getItem("eloria_voice") || "aura-asteria-en");
-  const [showVoicePicker, setShowVoicePicker] = useState(false);
+  const [previewingId,  setPreviewingId]  = useState(null);
+  const [timerSecs,     setTimerSecs]     = useState(0);
+  const timerIntervalRef = useRef(null);
 
-  const selectedVoiceRef = useRef(selectedVoice);
-  useEffect(() => {
-    selectedVoiceRef.current = selectedVoice;
-    localStorage.setItem("eloria_voice", selectedVoice);
-  }, [selectedVoice]);
+  const WAVE_COLORS = {
+    idle:       ["#0d3a35","#1a5a52","#0a2e29"],
+    listening:  ["#0d6a5e","#00b894","#055a52"],
+    processing: ["#2d6a4f","#52b788","#1b4332"],
+    speaking:   ["#00b894","#55efc4","#0d6a5e"],
+  };
+
+  const STATE_LABELS = {
+    idle: "tap to speak", listening: "listening…", processing: "thinking…", speaking: "speaking…",
+  };
 
   const setState = useCallback((s) => {
     voiceStateRef.current = s;
     setVoiceState(s);
-    tgtColorsRef.current = VOICE_STATE_CFG[s].colors.map(hexToRgb);
   }, []);
 
-  const drawOrb = useCallback((canvasEl, ctxEl) => {
-    if (!canvasEl) return;
-    const W = canvasEl.width, H = canvasEl.height;
-    const cx = W/2, cy = H/2;
-    const scale = W / 320;
+  // ── Canvas wave drawing ────────────────────────────────────────────────────
+  const drawWaves = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    ctx.clearRect(0, 0, W, H);
+
     const state = voiceStateRef.current;
-    const cols  = curColorsRef.current;
-    const phase = phaseRef.current;
+    const colors = WAVE_COLORS[state] || WAVE_COLORS.idle;
 
-    ctxEl.clearRect(0, 0, W, H);
-
-    const glowA = state === "speaking" ? 0.12 + 0.05*Math.sin(phase*2)
-                : state === "listening" ? 0.08 + 0.04*Math.sin(phase*1.5)
-                : state === "processing" ? 0.04 + 0.03*Math.sin(phase*0.8) : 0.02;
-    const bg = ctxEl.createRadialGradient(cx, cy, 0, cx, cy, 130*scale);
-    bg.addColorStop(0, rgbaStr(cols[0], glowA));
-    bg.addColorStop(1, "transparent");
-    ctxEl.fillStyle = bg;
-    ctxEl.fillRect(0, 0, W, H);
-
-    const speed = state === "speaking" ? 1.8 : state === "listening" ? 1.2 : state === "processing" ? 0.5 : 0.15;
-    const mols  = molsRef.current;
-    const positions = [];
-
-    for (let i = 0; i < mols.length; i++) {
-      mols[i].angle += mols[i].speed * speed;
-      const breathe = 1 + 0.12*Math.sin(phase * mols[i].pSpeed * 20 + mols[i].phaseOff);
-      const r = mols[i].baseRadius * breathe * scale;
-      positions.push({ x: cx + Math.cos(mols[i].angle)*r, y: cy + Math.sin(mols[i].angle)*r });
+    let volume = 0;
+    if (analyserRef.current) {
+      const d = new Uint8Array(analyserRef.current.frequencyBinCount);
+      analyserRef.current.getByteFrequencyData(d);
+      volume = Math.min(1, d.reduce((a,b)=>a+b,0) / d.length / 65);
     }
 
-    for (let i = 0; i < mols.length; i++) {
-      for (const j of mols[i].bondTo) {
-        const pi = positions[i], pj = positions[j];
-        const dist = Math.hypot(pj.x-pi.x, pj.y-pi.y);
-        const alpha = Math.max(0, 1 - dist/(55*scale)) * 0.32;
-        const c = cols[mols[i].colorIdx % cols.length];
-        ctxEl.beginPath();
-        ctxEl.moveTo(pi.x, pi.y);
-        ctxEl.lineTo(pj.x, pj.y);
-        ctxEl.strokeStyle = rgbaStr(c, alpha);
-        ctxEl.lineWidth = 0.8 * scale;
-        ctxEl.stroke();
+    const amp = state === "idle"       ? 0.035 + 0.015 * Math.sin(phaseRef.current * 0.8)
+              : state === "processing" ? 0.055 + 0.025 * Math.sin(phaseRef.current * 1.4)
+              : 0.07 + volume * 0.18;
+
+    // Draw 4 layered waves
+    for (let layer = 0; layer < 4; layer++) {
+      const freq   = 1.2 + layer * 0.7;
+      const offset = layer * (Math.PI * 2 / 4);
+      const yAmp   = H * amp * (1 - layer * 0.15);
+      const alpha  = state === "idle" ? 0.12 + layer * 0.04 : 0.2 + layer * 0.08;
+      const color  = colors[layer % colors.length];
+
+      ctx.beginPath();
+      ctx.moveTo(0, cy);
+      for (let x = 0; x <= W; x += 3) {
+        const t = (x / W) * Math.PI * 2 * freq + phaseRef.current + offset;
+        const y = cy + Math.sin(t) * yAmp * (0.6 + 0.4 * Math.sin(phaseRef.current * 0.5 + layer));
+        ctx.lineTo(x, y);
       }
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+      const grad = ctx.createLinearGradient(0, cy - yAmp, 0, H);
+      grad.addColorStop(0,   hexRgba(color, alpha));
+      grad.addColorStop(0.6, hexRgba(color, alpha * 0.5));
+      grad.addColorStop(1,   hexRgba(color, 0));
+      ctx.fillStyle = grad;
+      ctx.fill();
     }
 
-    const idleA = state === "idle" ? 0.35 : 0.88;
-    for (let i = 0; i < mols.length; i++) {
-      const m = mols[i], pos = positions[i];
-      const sz = m.size * (1 + 0.15*Math.sin(phase * m.pSpeed * 25 + m.phaseOff)) * scale;
-      const c  = cols[m.colorIdx % cols.length];
-      ctxEl.beginPath();
-      ctxEl.arc(pos.x, pos.y, sz, 0, Math.PI*2);
-      ctxEl.fillStyle = rgbaStr(c, idleA);
-      ctxEl.fill();
-      ctxEl.beginPath();
-      ctxEl.arc(pos.x - sz*0.25, pos.y - sz*0.25, sz*0.35, 0, Math.PI*2);
-      ctxEl.fillStyle = "rgba(255,255,255,0.22)";
-      ctxEl.fill();
-    }
+    // Center orb glow
+    const orbR = 48 + (state !== "idle" ? volume * 28 + 10 * Math.sin(phaseRef.current * 2) : 6 * Math.sin(phaseRef.current));
+    const orbGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 2.2);
+    orbGrad.addColorStop(0,   hexRgba(colors[1], state === "idle" ? 0.18 : 0.32));
+    orbGrad.addColorStop(0.5, hexRgba(colors[0], 0.1));
+    orbGrad.addColorStop(1,   "transparent");
+    ctx.fillStyle = orbGrad;
+    ctx.fillRect(0, 0, W, H);
 
-    const cg = ctxEl.createRadialGradient(cx, cy, 0, cx, cy, 28*scale);
-    cg.addColorStop(0, rgbaStr(cols[0], state === "idle" ? 0.12 : 0.4));
-    cg.addColorStop(1, "transparent");
-    ctxEl.fillStyle = cg;
-    ctxEl.fillRect(0, 0, W, H);
+    // Orb dot
+    const dotR = 28 + (state !== "idle" ? volume * 14 + 3 * Math.sin(phaseRef.current * 2.5) : 3 * Math.sin(phaseRef.current * 1.2));
+    const dotGrad = ctx.createRadialGradient(cx - dotR*0.2, cy - dotR*0.2, 0, cx, cy, dotR);
+    dotGrad.addColorStop(0,   hexRgba(colors[1], state === "idle" ? 0.55 : 0.9));
+    dotGrad.addColorStop(0.7, hexRgba(colors[0], 0.7));
+    dotGrad.addColorStop(1,   hexRgba(colors[0], 0));
+    ctx.fillStyle = dotGrad;
+    ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fill();
+
+    const speed = state === "idle" ? 0.01 : state === "processing" ? 0.022 : 0.032 + volume * 0.03;
+    phaseRef.current += speed;
   }, []);
 
-  const startAnimation = useCallback(() => {
+  const startAnim = useCallback(() => {
     if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
-    const loop = () => {
-      phaseRef.current += 0.018;
-      const cc = curColorsRef.current, tc = tgtColorsRef.current;
-      for (let i = 0; i < cc.length; i++) cc[i] = lerpC(cc[i], tc[i], 0.04);
-      const c = canvasRef.current;
-      if (c) drawOrb(c, c.getContext("2d"));
-      if (minimized) {
-        const mc = miniCanvasRef.current;
-        if (mc) drawOrb(mc, mc.getContext("2d"));
-      }
-      animIdRef.current = requestAnimationFrame(loop);
-    };
+    const loop = () => { drawWaves(); animIdRef.current = requestAnimationFrame(loop); };
     loop();
-  }, [drawOrb, minimized]);
+  }, [drawWaves]);
 
-  const stopAnimation = useCallback(() => {
+  const stopAnim = useCallback(() => {
     if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
     animIdRef.current = null;
   }, []);
 
+  // ── Canvas resize ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || screen !== "main") return;
     const resize = () => {
       const c = canvasRef.current;
       if (!c) return;
@@ -512,28 +517,35 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, [isOpen]);
+  }, [isOpen, screen]);
 
+  // ── Open/close ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
-      setState("idle");
-      setTranscript(""); setErrorMsg(""); setMicMuted(false);
-      setMinimized(false); setTimerSecs(0); setShowVoicePicker(false);
-      molsRef.current = buildMolecules();
-      timerRef.current = setInterval(() => setTimerSecs(s => s + 1), 1000);
-      startAnimation();
-      setTimeout(startListening, 350);
+      setScreen("greet");
+      setTranscript(""); setErrorMsg(""); setMinimized(false);
+      setTimerSecs(0); setState("idle"); phaseRef.current = 0;
     } else {
-      stopAll();
-      stopAnimation();
-      setState("idle");
-      clearInterval(timerRef.current);
+      stopAll(); stopAnim(); setState("idle");
+      clearInterval(timerIntervalRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  useEffect(() => { startAnimation(); }, [minimized, startAnimation]);
+  useEffect(() => {
+    if (isOpen && screen === "main" && !minimized) {
+      setTimeout(() => {
+        const c = canvasRef.current;
+        if (c) { c.width = c.offsetWidth; c.height = c.offsetHeight; }
+        startAnim();
+      }, 50);
+    } else if (screen !== "main") {
+      stopAnim();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, minimized, isOpen]);
 
+  // ── Recording helpers ──────────────────────────────────────────────────────
   const stopAll = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== "inactive") recorderRef.current.stop();
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
@@ -541,10 +553,10 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     analyserRef.current = null;
   }, []);
 
-  const setupSilenceDetection = useCallback((audioCtx, micStream) => {
+  const setupSilence = useCallback((audioCtx, micStream) => {
     const sa = audioCtx.createAnalyser(); sa.fftSize = 512;
     audioCtx.createMediaStreamSource(micStream).connect(sa);
-    let silenceStart = null;
+    let silStart = null;
     const t0 = Date.now();
     const check = () => {
       if (!recorderRef.current || recorderRef.current.state === "inactive") return;
@@ -552,8 +564,10 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
       const d = new Uint8Array(sa.frequencyBinCount);
       sa.getByteFrequencyData(d);
       const avg = d.reduce((a,b)=>a+b,0)/d.length;
-      if (avg < 8) { if (!silenceStart) silenceStart = Date.now(); else if (Date.now()-silenceStart > 2000) { recorderRef.current.stop(); return; } }
-      else silenceStart = null;
+      if (avg < 8) {
+        if (!silStart) silStart = Date.now();
+        else if (Date.now() - silStart > 1500) { recorderRef.current.stop(); return; }
+      } else silStart = null;
       setTimeout(check, 100);
     };
     setTimeout(check, 800);
@@ -570,7 +584,7 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     const an = audioCtx.createAnalyser(); an.fftSize = 256;
     audioCtx.createMediaStreamSource(micStream).connect(an);
     analyserRef.current = an;
-    setState("listening"); setErrorMsg("");
+    setState("listening"); setErrorMsg(""); setTranscript("");
     chunksRef.current = [];
     const mimeType = getSupportedMimeType();
     const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
@@ -582,30 +596,30 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
       submitAudio(mimeType);
     };
     recorder.start();
-    setupSilenceDetection(audioCtx, micStream);
+    setupSilence(audioCtx, micStream);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setupSilenceDetection]);
+  }, [setupSilence]);
 
   const submitAudio = useCallback(async (mimeType) => {
     if (chunksRef.current.length === 0) { setState("idle"); return; }
     setState("processing");
     const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
-    const formData = new FormData();
-    formData.append("audio", blob, "recording.webm");
-    formData.append("messages", JSON.stringify(getMessages()));
-    formData.append("voice", selectedVoiceRef.current); // ← send selected voice
+    const fd = new FormData();
+    fd.append("audio", blob, "recording.webm");
+    fd.append("messages", JSON.stringify(getMessages()));
+    fd.append("voice", selectedVoiceRef.current);
     let token;
     try { token = await getAuthToken(); }
     catch { setErrorMsg("Auth error."); setState("idle"); return; }
     let data;
     try {
       const res = await fetch(`${apiBase}/api/voice/turn`, {
-        method:"POST", headers:{ Authorization:`Bearer ${token}` }, body:formData,
+        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
       });
-      if (res.status === 429) { setErrorMsg("Daily voice limit reached."); setState("idle"); return; }
-      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error||`Error ${res.status}`); }
+      if (res.status === 429) { setErrorMsg("Daily limit reached."); setState("idle"); return; }
+      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || `Error ${res.status}`); }
       data = await res.json();
-    } catch(err) { setErrorMsg(err.message||"Something went wrong."); setState("idle"); return; }
+    } catch(err) { setErrorMsg(err.message || "Something went wrong."); setState("idle"); return; }
     if (data.transcript) { setTranscript(`"${data.transcript}"`); if (onTranscript) onTranscript(data.transcript); }
     if (data.replyText && onReply) onReply(data.replyText);
     if (data.audioBase64) playAudio(data.audioBase64); else setState("idle");
@@ -629,266 +643,300 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startListening]);
 
-  const stopAI = useCallback(() => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    analyserRef.current = null;
-    setState("idle");
-    setTimeout(startListening, 400);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startListening]);
+  // ── Voice preview ──────────────────────────────────────────────────────────
+  const previewVoice = useCallback(async (voiceId) => {
+    if (previewingId) return;
+    setPreviewingId(voiceId);
+    const v = VOICE_OPTIONS.find(v => v.id === voiceId);
+    if (!v) { setPreviewingId(null); return; }
+    try {
+      const token = await getAuthToken();
+      const res = await fetch(`${apiBase}/api/voice/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text: v.greeting, voice: voiceId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.audioBase64) {
+          if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+          const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
+          audioRef.current = audio;
+          audio.onended = () => { audioRef.current = null; };
+          audio.play().catch(() => {});
+        }
+      }
+    } catch {}
+    setPreviewingId(null);
+  }, [getAuthToken, apiBase, previewingId]);
 
-  const toggleMic = useCallback(() => {
-    setMicMuted(m => {
-      const next = !m;
-      if (streamRef.current) streamRef.current.getAudioTracks().forEach(t => { t.enabled = !next; });
-      return next;
-    });
-  }, []);
+  // ── Continue from greeting ─────────────────────────────────────────────────
+  const handleContinue = useCallback(async () => {
+    setScreen("main");
+    timerIntervalRef.current = setInterval(() => setTimerSecs(s => s + 1), 1000);
+    // Greet user
+    setTimeout(async () => {
+      const greeting = OPEN_GREETINGS[Math.floor(Math.random() * OPEN_GREETINGS.length)];
+      try {
+        const token = await getAuthToken();
+        const res = await fetch(`${apiBase}/api/voice/preview`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ text: greeting, voice: selectedVoiceRef.current }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.audioBase64) { playAudio(data.audioBase64); return; }
+        }
+      } catch {}
+      setState("idle");
+      startListening();
+    }, 300);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getAuthToken, apiBase, playAudio, startListening]);
 
   const endCall = useCallback(() => {
-    stopAll(); stopAnimation();
-    clearInterval(timerRef.current);
-    setState("idle");
+    stopAll(); stopAnim();
+    clearInterval(timerIntervalRef.current);
+    setState("idle"); setScreen("greet");
     onClose();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stopAll, stopAnimation, onClose]);
+  }, [stopAll, stopAnim, onClose]);
 
   const formatTime = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-  const cfg = VOICE_STATE_CFG[voiceState] || VOICE_STATE_CFG.idle;
-  const currentVoice = VOICE_OPTIONS.find(v => v.id === selectedVoice) || VOICE_OPTIONS[0];
 
   if (!isOpen) return null;
 
+  // ── MINIMIZED PILL ────────────────────────────────────────────────────────
   if (minimized) {
     return (
-      <div
-        onClick={() => setMinimized(false)}
-        title="Tap to restore"
-        style={{
-          position:"fixed", bottom:90, right:20, zIndex:9999,
-          width:72, height:72, borderRadius:"50%",
-          background:"#0d1117",
-          border:`1.5px solid ${cfg.dotColor}40`,
-          boxShadow:`0 8px 32px rgba(0,0,0,0.6), 0 0 0 4px ${cfg.dotColor}15`,
-          cursor:"pointer", overflow:"hidden",
-          animation:"evFadeIn .2s ease",
-        }}
-      >
-        <canvas ref={miniCanvasRef} width={72} height={72} style={{ width:"100%", height:"100%" }} />
+      <div style={{
+        position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+        zIndex: 9999, display: "flex", alignItems: "center", gap: 10,
+        background: "#0d3a35", borderRadius: 40, padding: "10px 18px",
+        boxShadow: "0 8px 32px rgba(13,58,53,0.45)",
+        animation: "vmSlideUp .2s ease",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      }}>
+        <style>{`@keyframes vmSlideUp { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }`}</style>
+        <div style={{ width:8, height:8, borderRadius:"50%", background: voiceState === "listening" ? "#00ff88" : voiceState === "speaking" ? "#00b894" : "#55efc4", boxShadow:`0 0 8px currentColor`, animation:"vmPulse 1.5s ease-in-out infinite" }} />
+        <span style={{ color:"#f5f0e8", fontSize:13, fontWeight:600 }}>Eloria Voice · {formatTime(timerSecs)}</span>
+        <button onClick={() => setMinimized(false)} title="Restore" style={{ width:28, height:28, borderRadius:"50%", background:"rgba(255,255,255,0.12)", border:"none", color:"rgba(255,255,255,0.7)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"background .15s" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
+        <button onClick={endCall} title="Close" style={{ width:28, height:28, borderRadius:"50%", background:"rgba(255,255,255,0.12)", border:"none", color:"rgba(255,255,255,0.7)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"background .15s" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
     );
   }
 
+  // ── GREETING SCREEN ───────────────────────────────────────────────────────
+  if (screen === "greet") {
+    return (
+      <div style={{
+        position:"fixed", inset:0, zIndex:9999,
+        background:"#f5f0e8",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        overflow:"hidden",
+      }}>
+        <style>{`
+          @keyframes vmFadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+          @keyframes vmPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+          @keyframes vmBg { 0%{opacity:0.7} 100%{opacity:1} }
+          .vm-voice-card:hover { border-color: rgba(13,58,53,0.4) !important; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(13,58,53,0.12) !important; }
+        `}</style>
+
+        {/* Soft background blobs */}
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 25% 25%, rgba(13,58,53,0.07) 0%, transparent 55%), radial-gradient(ellipse at 75% 75%, rgba(0,184,148,0.06) 0%, transparent 55%)", animation:"vmBg 6s ease-in-out infinite alternate", pointerEvents:"none" }} />
+
+        <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:24, padding:"32px 20px", width:"100%", maxWidth:500, animation:"vmFadeUp .4s ease" }}>
+
+          {/* Badge */}
+          <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", color:"#0d3a35", background:"rgba(13,58,53,0.1)", border:"1px solid rgba(13,58,53,0.18)", padding:"5px 16px", borderRadius:20 }}>
+            Eloria Voice
+          </div>
+
+          {/* Big greeting */}
+          <div style={{ textAlign:"center" }}>
+            <div style={{ fontFamily:"Georgia, 'Times New Roman', serif", fontSize:"clamp(44px,10vw,68px)", fontWeight:300, color:"#0d3a35", letterSpacing:"-0.03em", lineHeight:1.05 }}>
+              Hello!
+            </div>
+            <div style={{ fontSize:14, color:"#7a9e8a", marginTop:8 }}>Choose a voice to get started</div>
+          </div>
+
+          {/* Voice grid */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, width:"100%" }}>
+            {VOICE_OPTIONS.map(v => (
+              <div
+                key={v.id}
+                className="vm-voice-card"
+                onClick={() => { setSelectedVoice(v.id); selectedVoiceRef.current = v.id; localStorage.setItem("eloria_voice", v.id); previewVoice(v.id); }}
+                style={{
+                  display:"flex", flexDirection:"column", alignItems:"center", gap:8,
+                  padding:"18px 12px", cursor:"pointer", textAlign:"center",
+                  background: selectedVoice === v.id ? "rgba(13,58,53,0.06)" : "#fff",
+                  border: selectedVoice === v.id ? "2px solid #0d3a35" : "1.5px solid rgba(13,58,53,0.12)",
+                  borderRadius:16, transition:"all .2s", position:"relative",
+                  boxShadow: selectedVoice === v.id ? "0 0 0 3px rgba(13,58,53,0.1), 0 4px 16px rgba(13,58,53,0.1)" : "0 2px 10px rgba(13,58,53,0.05)",
+                }}
+              >
+                {selectedVoice === v.id && (
+                  <div style={{ position:"absolute", top:8, right:10, fontSize:11, fontWeight:700, color:"#0d3a35" }}>✓</div>
+                )}
+                {previewingId === v.id && (
+                  <div style={{ position:"absolute", top:8, left:10 }}>
+                    <div style={{ width:6, height:6, borderRadius:"50%", background:"#00b894", animation:"vmPulse .8s ease-in-out infinite" }} />
+                  </div>
+                )}
+                <div style={{
+                  width:44, height:44, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:18, fontWeight:700, fontFamily:"Georgia, serif",
+                  background: v.gender === "Female" ? "rgba(108,92,231,0.1)" : "rgba(13,58,53,0.1)",
+                  color: v.gender === "Female" ? "#6C5CE7" : "#0d3a35",
+                }}>
+                  {v.label[0]}
+                </div>
+                <div style={{ fontSize:13.5, fontWeight:700, color:"#1a2e20" }}>{v.label}</div>
+                <div style={{ fontSize:11, color:"#8a9e8e" }}>{v.gender} · {v.tone}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ fontSize:11, color:"#a0b0a8" }}>Tap a voice to preview it</div>
+
+          {/* Continue */}
+          <button
+            onClick={handleContinue}
+            style={{
+              padding:"14px 52px", background:"#0d3a35", color:"#f5f0e8",
+              border:"none", borderRadius:40, fontSize:15, fontWeight:600,
+              cursor:"pointer", letterSpacing:"0.02em",
+              boxShadow:"0 4px 20px rgba(13,58,53,0.35)", transition:"all .2s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background="#1a5a52"; e.currentTarget.style.transform="translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background="#0d3a35"; e.currentTarget.style.transform="translateY(0)"; }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── MAIN SCREEN ───────────────────────────────────────────────────────────
+  const stateColor = voiceState === "listening" ? "#0d6a5e" : voiceState === "speaking" ? "#00b894" : voiceState === "processing" ? "#2d6a4f" : "rgba(13,58,53,0.4)";
+
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:9999,
-      background:"#080a10",
+      background:"#f5f0e8",
       display:"flex", flexDirection:"column",
-      alignItems:"center", justifyContent:"space-between",
-      padding:"32px 0 40px",
-      fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-      animation:"evFadeIn .2s ease",
+      fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
       <style>{`
-        @keyframes evFadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes evPulse  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
-        @keyframes voicePickerIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes vmFadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes vmPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+        @keyframes vmStatusPulse { from{opacity:0.6} to{opacity:1} }
+        .vm-ctrl-btn:hover { background: rgba(13,58,53,0.14) !important; }
+        .vm-end-btn:hover { background: #c0392b !important; transform: scale(1.05); }
       `}</style>
 
-      {/* ── TOP BAR ── */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"0 28px", boxSizing:"border-box" }}>
+      {/* Top bar */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 20px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:8, height:8, borderRadius:"50%", background:cfg.dotColor, boxShadow:`0 0 8px ${cfg.dotColor}`, flexShrink:0 }} />
-          <span style={{ color:"rgba(255,255,255,0.5)", fontSize:13, letterSpacing:"0.04em" }}>{formatTime(timerSecs)}</span>
+          <div style={{ width:8, height:8, borderRadius:"50%", background: stateColor, transition:"background .4s", boxShadow: voiceState !== "idle" ? `0 0 8px ${stateColor}` : "none" }} />
+          <span style={{ fontSize:12, fontWeight:700, color:"#0d3a35", letterSpacing:"0.06em", textTransform:"uppercase" }}>Eloria Voice</span>
+          <span style={{ fontSize:11, color:"rgba(13,58,53,0.4)", fontVariantNumeric:"tabular-nums" }}>{formatTime(timerSecs)}</span>
         </div>
-        <span style={{ color:"rgba(255,255,255,0.3)", fontSize:12, letterSpacing:"0.08em" }}>{cfg.label}</span>
-        <button
-          onClick={() => setMinimized(true)}
-          title="Minimize"
-          style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.55)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-          </svg>
-        </button>
-      </div>
-
-      {/* ── ORB + TRANSCRIPT ── */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:20, width:"100%" }}>
-        <canvas
-          ref={canvasRef}
-          style={{ width:"min(320px, 80vw)", height:"min(320px, 80vw)", cursor:"pointer", display:"block" }}
-          onClick={() => {
-            if (voiceState === "idle") startListening();
-            else if (voiceState === "listening" && recorderRef.current?.state !== "inactive") recorderRef.current.stop();
-          }}
-          title={voiceState === "idle" ? "Tap to speak" : voiceState === "listening" ? "Tap to stop" : ""}
-        />
-        <div style={{ textAlign:"center", minHeight:36, padding:"0 32px" }}>
-          {errorMsg ? (
-            <p style={{ margin:0, color:"rgba(230,100,100,0.85)", fontSize:13 }}>{errorMsg}</p>
-          ) : transcript ? (
-            <p style={{ margin:0, color:"rgba(255,255,255,0.3)", fontSize:13, fontStyle:"italic", lineHeight:1.5 }}>{transcript}</p>
-          ) : (
-            <p style={{ margin:0, color:"rgba(255,255,255,0.15)", fontSize:12, letterSpacing:"0.05em" }}>
-              {voiceState === "idle" ? "tap the orb to speak" : voiceState === "listening" ? "tap orb to stop early" : ""}
-            </p>
-          )}
+        <div style={{ display:"flex", gap:8 }}>
+          <button className="vm-ctrl-btn" onClick={() => setMinimized(true)} title="Minimize" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1px solid rgba(13,58,53,0.14)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button className="vm-ctrl-btn" onClick={endCall} title="Close" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1px solid rgba(13,58,53,0.14)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
       </div>
 
-      {/* ── VOICE PICKER ── */}
-      <div style={{ position:"relative", marginBottom:16 }}>
-        <button
-          onClick={() => setShowVoicePicker(v => !v)}
-          style={{
-            display:"flex", alignItems:"center", gap:8,
-            padding:"8px 16px", borderRadius:20,
-            background:"rgba(255,255,255,0.06)",
-            border:"1px solid rgba(255,255,255,0.12)",
-            color:"rgba(255,255,255,0.7)", cursor:"pointer",
-            fontSize:12.5, fontFamily:"inherit",
-            transition:"all .2s",
-          }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-            <path d="M19 10v2a7 7 0 01-14 0v-2"/>
-            <line x1="12" y1="19" x2="12" y2="23"/>
-            <line x1="8" y1="23" x2="16" y2="23"/>
-          </svg>
-          <span style={{ color:"rgba(255,255,255,0.45)", fontSize:11 }}>Voice:</span>
-          <span style={{ fontWeight:600 }}>{currentVoice.label}</span>
-          <span style={{ color:"rgba(255,255,255,0.35)", fontSize:11 }}>{currentVoice.gender} · {currentVoice.tone}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-            style={{ transform: showVoicePicker ? "rotate(180deg)" : "rotate(0deg)", transition:"transform .2s" }}>
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
+      {/* Canvas */}
+      <canvas
+        ref={canvasRef}
+        style={{ flex:1, width:"100%", display:"block", cursor:"pointer", minHeight:0 }}
+        onClick={() => {
+          if (voiceState === "idle") startListening();
+          else if (voiceState === "listening" && recorderRef.current?.state !== "inactive") recorderRef.current.stop();
+          else if (voiceState === "speaking") { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; } analyserRef.current = null; setState("idle"); }
+        }}
+      />
 
-        {showVoicePicker && (
-          <div style={{
-            position:"absolute", bottom:"calc(100% + 10px)", left:"50%",
-            transform:"translateX(-50%)",
-            background:"#0f1117",
-            border:"1px solid rgba(255,255,255,0.12)",
-            borderRadius:16, padding:6, minWidth:240,
-            boxShadow:"0 16px 48px rgba(0,0,0,0.7)",
-            animation:"voicePickerIn .15s ease",
-            zIndex:10,
-          }}>
-            <div style={{ padding:"6px 10px 8px", fontSize:10, color:"rgba(255,255,255,0.3)", letterSpacing:"0.08em", textTransform:"uppercase", fontWeight:600 }}>
-              Choose Voice
-            </div>
-            {VOICE_OPTIONS.map(v => (
-              <button
-                key={v.id}
-                onClick={() => { setSelectedVoice(v.id); setShowVoicePicker(false); }}
-                style={{
-                  display:"flex", alignItems:"center", gap:12,
-                  width:"100%", padding:"10px 12px",
-                  background: selectedVoice === v.id ? "rgba(255,255,255,0.08)" : "none",
-                  border: selectedVoice === v.id ? "1px solid rgba(255,255,255,0.12)" : "1px solid transparent",
-                  borderRadius:10, cursor:"pointer",
-                  color:"rgba(255,255,255,0.85)", fontFamily:"inherit",
-                  transition:"all .15s", textAlign:"left",
-                  marginBottom:2,
-                }}
-                onMouseEnter={e => { if (selectedVoice !== v.id) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                onMouseLeave={e => { if (selectedVoice !== v.id) e.currentTarget.style.background = "none"; }}
-              >
-                <div style={{
-                  width:36, height:36, borderRadius:10, flexShrink:0,
-                  background: v.gender === "Female" ? "rgba(108,92,231,0.2)" : "rgba(0,217,192,0.15)",
-                  border: `1px solid ${v.gender === "Female" ? "rgba(108,92,231,0.3)" : "rgba(0,217,192,0.25)"}`,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:15,
-                }}>
-                  {v.gender === "Female" ? "♀" : "♂"}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13.5, fontWeight:600, lineHeight:1.3 }}>{v.label}</div>
-                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:1 }}>{v.gender} · {v.tone}</div>
-                </div>
-                {selectedVoice === v.id && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00D9C0" strokeWidth="2.5" strokeLinecap="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                )}
-              </button>
-            ))}
+      {/* Center overlay text */}
+      <div style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)", textAlign:"center", pointerEvents:"none", width:"100%" }}>
+        <div style={{ fontSize:14, fontWeight:600, color: stateColor, letterSpacing:"0.06em", textTransform:"lowercase", transition:"color .4s", animation: voiceState === "processing" ? "vmStatusPulse 1s ease-in-out infinite alternate" : "none" }}>
+          {STATE_LABELS[voiceState]}
+        </div>
+        {(transcript || errorMsg) && (
+          <div style={{ fontSize:13, color: errorMsg ? "rgba(220,80,80,0.8)" : "rgba(13,58,53,0.5)", fontStyle:"italic", marginTop:8, padding:"0 32px", lineHeight:1.55 }}>
+            {errorMsg || transcript}
           </div>
         )}
       </div>
 
-      {/* ── CONTROLS ── */}
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:24, width:"100%" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:28 }}>
+      {/* Bottom controls */}
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16, padding:"20px 0 32px", flexShrink:0 }}>
+        {/* Voice label */}
+        <div style={{ fontSize:11, color:"rgba(13,58,53,0.45)", letterSpacing:"0.04em" }}>
+          {VOICE_OPTIONS.find(v => v.id === selectedVoice)?.label} · {VOICE_OPTIONS.find(v => v.id === selectedVoice)?.tone}
+        </div>
+
+        {/* Control buttons */}
+        <div style={{ display:"flex", alignItems:"center", gap:24 }}>
+          {/* Back to voice select */}
           <button
-            onClick={toggleMic}
-            title={micMuted ? "Unmute" : "Mute"}
-            style={{
-              width:54, height:54, borderRadius:"50%",
-              background: micMuted ? "rgba(229,62,62,0.15)" : "rgba(255,255,255,0.07)",
-              border: `1.5px solid ${micMuted ? "rgba(229,62,62,0.4)" : "rgba(255,255,255,0.13)"}`,
-              color: micMuted ? "#fc8181" : "rgba(255,255,255,0.7)",
-              cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s",
-            }}
+            className="vm-ctrl-btn"
+            onClick={() => { stopAll(); clearInterval(timerIntervalRef.current); setTimerSecs(0); setState("idle"); setScreen("greet"); }}
+            title="Change voice"
+            style={{ width:52, height:52, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1.5px solid rgba(13,58,53,0.15)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s" }}
           >
-            {micMuted ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <line x1="1" y1="1" x2="23" y2="23"/>
-                <path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/>
-                <path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23"/>
-                <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-                <path d="M19 10v2a7 7 0 01-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-            )}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+              <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
           </button>
 
+          {/* End call */}
           <button
+            className="vm-end-btn"
             onClick={endCall}
-            title="End call"
-            style={{
-              width:70, height:70, borderRadius:"50%",
-              background:"#e53e3e", border:"none", color:"#fff",
-              cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
-              boxShadow:"0 0 0 10px rgba(229,62,62,0.13)", transition:"all .2s",
-            }}
+            title="End"
+            style={{ width:68, height:68, borderRadius:"50%", background:"#e53e3e", border:"none", color:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 0 10px rgba(229,62,62,0.12)", transition:"all .2s" }}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" transform="rotate(135 12 12)"/>
             </svg>
           </button>
 
+          {/* Stop AI */}
           <button
-            onClick={stopAI}
-            title="Stop AI reply"
-            style={{
-              width:54, height:54, borderRadius:"50%",
-              background: voiceState === "speaking" ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.07)",
-              border: `1.5px solid ${voiceState === "speaking" ? "rgba(245,158,11,0.45)" : "rgba(255,255,255,0.13)"}`,
-              color: voiceState === "speaking" ? "#fbbf24" : "rgba(255,255,255,0.7)",
-              cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s",
-            }}
+            className="vm-ctrl-btn"
+            onClick={() => { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; } analyserRef.current = null; setState("idle"); setTimeout(startListening, 400); }}
+            title="Stop & re-listen"
+            style={{ width:52, height:52, borderRadius:"50%", background: voiceState === "speaking" ? "rgba(0,184,148,0.12)" : "rgba(13,58,53,0.08)", border:`1.5px solid ${voiceState === "speaking" ? "rgba(0,184,148,0.4)" : "rgba(13,58,53,0.15)"}`, color: voiceState === "speaking" ? "#00b894" : "#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s" }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="4" y="4" width="16" height="16" rx="3"/>
-            </svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
           </button>
+        </div>
+
+        <div style={{ fontSize:11, color:"rgba(13,58,53,0.28)", letterSpacing:"0.03em" }}>
+          tap the wave to speak · tap again to stop
         </div>
       </div>
     </div>
   );
 }
-
-
 const CW_STYLE = `
   /* ── SHELL ───────────────────────────────────────────── */
   .cw-root {
