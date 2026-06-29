@@ -3,6 +3,8 @@ import logo from "../assets/logo.png";
 import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
+import { Document, Packer, Paragraph, HeadingLevel, TextRun } from "docx";
+import PptxGenJS from "pptxgenjs";
 
 const GREETINGS = [
   { label: "Good to have you back.", name: true,  sub: "What can I help you with today?" },
@@ -100,6 +102,79 @@ function detectCodeBlocks(text) {
     }
   }
   return blocks;
+}
+
+function detectDocBlocks(text) {
+  const regex = /```document\n([\s\S]*?)```/g;
+  const blocks = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) blocks.push(match[1].trim());
+  return blocks;
+}
+
+function detectPresentationBlocks(text) {
+  const regex = /```presentation\n([\s\S]*?)```/g;
+  const blocks = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) blocks.push(match[1].trim());
+  return blocks;
+}
+
+function parseMarkdownDoc(raw) {
+  return raw.split("\n").filter(l => l.trim()).map(line => {
+    if (line.startsWith("# ")) return { type: "h1", text: line.slice(2) };
+    if (line.startsWith("## ")) return { type: "h2", text: line.slice(3) };
+    if (line.startsWith("### ")) return { type: "h3", text: line.slice(4) };
+    if (line.startsWith("- ")) return { type: "bullet", text: line.slice(2) };
+    if (/^\*\*(.+)\*\*/.test(line.trim())) return { type: "bold", text: line.trim().replace(/\*\*/g, "") };
+    return { type: "text", text: line };
+  });
+}
+
+function parseSlides(raw) {
+  return raw.split(/\n---\n/).map(slide => parseMarkdownDoc(slide));
+}
+
+async function generateDocx(rawText, filename) {
+  const lines = parseMarkdownDoc(rawText);
+  const children = lines.map(line => {
+    switch (line.type) {
+      case "h1": return new Paragraph({ text: line.text, heading: HeadingLevel.TITLE });
+      case "h2": return new Paragraph({ text: line.text, heading: HeadingLevel.HEADING_1 });
+      case "h3": return new Paragraph({ text: line.text, heading: HeadingLevel.HEADING_2 });
+      case "bold": return new Paragraph({ children: [new TextRun({ text: line.text, bold: true })] });
+      case "bullet": return new Paragraph({ text: line.text, bullet: { level: 0 } });
+      default: return new Paragraph({ text: line.text });
+    }
+  });
+  const doc = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function generatePptx(rawText, filename) {
+  const slides = parseSlides(rawText);
+  const pptx = new PptxGenJS();
+  slides.forEach(lines => {
+    const slide = pptx.addSlide();
+    let y = 0.5;
+    lines.forEach(line => {
+      if (line.type === "h1") {
+        slide.addText(line.text, { x: 0.5, y, fontSize: 28, bold: true, w: 9 });
+        y += 1;
+      } else if (line.type === "bullet") {
+        slide.addText(line.text, { x: 0.7, y, fontSize: 16, bullet: true, w: 8.5 });
+        y += 0.5;
+      } else {
+        slide.addText(line.text, { x: 0.5, y, fontSize: 16, w: 9 });
+        y += 0.5;
+      }
+    });
+  });
+  pptx.writeFile({ fileName: filename });
 }
 
 function classifyMessage({ text, hasFiles }) {
@@ -299,6 +374,38 @@ return (
     <span className="cw-download-text">Download {lang}</span>
   </button>
 );
+}
+
+function DownloadDocButton({ text }) {
+  const blocks = detectDocBlocks(text);
+  if (blocks.length === 0) return null;
+  const handleDownload = () => generateDocx(blocks[0], "eloria-document.docx");
+  return (
+    <button className="cw-download-btn" onClick={handleDownload} title="Download Word document">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span className="cw-download-text">Download Word doc</span>
+    </button>
+  );
+}
+
+function DownloadPptxButton({ text }) {
+  const blocks = detectPresentationBlocks(text);
+  if (blocks.length === 0) return null;
+  const handleDownload = () => generatePptx(blocks[0], "eloria-presentation.pptx");
+  return (
+    <button className="cw-download-btn" onClick={handleDownload} title="Download PowerPoint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span className="cw-download-text">Download slides</span>
+    </button>
+  );
 }
 
 function UrlFetchChip({ url, status }) {
@@ -2901,11 +3008,17 @@ const apiMessages = newMessages.map((m, idx) => {
 
             {msg.text && (
               <div className="cw-bubble">
-                <MarkdownMessage content={msg.text} />
+                <MarkdownMessage content={
+                  msg.text
+                    .replace(/```document\n[\s\S]*?```/g, "_ Document ready below_")
+                    .replace(/```presentation\n[\s\S]*?```/g, "_ Slides ready below_")
+                } />
               </div>
             )}
 
             {msg.text && <DownloadCodeButton text={msg.text} />}
+            {msg.text && <DownloadDocButton text={msg.text} />}
+            {msg.text && <DownloadPptxButton text={msg.text} />}
 
             {/* Interrupted notice */}
             {msg.id === interruptedMsgId && (
