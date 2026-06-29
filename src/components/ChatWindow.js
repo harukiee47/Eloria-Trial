@@ -316,47 +316,6 @@ function UrlFetchChip({ url, status }) {
   );
 }
 
-// ── Voice state config (molecule orb) ────────────────────────────────────────
-
-function hexToRgb(hex) {
-  return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
-}
-function lerpC(a, b, t) { return { r: a.r+(b.r-a.r)*t, g: a.g+(b.g-a.g)*t, b: a.b+(b.b-a.b)*t }; }
-function rgbaStr(c, a) { return `rgba(${Math.round(c.r)},${Math.round(c.g)},${Math.round(c.b)},${a})`; }
-
-const NUM_MOLS = 52;
-function buildMolecules() {
-  const mols = [];
-  for (let i = 0; i < NUM_MOLS; i++) {
-    mols.push({
-      angle:      Math.random() * Math.PI * 2,
-      baseRadius: 20 + Math.random() * 115,
-      size:       2.5 + Math.random() * 4.5,
-      speed:      (0.003 + Math.random() * 0.009) * (Math.random() > 0.5 ? 1 : -1),
-      phaseOff:   Math.random() * Math.PI * 2,
-      pSpeed:     0.02 + Math.random() * 0.05,
-      colorIdx:   Math.floor(Math.random() * 7),
-      bondTo:     [],
-    });
-  }
-  for (let i = 0; i < mols.length; i++) {
-    for (let j = i+1; j < mols.length; j++) {
-      if (mols[i].bondTo.length >= 3 || mols[j].bondTo.length >= 3) continue;
-      const xi = Math.cos(mols[i].angle)*mols[i].baseRadius;
-      const yi = Math.sin(mols[i].angle)*mols[i].baseRadius;
-      const xj = Math.cos(mols[j].angle)*mols[j].baseRadius;
-      const yj = Math.sin(mols[j].angle)*mols[j].baseRadius;
-      if (Math.hypot(xj-xi, yj-yi) < 55) mols[i].bondTo.push(j);
-    }
-  }
-  return mols;
-}
-
-function getSupportedMimeType() {
-  const types = ["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus","audio/mp4"];
-  return types.find(t => MediaRecorder.isTypeSupported(t)) || "";
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // VOICE MODAL — Gemini-inspired, Eloria dark green + cream theme
 // Replace the entire VoiceModal function in ChatWindow.js with this
