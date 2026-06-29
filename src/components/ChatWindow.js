@@ -618,10 +618,10 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     utterance.pitch = 1;
 
     // Try to find a matching voice, fall back to any available
-    const voices = window.speechSynthesis.getVoices();
     const urduVoice = voices.find(v => v.lang.startsWith("ur"));
-    const anyVoice = voices.find(v => v.lang.startsWith("en")) || voices[0];
-    utterance.voice = urduVoice || anyVoice || null;
+const hindiVoice = voices.find(v => v.lang.startsWith("hi"));
+const anyVoice = voices.find(v => v.lang.startsWith("en")) || voices[0];
+utterance.voice = urduVoice || hindiVoice || anyVoice || null;
 
     utterance.onend = () => {
       setState("idle");
