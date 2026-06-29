@@ -539,7 +539,6 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     analyserRef.current = an;
     setState("listening"); setErrorMsg(""); setTranscript("");
     chunksRef.current = [];
-    const mimeType = getSupportedMimeType();
     const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
     recorderRef.current = recorder;
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
