@@ -376,6 +376,29 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   const [timerSecs,     setTimerSecs]     = useState(0);
   const timerIntervalRef = useRef(null);
 
+useEffect(() => {
+  if (!isOpen) return;
+  const handleVisibilityChange = () => {
+    if (document.hidden && voiceStateRef.current !== "idle") {
+      if (Notification.permission === "default") Notification.requestPermission();
+      if (Notification.permission === "granted") {
+        const label = voiceStateRef.current === "listening" ? "Listening…"
+                    : voiceStateRef.current === "speaking"  ? "Speaking…"
+                    : "Thinking…";
+        new Notification("Eloria Voice", {
+          body: label,
+          icon: "/logo.png",
+          tag: "eloria-voice",
+          renotify: true,
+          silent: true,
+        });
+      }
+    }
+  };
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+}, [isOpen]);
+
   const STATE_LABELS = {
     idle: "tap to speak", listening: "listening…", processing: "thinking…", speaking: "speaking…",
   };
@@ -526,13 +549,15 @@ useEffect(() => {
     const t0 = Date.now();
     const check = () => {
       if (!recorderRef.current || recorderRef.current.state === "inactive") return;
+      if (!recorderRef.current || recorderRef.current.state === "inactive") return;
+if (voiceStateRef.current === "processing") return;
       if (Date.now() - t0 > 30000) { recorderRef.current.stop(); return; }
       const d = new Uint8Array(sa.frequencyBinCount);
       sa.getByteFrequencyData(d);
       const avg = d.reduce((a,b)=>a+b,0)/d.length;
-      if (avg < 8) {
+      if (avg < 12) {
         if (!silStart) silStart = Date.now();
-        else if (Date.now() - silStart > 1500) { recorderRef.current.stop(); return; }
+        else if (Date.now() - silStart > 900) { recorderRef.current.stop(); return; }
       } else silStart = null;
       setTimeout(check, 100);
     };
@@ -540,8 +565,8 @@ useEffect(() => {
   }, []);
 
   const startListening = useCallback(async () => {
-    if (voiceStateRef.current !== "idle" && voiceStateRef.current !== "speaking") return;
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    if (voiceStateRef.current === "processing") return;
+if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; analyserRef.current = null; }
     let micStream;
     try { micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
     catch { setErrorMsg("Microphone access denied."); return; }

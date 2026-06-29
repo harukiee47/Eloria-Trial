@@ -321,7 +321,7 @@ export function initVoiceModal({
       const d = new Uint8Array(sa.frequencyBinCount);
       sa.getByteFrequencyData(d);
       const avg = d.reduce((a,b)=>a+b,0)/d.length;
-      if (avg < 8) {
+      if (avg < 12) {
         if (!silStart) silStart = Date.now();
         else if (Date.now() - silStart > 1500) { mediaRecorder.stop(); return; }
       } else silStart = null;
