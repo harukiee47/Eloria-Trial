@@ -613,16 +613,14 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
 } else if (data.replyText) {
   setState("speaking");
   const speak = () => {
+    const voices = window.speechSynthesis.getVoices();
     const utterance = new SpeechSynthesisUtterance(data.replyText);
     utterance.rate = 0.95;
     utterance.pitch = 1;
-
-    // Try to find a matching voice, fall back to any available
     const urduVoice = voices.find(v => v.lang.startsWith("ur"));
-const hindiVoice = voices.find(v => v.lang.startsWith("hi"));
-const anyVoice = voices.find(v => v.lang.startsWith("en")) || voices[0];
-utterance.voice = urduVoice || hindiVoice || anyVoice || null;
-
+    const hindiVoice = voices.find(v => v.lang.startsWith("hi"));
+    const anyVoice = voices.find(v => v.lang.startsWith("en")) || voices[0];
+    utterance.voice = urduVoice || hindiVoice || anyVoice || null;
     utterance.onend = () => {
       setState("idle");
       setTimeout(startListening, 400);
@@ -631,11 +629,9 @@ utterance.voice = urduVoice || hindiVoice || anyVoice || null;
       console.error("SpeechSynthesis error:", e);
       setState("idle");
     };
-    window.speechSynthesis.cancel(); // clear any pending
+    window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
   };
-
-  // Voices may not be loaded yet — wait for them
   if (window.speechSynthesis.getVoices().length === 0) {
     window.speechSynthesis.onvoiceschanged = () => { speak(); };
   } else {
