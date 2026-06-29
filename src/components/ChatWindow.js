@@ -608,7 +608,25 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
     } catch(err) { setErrorMsg(err.message||"Something went wrong."); setState("idle"); return; }
     if (data.transcript) { setTranscript(`"${data.transcript}"`); if (onTranscript) onTranscript(data.transcript); }
     if (data.replyText && onReply) onReply(data.replyText);
-    if (data.audioBase64) playAudio(data.audioBase64); else setState("idle");
+    if (data.audioBase64) {
+  playAudio(data.audioBase64);
+} else if (data.replyText) {
+  // Non-English reply — use browser TTS
+  const utterance = new SpeechSynthesisUtterance(data.replyText);
+  utterance.rate = 0.95;
+  utterance.pitch = 1;
+  setState("speaking");
+  utterance.onend = () => {
+    setState("idle");
+    setTimeout(startListening, 400);
+  };
+  utterance.onerror = () => {
+    setState("idle");
+  };
+  window.speechSynthesis.speak(utterance);
+} else {
+  setState("idle");
+}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAuthToken, getMessages, onTranscript, onReply, apiBase]);
 
