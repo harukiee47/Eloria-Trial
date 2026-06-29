@@ -179,21 +179,14 @@ router.post(
         return res.status(500).json({ error: "AI response failed." });
       }
 
-      // ── 4. TTS — skip for non-English, Deepgram TTS only supports English ──
+      // ── 4. TTS ─────────────────────────────────────────────────────────────────
       const voice = req.body.voice || "aura-asteria-en";
-      const englishReply = isEnglishText(replyText);
       let audioBase64 = null;
-
-      if (englishReply) {
-        try {
-          audioBase64 = await synthesiseSpeech(replyText, voice);
-        } catch (err) {
-          console.error("TTS error:", err.message);
-          // Non-fatal: return text without audio
-          audioBase64 = null;
-        }
-      } else {
-        console.log(`Non-English response detected (${detectedLanguage}), skipping TTS.`);
+      try {
+        audioBase64 = await synthesiseSpeech(replyText, voice);
+      } catch (err) {
+        console.error("TTS error:", err.message);
+        audioBase64 = null;
       }
 
       // ── 5. Increment voice usage ────────────────────────────────────────────

@@ -480,10 +480,15 @@ function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, 
   }, [isOpen, screen]);
 
   // ── Open/close ────────────────────────────────────────────────────────────
-  useEffect(() => {
+useEffect(() => {
     if (isOpen) {
       const saved = localStorage.getItem("eloria_voice");
-      setScreen(saved ? "main" : "greet");
+      if (saved) {
+        setScreen("main");
+        setTimeout(() => handleContinue(), 100);
+      } else {
+        setScreen("greet");
+      }
       setTranscript(""); setErrorMsg(""); setMinimized(false);
       setTimerSecs(0); setState("idle"); phaseRef.current = 0;
     } else {
@@ -661,7 +666,7 @@ const endCall = useCallback(() => {
     clearInterval(timerIntervalRef.current);
     const mins = String(Math.floor(timerSecs/60)).padStart(2,"0");
     const secs = String(timerSecs%60).padStart(2,"0");
-    if (onReply) onReply(`🎙 Voice call ended · ${mins}:${secs}`);
+    if (onReply) onReply(` Voice call ended · ${mins}:${secs}`);
     setState("idle"); setScreen("greet");
     onClose();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -878,35 +883,41 @@ const endCall = useCallback(() => {
       `}</style>
 
       {/* Top bar */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 20px", flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:8, height:8, borderRadius:"50%", background: stateColor, transition:"background .4s", boxShadow: voiceState !== "idle" ? `0 0 8px ${stateColor}` : "none" }} />
-          <span style={{ fontSize:12, fontWeight:700, color:"#0d3a35", letterSpacing:"0.06em", textTransform:"uppercase" }}>Eloria Voice</span>
-          <span style={{ fontSize:11, color:"rgba(13,58,53,0.4)", fontVariantNumeric:"tabular-nums" }}>{formatTime(timerSecs)}</span>
-        </div>
-        <div style={{ display:"flex", gap:8 }}>
-  <button
-    className="vm-ctrl-btn"
-    onClick={() => { stopAll(); clearInterval(timerIntervalRef.current); setTimerSecs(0); setState("idle"); setScreen("greet"); }}
-    title="Change voice"
-    style={{ width:34, height:34, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1px solid rgba(13,58,53,0.14)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}
-  >
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-      <path d="M19 10v2a7 7 0 01-14 0v-2"/>
-      <line x1="12" y1="19" x2="12" y2="23"/>
-      <line x1="8" y1="23" x2="16" y2="23"/>
-    </svg>
-  </button>
-          <button className="vm-ctrl-btn" onClick={() => setMinimized(true)} title="Minimize" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1px solid rgba(13,58,53,0.14)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
-          <button className="vm-ctrl-btn" onClick={endCall} title="Close" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1px solid rgba(13,58,53,0.14)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      </div>
-
+<div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 20px", flexShrink:0 }}>
+  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+    <div style={{ width:8, height:8, borderRadius:"50%", background:stateColor, transition:"background .4s", boxShadow: voiceState !== "idle" ? `0 0 8px ${stateColor}` : "none" }} />
+    <span style={{ fontSize:12, fontWeight:700, color:"#0d3a35", letterSpacing:"0.06em", textTransform:"uppercase" }}>Eloria Voice</span>
+    <span style={{ fontSize:11, color:"rgba(13,58,53,0.4)", fontVariantNumeric:"tabular-nums" }}>{formatTime(timerSecs)}</span>
+  </div>
+  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+    <button
+      onClick={() => { stopAll(); clearInterval(timerIntervalRef.current); setTimerSecs(0); setState("idle"); setScreen("greet"); }}
+      title="Change voice"
+      style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 12px 5px 8px", borderRadius:20, background:"rgba(13,58,53,0.07)", border:"1px solid rgba(13,58,53,0.13)", color:"#0d3a35", cursor:"pointer", fontSize:11, fontWeight:600, transition:"all .15s" }}
+      onMouseEnter={e => e.currentTarget.style.background="rgba(13,58,53,0.13)"}
+      onMouseLeave={e => e.currentTarget.style.background="rgba(13,58,53,0.07)"}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+        <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+      {VOICE_OPTIONS.find(v => v.id === selectedVoice)?.label || "Voice"}
+    </button>
+    <button
+      onClick={() => setMinimized(true)}
+      title="Minimize"
+      style={{ width:32, height:32, borderRadius:"50%", background:"rgba(13,58,53,0.07)", border:"1px solid rgba(13,58,53,0.13)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}
+      onMouseEnter={e => e.currentTarget.style.background="rgba(13,58,53,0.13)"}
+      onMouseLeave={e => e.currentTarget.style.background="rgba(13,58,53,0.07)"}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+  </div>
+</div>
       {/* Canvas */}
       <canvas
         ref={canvasRef}
