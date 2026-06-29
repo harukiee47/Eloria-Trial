@@ -86,13 +86,33 @@ async function transcribeAudio(audioBuffer, mimeType) {
 }
 
 // ─── Claude (brain) ───────────────────────────────────────────────────────────
-async function getClaudeReply(messages, transcript) {
+async function getClaudeReply(messages, transcript, screenshotBase64 = null) {
+  const userContent = [];
+
+  if (screenshotBase64) {
+    userContent.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: "image/png",
+        data: screenshotBase64,
+      },
+    });
+  }
+
+  userContent.push({ type: "text", text: transcript });
+
   const fullMessages = [
     ...messages,
-    { role: "user", content: transcript },
+    { role: "user", content: userContent },
   ];
 
-  const anthropicMessages = buildAnthropicMessages(fullMessages);
+  const anthropicMessages = fullMessages.map((m) => {
+    if (typeof m.content === "string") {
+      return { role: m.role, content: m.content };
+    }
+    return { role: m.role, content: m.content };
+  });
 
   const response = await anthropic.messages.create({
     model: MODELS.CHAT,
@@ -107,10 +127,7 @@ async function getClaudeReply(messages, transcript) {
     .join(" ")
     .trim();
 
-  if (!replyText) {
-    throw new Error("Empty reply from Claude.");
-  }
-
+  if (!replyText) throw new Error("Empty reply from Claude.");
   return replyText;
 }
 
@@ -160,6 +177,7 @@ router.post(
       }
 
       const mimeType = req.file.mimetype || "audio/webm";
+      const screenshotBase64 = req.body.screenshot || null;
 
       // ── 2. STT ─────────────────────────────────────────────────────────────
       let transcript, detectedLanguage;
@@ -170,10 +188,21 @@ router.post(
         return res.status(422).json({ error: err.message });
       }
 
+      // ── Check for screen share keywords ───────────────────────────────────────
+const SCREEN_KEYWORDS = [
+  "check my screen", "look at my screen", "what do you see",
+  "what's on my screen", "whats on my screen", "see my screen",
+  "analyze my screen", "look at this", "what is on screen",
+  "screen share", "share screen", "what can you see",
+];
+const needsScreen = SCREEN_KEYWORDS.some(k =>
+  transcript.toLowerCase().includes(k)
+) && !screenshotBase64;
+
       // ── 3. Claude ──────────────────────────────────────────────────────────
       let replyText;
       try {
-        replyText = await getClaudeReply(messages, transcript);
+        replyText = await getClaudeReply(messages, transcript, screenshotBase64);
       } catch (err) {
         console.error("Claude error:", err.message);
         return res.status(500).json({ error: "AI response failed." });
@@ -197,7 +226,7 @@ router.post(
       }
 
       // ── 6. Return result ────────────────────────────────────────────────────
-      return res.json({ transcript, replyText, audioBase64 });
+      return res.json({ transcript, replyText, audioBase64, needsScreen });
     } catch (err) {
       console.error("Voice route error:", err);
       if (!res.headersSent) {

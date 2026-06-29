@@ -355,6 +355,7 @@ const WAVE_COLORS = {
 
 
 function VoiceModal({ isOpen, onClose, getAuthToken, getMessages, onTranscript, onReply, apiBase }) {
+  const pendingScreenshotRef = useRef(null);
   const canvasRef      = useRef(null);
   const animIdRef      = useRef(null);
   const analyserRef    = useRef(null);
@@ -384,9 +385,9 @@ useEffect(() => {
   const showNotif = () => {
     if (!document.hidden) return;
     if (Notification.permission !== "granted") return;
-    const label = voiceStateRef.current === "listening" ? "🎙 Listening to you…"
-                : voiceStateRef.current === "speaking"  ? "🔊 Speaking…"
-                : voiceStateRef.current === "processing"? "💭 Thinking…"
+    const label = voiceStateRef.current === "listening" ? " Listening to you…"
+                : voiceStateRef.current === "speaking"  ? " Speaking…"
+                : voiceStateRef.current === "processing"? " Thinking…"
                 : "Voice active";
     activeNotif = new Notification("Eloria Voice is active", {
       body: label,
@@ -594,6 +595,27 @@ if (voiceStateRef.current === "processing") return;
     setTimeout(check, 800);
   }, []);
 
+  const captureScreen = useCallback(async () => {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { mediaSource: "screen", width: 1280, height: 720 },
+      audio: false,
+    });
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    await video.play();
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    stream.getTracks().forEach(t => t.stop());
+    const base64 = canvas.toDataURL("image/png").split(",")[1];
+    return base64;
+  } catch {
+    return null;
+  }
+}, []);
+
   const startListening = useCallback(async () => {
    if (voiceStateRef.current === "processing") return;
 if (audioRef.current) {
@@ -616,41 +638,74 @@ if (audioRef.current) {
 const recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
     recorderRef.current = recorder;
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-    recorder.onstop = () => {
-      if (streamRef.current) { streamRef.current.getTracks().forEach(t=>t.stop()); streamRef.current = null; }
-      analyserRef.current = null;
-      submitAudio(mimeType);
-    };
+    recorder.onstop = async () => {
+  if (streamRef.current) { streamRef.current.getTracks().forEach(t=>t.stop()); streamRef.current = null; }
+  analyserRef.current = null;
+
+  // Check transcript for screen keywords before submitting
+  const SCREEN_KEYWORDS = [
+    "check my screen", "look at my screen", "what do you see",
+    "what's on my screen", "whats on my screen", "see my screen",
+    "analyze my screen", "look at this", "what is on screen",
+    "screen share", "share screen",
+  ];
+  const tempBlob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
+  // We can't read transcript yet, so we check after STT
+  // Instead trigger on keyword detection post-transcript via a flag
+  submitAudio(mimeType);
+};
     recorder.start();
     setupSilence(audioCtx, micStream);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setupSilence]);
 
   const submitAudio = useCallback(async (mimeType) => {
-    if (chunksRef.current.length === 0) { setState("idle"); return; }
-    setState("processing");
-    const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
-    const fd = new FormData();
-    fd.append("audio", blob, "recording.webm");
-    fd.append("messages", JSON.stringify(getMessages()));
-    fd.append("voice", selectedVoiceRef.current);
-    let token;
-    try { token = await getAuthToken(); }
-    catch { setErrorMsg("Auth error."); setState("idle"); return; }
-    let data;
-    try {
-      const res = await fetch(`${apiBase}/api/voice/turn`, {
-        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
-      });
-      if (res.status === 429) { setErrorMsg("Daily limit reached."); setState("idle"); return; }
-      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || `Error ${res.status}`); }
-      data = await res.json();
-    } catch(err) { setErrorMsg(err.message || "Something went wrong."); setState("idle"); return; }
-    if (data.transcript) { setTranscript(`"${data.transcript}"`); if (onTranscript) onTranscript(data.transcript); }
-    if (data.replyText && onReply) onReply(data.replyText);
-    if (data.audioBase64) playAudio(data.audioBase64); else setState("idle");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getAuthToken, getMessages, onTranscript, onReply, apiBase]);
+  if (chunksRef.current.length === 0) { setState("idle"); return; }
+  setState("processing");
+  const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
+  const fd = new FormData();
+  fd.append("audio", blob, "recording.webm");
+  fd.append("messages", JSON.stringify(getMessages()));
+  fd.append("voice", selectedVoiceRef.current);
+
+  if (pendingScreenshotRef.current) {
+    fd.append("screenshot", pendingScreenshotRef.current);
+    pendingScreenshotRef.current = null;
+  }
+
+  let token;
+  try { token = await getAuthToken(); }
+  catch { setErrorMsg("Auth error."); setState("idle"); return; }
+  let data;
+  try {
+    const res = await fetch(`${apiBase}/api/voice/turn`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
+    });
+    if (res.status === 429) { setErrorMsg("Daily limit reached."); setState("idle"); return; }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || `Error ${res.status}`); }
+    data = await res.json();
+  } catch(err) { setErrorMsg(err.message || "Something went wrong."); setState("idle"); return; }
+  if (data.transcript) { setTranscript(`"${data.transcript}"`); if (onTranscript) onTranscript(data.transcript); }
+if (data.replyText && onReply) onReply(data.replyText);
+
+if (data.needsScreen) {
+  setTranscript("Tap to share your screen…");
+  setState("idle");
+  const screenshot = await captureScreen();
+  if (screenshot) {
+    pendingScreenshotRef.current = screenshot;
+    setTranscript("Got it! Ask your question…");
+    setTimeout(startListening, 600);
+  } else {
+    setTranscript("Screen share cancelled.");
+    setTimeout(() => setState("idle"), 2000);
+  }
+  return;
+}
+
+if (data.audioBase64) playAudio(data.audioBase64); else setState("idle");
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [getAuthToken, getMessages, onTranscript, onReply, apiBase]);
 
   const playAudio = useCallback((base64) => {
     setState("speaking");
