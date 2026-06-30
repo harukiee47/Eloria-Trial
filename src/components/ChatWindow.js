@@ -119,7 +119,7 @@ function detectPresentationBlocks(text) {
 }
 
 async function generateDocx(rawText, filename) {
-  const res = await fetch("/api/docs/generate-doc", {
+  const res = await fetch("https://eloria-trial.onrender.com/api/docs/generate-doc", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content: rawText, filename }),
@@ -133,7 +133,7 @@ async function generateDocx(rawText, filename) {
 }
 
 async function generatePptx(rawText, filename) {
-  const res = await fetch("/api/docs/generate-pptx", {
+  const res = await fetch("https://eloria-trial.onrender.com/api/docs/generate-pptx", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content: rawText, filename }),
@@ -1601,91 +1601,61 @@ const CW_STYLE = `
     width: fit-content;
   }
 
-  /* ── DOWNLOAD BUTTON ─────────────────────────────────── */
+/* ── DOWNLOAD BUTTON ─────────────────────────────────── */
   .cw-download-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 18px;
-  margin-top: 12px;
-  background: linear-gradient(135deg, #fffbf6 0%, #fff9ef 100%);
-  color: #3d3d3d;
-  border: 1px solid rgba(210, 190, 165, 0.4);
-  border-radius: 10px;
-  font-size: 13.5px;
-  font-weight: 600;
-  font-family: 'DM Sans', system-ui, sans-serif;
-  cursor: pointer;
-  outline: none;
-  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 6px 20px rgba(210, 190, 165, 0.2);
-  letter-spacing: 0.01em;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Shimmer effect on hover */
-.cw-download-btn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  transition: left 0.5s ease;
-}
-
-.cw-download-btn:hover::before {
-  left: 100%;
-}
-
-.cw-download-btn:hover {
-  background: linear-gradient(135deg, #fcf7ef 0%, #fff8f0 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(210, 190, 165, 0.3);
-  border-color: rgba(210, 190, 165, 0.6);
-}
-
-.cw-download-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(210, 190, 165, 0.2);
-}
-
-.cw-download-btn svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-}
-
-.cw-download-btn:hover svg {
-  transform: translateY(2px);
-  animation: downloadPulse 0.6s ease;
-}
-
-@keyframes downloadPulse {
-  0%, 100% { transform: translateY(2px); }
-  50% { transform: translateY(6px); }
-}
-
-.cw-download-text {
-  display: inline-block;
-  font-weight: 600;
-}
-
-@media (max-width: 480px) {
-  .cw-download-btn {
-    padding: 9px 14px;
-    font-size: 12.5px;
-    gap: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    margin-top: 12px;
+    background: #0d3a35;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    outline: none;
+    transition: opacity .13s, box-shadow .13s, transform .1s;
+    box-shadow: 0 2px 10px rgba(13,58,53,.2);
+    letter-spacing: 0.01em;
   }
+
+  .cw-download-btn:hover {
+    opacity: .88;
+    box-shadow: 0 4px 16px rgba(13,58,53,.3);
+    transform: translateY(-1px);
+  }
+
+  .cw-download-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(13,58,53,.2);
+  }
+
   .cw-download-btn svg {
     width: 16px;
     height: 16px;
+    flex-shrink: 0;
   }
-}
+
+  .cw-download-text {
+    display: inline-block;
+    font-weight: 600;
+  }
+
+  @media (max-width: 480px) {
+    .cw-download-btn {
+      padding: 9px 13px;
+      font-size: 12px;
+      gap: 6px;
+    }
+    .cw-download-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
 
 @media (prefers-color-scheme: dark) {
   .cw-download-btn {
