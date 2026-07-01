@@ -563,8 +563,6 @@ router.post("/generate-doc", verifyUser, async (req, res) => {
 
 // ── PPTX route ────────────────────────────────────────────────────────────────
 
-import { buildTemplatedPptx } from "./pptx-template.js";
-
 router.post("/generate-pptx", verifyUser, async (req, res) => {
   try {
     const { content, filename = "presentation.pptx" } = req.body;

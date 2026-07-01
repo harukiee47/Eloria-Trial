@@ -2459,7 +2459,7 @@ const greeting = GREETINGS[greetingIdx];
     }
   };
 
-  const sendMessage = async () => {
+ const sendMessage = async () => {
     if (!input.trim() && pendingFiles.length === 0) return;
     if (isThinking) return;
     if (!auth.currentUser) { console.error("User not logged in"); return; }
@@ -2481,7 +2481,7 @@ const greeting = GREETINGS[greetingIdx];
 
     const initialUrlStatuses = urls.length > 0
       ? Object.fromEntries(urls.map(u => [u, "loading"]))
-      : undefined;
+      : null;
 
     const userMsgId = Date.now();
     const userMsg = {
@@ -2563,7 +2563,7 @@ const apiMessages = newMessages.map((m, idx) => {
       setChats(prev =>
         prev.map(c =>
           c.id === chat.id
-            ? { ...c, messages: [...newMessages, { id: aiMsgId, sender: "ai", text: "", activityTrail: steps, time: getTimestamp() }] }
+            ? { ...c, messages: [...firestoreMessages, { id: aiMsgId, sender: "ai", text: "", activityTrail: steps, time: getTimestamp() }] }
             : c
         )
       );
@@ -2602,7 +2602,7 @@ const apiMessages = newMessages.map((m, idx) => {
         setChats(prev =>
           prev.map(c =>
             c.id === chat.id
-              ? { ...c, messages: [...newMessages, { id: Date.now() + 2, sender: "ai", text: "Eloria couldn't respond. Check your connection.", time: getTimestamp() }] }
+              ? { ...c, messages: [...firestoreMessages, { id: Date.now() + 2, sender: "ai", text: "Eloria couldn't respond. Check your connection.", time: getTimestamp() }] }
               : c
           )
         );
@@ -2702,8 +2702,9 @@ const apiMessages = newMessages.map((m, idx) => {
   setInterruptedMsgId(null);
   setIsThinking(true);
 
+  const firestoreMessages = sanitizeForFirestore(newMessages);
   setChats(prev => prev.map(c =>
-    c.id === chat.id ? { ...c, messages: sanitizeForFirestore(newMessages) } : c
+    c.id === chat.id ? { ...c, messages: firestoreMessages } : c
   ));
 
   const apiMessages = newMessages.map(m => {
@@ -2739,7 +2740,7 @@ const apiMessages = newMessages.map((m, idx) => {
 
     setChats(prev => prev.map(c =>
       c.id === chat.id
-        ? { ...c, messages: [...newMessages, { id: aiMsgId, sender: "ai", text: "", time: getTimestamp() }] }
+        ? { ...c, messages: [...firestoreMessages, { id: aiMsgId, sender: "ai", text: "", time: getTimestamp() }] }
         : c
     ));
     setIsThinking(false);
@@ -2772,7 +2773,7 @@ const apiMessages = newMessages.map((m, idx) => {
     if (err.name !== "AbortError") {
       setChats(prev => prev.map(c =>
         c.id === chat.id
-          ? { ...c, messages: [...newMessages, { id: Date.now() + 2, sender: "ai", text: "Eloria couldn't respond. Check your connection.", time: getTimestamp() }] }
+          ? { ...c, messages: [...firestoreMessages, { id: Date.now() + 2, sender: "ai", text: "Eloria couldn't respond. Check your connection.", time: getTimestamp() }] }
           : c
       ));
     }
