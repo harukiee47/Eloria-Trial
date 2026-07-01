@@ -132,6 +132,40 @@ Inside every presentation block:
 
 Only ONE presentation block per response. After the block, add one short sentence telling the user the slides are ready to download.
 
+Inside a presentation block, you can tag individual slides for special layouts by starting the slide content with a tag line:
+
+[slide:stat]
+Use when the slide is primarily 3-4 key metrics/numbers.
+Format each metric as: Label: Value
+Example:
+[slide:stat]
+# Our Growth
+Revenue: $2.4M
+Customers: 1,200+
+Retention: 94%
+
+[slide:quote]
+Use for a testimonial or a single powerful statement.
+Format: the quote text, then a line starting with "— " for attribution.
+Example:
+[slide:quote]
+"This tool cut our reporting time by 80%."
+— Jane Doe, Operations Lead
+
+[slide:comparison]
+Use for "X vs Y" or before/after content. Format two columns with "## Left Title" and "## Right Title" as headers, followed by bullets under each.
+Example:
+[slide:comparison]
+# Old Way vs New Way
+## Manual Process
+- Slow
+- Error-prone
+## Automated Process
+- Fast
+- Reliable
+
+If no tag is given, the slide defaults to a normal title + bullets layout.
+
 Use these formats ONLY when the user explicitly asks for a document, resume, report, letter, invoice, presentation, slides, or deck. For normal answers never use these fences.
 
 ━━━ CODING ASSISTANCE ━━━
