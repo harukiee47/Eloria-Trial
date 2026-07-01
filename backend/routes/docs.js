@@ -3,66 +3,30 @@ import { verifyUser } from "../middleware/auth.js";
 import {
   Document, Packer, Paragraph, TextRun,
   AlignmentType, BorderStyle, ShadingType, PageNumber,
-  Header, Footer, UnderlineType,
+  Header, Footer, UnderlineType, Table, TableRow, TableCell,
+  WidthType, TableLayoutType, VerticalAlign,
 } from "docx";
 import PptxGenJS from "pptxgenjs";
 
 const router = express.Router();
 
-const THEME = {
-  primary:  "0D1B2A",
-  accent:   "C9A84C",
-  accent2:  "1B4F72",
-  text:     "1A1A2E",
-  muted:    "7F8C8D",
-  white:    "FFFFFF",
-  light:    "F4F6F8",
-  border:   "C9A84C",
-  subtle:   "DEE2E6",
-};
+// ── Inline markdown parser ────────────────────────────────────────────────────
 
-// ── Inline markdown parser → TextRun[] ───────────────────────────────────────
-// Handles **bold**, *italic*, `code`, and plain text mixed together
-
-function parseInline(text, baseOpts = {}) {
+function parseInline(text, base = {}) {
   const runs = [];
-  // regex: captures **bold**, *italic*, `code`, or plain text chunks
   const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|([^*`]+)/g;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    if (match[1] !== undefined) {
-      runs.push(new TextRun({
-        text: match[1],
-        bold: true,
-        ...baseOpts,
-      }));
-    } else if (match[2] !== undefined) {
-      runs.push(new TextRun({
-        text: match[2],
-        italics: true,
-        ...baseOpts,
-      }));
-    } else if (match[3] !== undefined) {
-      runs.push(new TextRun({
-        text: match[3],
-        font: "Courier New",
-        size: (baseOpts.size || 22) - 2,
-        color: "C0392B",
-        highlight: "yellow",
-        ...baseOpts,
-        font: "Courier New",
-      }));
-    } else if (match[4] !== undefined) {
-      const t = match[4];
-      if (t.trim()) {
-        runs.push(new TextRun({
-          text: t,
-          ...baseOpts,
-        }));
-      }
-    }
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    if (m[1]) runs.push(new TextRun({ text: m[1], bold: true, ...base }));
+    else if (m[2]) runs.push(new TextRun({ text: m[2], italics: true, ...base }));
+    else if (m[3]) runs.push(new TextRun({ text: m[3], font: "Courier New", color: "C0392B", ...base, size: (base.size || 22) - 2 }));
+    else if (m[4]?.trim()) runs.push(new TextRun({ text: m[4], ...base }));
   }
-  return runs.length ? runs : [new TextRun({ text, ...baseOpts })];
+  return runs.length ? runs : [new TextRun({ text, ...base })];
+}
+
+function plain(text) {
+  return text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").replace(/`(.+?)`/g, "$1");
 }
 
 // ── Line classifier ───────────────────────────────────────────────────────────
@@ -70,278 +34,502 @@ function parseInline(text, baseOpts = {}) {
 function classifyLine(raw) {
   const line = raw.trim();
   if (!line) return null;
-
-  // Explicit markdown headings
-  if (line.startsWith("# "))   return { type: "h1",     text: line.slice(2).trim() };
-  if (line.startsWith("## "))  return { type: "h2",     text: line.slice(3).trim() };
-  if (line.startsWith("### ")) return { type: "h3",     text: line.slice(4).trim() };
-
-  // Bullet lines (with or without inline bold)
-  if (line.startsWith("- ") || line.startsWith("• ")) {
-    return { type: "bullet", text: line.replace(/^[-•]\s*/, "") };
+  if (line.startsWith("# "))   return { type: "h1",  text: line.slice(2).trim() };
+  if (line.startsWith("## "))  return { type: "h2",  text: line.slice(3).trim() };
+  if (line.startsWith("### ")) return { type: "h3",  text: line.slice(4).trim() };
+  if (line.startsWith("- ") || line.startsWith("• ")) return { type: "bullet", text: line.replace(/^[-•]\s*/, "") };
+  if (/^\d+[.)]\s/.test(line)) {
+    const m = line.match(/^(\d+)[.)]\s+(.*)/);
+    return { type: "numbered", text: m[2], num: m[1] };
   }
-
-  // Strip outer ** to check what's inside
-  const innerBold = line.match(/^\*\*(.+)\*\*$/);
-  const inner = innerBold ? innerBold[1].trim() : null;
-
-  if (inner) {
-    const isAllCaps = inner === inner.toUpperCase() && inner.length > 3 && !/[a-z]/.test(inner);
-    const isShort   = inner.length < 60;
-    const hasSymbols = /[&'—]/.test(inner); // "Founder & Owner", "Let's"
-
-    // ALL CAPS bold short line = section heading
-    if (isAllCaps && isShort && !hasSymbols) {
-      return { type: "h2", text: inner };
-    }
-
-    // Short bold line (not all caps) = subheading or label
-    if (isShort && !hasSymbols) {
-      // Check if it looks like a name/title (no sentence punctuation)
-      if (!/[.!?,]/.test(inner)) return { type: "h3", text: inner };
-    }
-  }
-
-  // Numbered list
-  const numbered = line.match(/^(\d+)[.)]\s+(.+)/);
-  if (numbered) return { type: "numbered", text: numbered[2], num: numbered[1] };
-
-  // Horizontal rule
   if (/^[-*_]{3,}$/.test(line)) return { type: "rule" };
 
-  // Default: body text (may contain inline markdown)
+  const boldMatch = line.match(/^\*\*(.+)\*\*$/);
+  if (boldMatch) {
+    const inner = boldMatch[1].trim();
+    const isAllCaps = inner === inner.toUpperCase() && inner.length > 3 && !/[a-z]/.test(inner) && /[A-Z]/.test(inner);
+    if (isAllCaps && inner.length < 60 && !/[&'—]/.test(inner)) return { type: "h2", text: inner };
+    if (inner.length < 60 && !/[.!?]/.test(inner)) return { type: "h3", text: inner };
+  }
   return { type: "text", text: line };
 }
 
-// ── DOCX ─────────────────────────────────────────────────────────────────────
+function parseLines(content) {
+  return content.split("\n").map(classifyLine).filter(Boolean);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOCX TEMPLATES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Shared bullet builder ─────────────────────────────────────────────────────
+
+function makeBullet(text, opts = {}) {
+  const { bullet = "◆", bulletColor = "999999", font = "Helvetica Neue", size = 21, color = "1A1A1A", indent = 440 } = opts;
+  const dashIdx = text.indexOf(" — ");
+  const runs = [];
+  runs.push(new TextRun({ text: `${bullet}  `, font: "Calibri", size, color: bulletColor, bold: true }));
+  if (dashIdx !== -1) {
+    runs.push(...parseInline(text.slice(0, dashIdx), { font, size, color: opts.labelColor || color, bold: true }));
+    runs.push(new TextRun({ text: text.slice(dashIdx), font, size, color }));
+  } else {
+    runs.push(...parseInline(text, { font, size, color }));
+  }
+  return new Paragraph({ children: runs, spacing: { before: 60, after: 80 }, indent: { left: indent } });
+}
+
+// ── APPLE STYLE — Company ─────────────────────────────────────────────────────
+
+function buildCompanyDoc(lines) {
+  const T = { black: "000000", grey1: "1D1D1F", grey2: "6E6E73", grey3: "AEAEB2", white: "FFFFFF", rule: "D2D2D7" };
+  const children = [];
+  let isFirst = true;
+
+  lines.forEach(line => {
+    switch (line.type) {
+      case "h1":
+        if (isFirst) {
+          isFirst = false;
+          children.push(new Paragraph({ children: [new TextRun({ text: "", size: 2 })], shading: { type: ShadingType.SOLID, color: T.black }, spacing: { before: 0, after: 0 } }));
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Helvetica Neue", size: 72, bold: true, color: T.white, characterSpacing: -20 })],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 800, after: 800 },
+            shading: { type: ShadingType.SOLID, color: T.black },
+          }));
+          children.push(new Paragraph({ children: [new TextRun({ text: "", size: 2 })], shading: { type: ShadingType.SOLID, color: T.black }, spacing: { before: 0, after: 600 } }));
+        } else {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Helvetica Neue", size: 48, bold: true, color: T.grey1, characterSpacing: -10 })],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 600, after: 160 },
+          }));
+        }
+        break;
+      case "h2":
+        children.push(new Paragraph({ children: [new TextRun({ text: "" })], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } }, spacing: { before: 480, after: 0 } }));
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text).toUpperCase(), font: "Helvetica Neue", size: 20, bold: true, color: T.grey2, characterSpacing: 80 })],
+          spacing: { before: 240, after: 120 },
+        }));
+        break;
+      case "h3":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Helvetica Neue", size: 26, bold: true, color: T.grey1 })],
+          spacing: { before: 240, after: 80 },
+        }));
+        break;
+      case "bullet":
+        children.push(makeBullet(line.text, { bullet: "·", bulletColor: T.grey3, font: "Helvetica Neue", size: 21, color: T.grey1, labelColor: T.black, indent: 360 }));
+        break;
+      case "rule":
+        children.push(new Paragraph({ children: [new TextRun({ text: "" })], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } }, spacing: { before: 200, after: 200 } }));
+        break;
+      default:
+        children.push(new Paragraph({
+          children: parseInline(line.text, { font: "Helvetica Neue", size: 22, color: T.grey1 }),
+          spacing: { before: 80, after: 120 },
+          alignment: AlignmentType.JUSTIFIED,
+        }));
+    }
+  });
+  return children;
+}
+
+// ── STRIPE STYLE — Invoice ────────────────────────────────────────────────────
+
+function buildInvoiceDoc(lines) {
+  const T = { black: "0A2540", accent: "635BFF", grey1: "425466", grey2: "697386", rule: "E3E8EE", white: "FFFFFF", green: "09825D" };
+  const children = [];
+  let isFirst = true;
+
+  lines.forEach(line => {
+    switch (line.type) {
+      case "h1":
+        if (isFirst) {
+          isFirst = false;
+          children.push(new Paragraph({
+            children: [
+              new TextRun({ text: plain(line.text), font: "Calibri", size: 64, bold: true, color: T.black }),
+            ],
+            spacing: { before: 200, after: 0 },
+          }));
+          children.push(new Paragraph({ children: [new TextRun({ text: "", size: 4 })], shading: { type: ShadingType.SOLID, color: T.accent }, spacing: { before: 160, after: 400 } }));
+        } else {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 40, bold: true, color: T.black })],
+            spacing: { before: 400, after: 160 },
+          }));
+        }
+        break;
+      case "h2":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text).toUpperCase(), font: "Calibri", size: 19, bold: true, color: T.accent, characterSpacing: 80 })],
+          spacing: { before: 360, after: 80 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } },
+        }));
+        break;
+      case "h3":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 24, bold: true, color: T.black })],
+          spacing: { before: 200, after: 60 },
+        }));
+        break;
+      case "bullet":
+        children.push(makeBullet(line.text, { bullet: "→", bulletColor: T.accent, font: "Calibri", size: 21, color: T.grey1, labelColor: T.black, indent: 360 }));
+        break;
+      case "rule":
+        children.push(new Paragraph({ children: [new TextRun({ text: "" })], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } }, spacing: { before: 160, after: 160 } }));
+        break;
+      default:
+        children.push(new Paragraph({
+          children: parseInline(line.text, { font: "Calibri", size: 21, color: T.grey1 }),
+          spacing: { before: 60, after: 80 },
+        }));
+    }
+  });
+  return children;
+}
+
+// ── MCKINSEY STYLE — Report ───────────────────────────────────────────────────
+
+function buildReportDoc(lines) {
+  const T = { navy: "002147", blue: "1B4F8A", accent: "C8A951", white: "FFFFFF", text: "1A1A2E", muted: "5D6D7E", rule: "BDC3C7" };
+  const children = [];
+  let isFirst = true;
+
+  lines.forEach(line => {
+    switch (line.type) {
+      case "h1":
+        if (isFirst) {
+          isFirst = false;
+          children.push(new Paragraph({ children: [new TextRun({ text: " ", size: 6 })], shading: { type: ShadingType.SOLID, color: T.accent }, spacing: { before: 0, after: 0 } }));
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text).toUpperCase(), font: "Georgia", size: 60, bold: true, color: T.white, characterSpacing: 40 })],
+            alignment: AlignmentType.LEFT,
+            spacing: { before: 600, after: 600 },
+            shading: { type: ShadingType.SOLID, color: T.navy },
+            indent: { left: 440 },
+          }));
+          children.push(new Paragraph({ children: [new TextRun({ text: " ", size: 6 })], shading: { type: ShadingType.SOLID, color: T.accent }, spacing: { before: 0, after: 600 } }));
+        } else {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text).toUpperCase(), font: "Georgia", size: 40, bold: true, color: T.navy })],
+            spacing: { before: 560, after: 120 },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: T.accent } },
+          }));
+        }
+        break;
+      case "h2":
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: "  ", size: 26 }),
+            new TextRun({ text: plain(line.text).toUpperCase(), font: "Calibri", size: 24, bold: true, color: T.white, characterSpacing: 40 }),
+          ],
+          spacing: { before: 440, after: 140 },
+          shading: { type: ShadingType.SOLID, color: T.blue },
+          border: { left: { style: BorderStyle.SINGLE, size: 16, color: T.accent } },
+        }));
+        break;
+      case "h3":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Georgia", size: 26, bold: true, color: T.blue })],
+          spacing: { before: 280, after: 80 },
+          border: { left: { style: BorderStyle.SINGLE, size: 8, color: T.accent } },
+          indent: { left: 200 },
+        }));
+        break;
+      case "bullet":
+        children.push(makeBullet(line.text, { bullet: "◆", bulletColor: T.accent, font: "Georgia", size: 21, color: T.text, labelColor: T.navy, indent: 440 }));
+        break;
+      case "rule":
+        children.push(new Paragraph({ children: [new TextRun({ text: "" })], border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: T.rule } }, spacing: { before: 200, after: 200 } }));
+        break;
+      default:
+        children.push(new Paragraph({
+          children: parseInline(line.text, { font: "Georgia", size: 22, color: T.text }),
+          spacing: { before: 80, after: 120 },
+          alignment: AlignmentType.JUSTIFIED,
+          indent: { firstLine: 360 },
+        }));
+    }
+  });
+  return children;
+}
+
+// ── LINEAR STYLE — Resume ─────────────────────────────────────────────────────
+
+function buildResumeDoc(lines) {
+  const T = { black: "09090B", accent: "6366F1", grey1: "18181B", grey2: "52525B", grey3: "A1A1AA", rule: "E4E4E7", white: "FFFFFF" };
+  const children = [];
+  let isFirst = true;
+
+  lines.forEach(line => {
+    switch (line.type) {
+      case "h1":
+        if (isFirst) {
+          isFirst = false;
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 64, bold: true, color: T.black, characterSpacing: -20 })],
+            spacing: { before: 0, after: 0 },
+          }));
+          children.push(new Paragraph({ children: [new TextRun({ text: "", size: 4 })], shading: { type: ShadingType.SOLID, color: T.accent }, spacing: { before: 160, after: 300 } }));
+        } else {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 40, bold: true, color: T.black })],
+            spacing: { before: 400, after: 120 },
+          }));
+        }
+        break;
+      case "h2":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text).toUpperCase(), font: "Calibri", size: 19, bold: true, color: T.accent, characterSpacing: 100 })],
+          spacing: { before: 360, after: 80 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } },
+        }));
+        break;
+      case "h3":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 24, bold: true, color: T.grey1 })],
+          spacing: { before: 200, after: 40 },
+        }));
+        break;
+      case "bullet":
+        children.push(makeBullet(line.text, { bullet: "–", bulletColor: T.accent, font: "Calibri", size: 21, color: T.grey2, labelColor: T.black, indent: 320 }));
+        break;
+      case "rule":
+        children.push(new Paragraph({ children: [new TextRun({ text: "" })], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } }, spacing: { before: 160, after: 160 } }));
+        break;
+      default:
+        children.push(new Paragraph({
+          children: parseInline(line.text, { font: "Calibri", size: 21, color: T.grey2 }),
+          spacing: { before: 60, after: 80 },
+        }));
+    }
+  });
+  return children;
+}
+
+// ── NOTION STYLE — Meeting ────────────────────────────────────────────────────
+
+function buildMeetingDoc(lines) {
+  const T = { black: "1A1A1A", accent: "2F80ED", yellow: "F2C94C", text: "37352F", muted: "9B9A97", rule: "E9E9E7", bg: "F7F6F3", white: "FFFFFF" };
+  const children = [];
+  let isFirst = true;
+
+  lines.forEach(line => {
+    switch (line.type) {
+      case "h1":
+        if (isFirst) {
+          isFirst = false;
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Segoe UI", size: 64, bold: true, color: T.black })],
+            spacing: { before: 0, after: 80 },
+          }));
+          children.push(new Paragraph({ children: [new TextRun({ text: "", size: 4 })], shading: { type: ShadingType.SOLID, color: T.yellow }, spacing: { before: 0, after: 400 } }));
+        } else {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Segoe UI", size: 40, bold: true, color: T.black })],
+            spacing: { before: 400, after: 120 },
+          }));
+        }
+        break;
+      case "h2":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Segoe UI", size: 26, bold: true, color: T.black })],
+          spacing: { before: 360, after: 100 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } },
+        }));
+        break;
+      case "h3":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Segoe UI", size: 23, bold: true, color: T.accent })],
+          spacing: { before: 200, after: 60 },
+        }));
+        break;
+      case "bullet":
+        children.push(makeBullet(line.text, { bullet: "☐", bulletColor: T.accent, font: "Segoe UI", size: 21, color: T.text, labelColor: T.black, indent: 360 }));
+        break;
+      case "rule":
+        children.push(new Paragraph({ children: [new TextRun({ text: "" })], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } }, spacing: { before: 160, after: 160 } }));
+        break;
+      default:
+        children.push(new Paragraph({
+          children: parseInline(line.text, { font: "Segoe UI", size: 21, color: T.text }),
+          spacing: { before: 60, after: 80 },
+        }));
+    }
+  });
+  return children;
+}
+
+// ── AIRBNB STYLE — Proposal ───────────────────────────────────────────────────
+
+function buildProposalDoc(lines) {
+  const T = { coral: "FF5A5F", dark: "222222", grey1: "484848", grey2: "767676", rule: "EBEBEB", white: "FFFFFF", teal: "008489" };
+  const children = [];
+  let isFirst = true;
+
+  lines.forEach(line => {
+    switch (line.type) {
+      case "h1":
+        if (isFirst) {
+          isFirst = false;
+          children.push(new Paragraph({ children: [new TextRun({ text: " ", size: 6 })], shading: { type: ShadingType.SOLID, color: T.coral }, spacing: { before: 0, after: 0 } }));
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Circular Std", size: 72, bold: true, color: T.white })],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 700, after: 700 },
+            shading: { type: ShadingType.SOLID, color: T.coral },
+          }));
+          children.push(new Paragraph({ children: [new TextRun({ text: " ", size: 6 })], shading: { type: ShadingType.SOLID, color: T.coral }, spacing: { before: 0, after: 600 } }));
+        } else {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 44, bold: true, color: T.dark })],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 560, after: 160 },
+          }));
+        }
+        break;
+      case "h2":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 26, bold: true, color: T.coral })],
+          spacing: { before: 400, after: 100 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 3, color: T.coral } },
+        }));
+        break;
+      case "h3":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 24, bold: true, color: T.teal })],
+          spacing: { before: 200, after: 60 },
+        }));
+        break;
+      case "bullet":
+        children.push(makeBullet(line.text, { bullet: "◉", bulletColor: T.coral, font: "Calibri", size: 21, color: T.grey1, labelColor: T.dark, indent: 400 }));
+        break;
+      case "rule":
+        children.push(new Paragraph({ children: [new TextRun({ text: "" })], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } }, spacing: { before: 200, after: 200 } }));
+        break;
+      default:
+        children.push(new Paragraph({
+          children: parseInline(line.text, { font: "Calibri", size: 22, color: T.grey1 }),
+          spacing: { before: 80, after: 120 },
+          alignment: AlignmentType.JUSTIFIED,
+        }));
+    }
+  });
+  return children;
+}
+
+// ── GOOGLE STYLE — General ────────────────────────────────────────────────────
+
+function buildGeneralDoc(lines) {
+  const T = { blue: "1A73E8", dark: "202124", grey1: "3C4043", grey2: "5F6368", rule: "DADCE0", white: "FFFFFF" };
+  const children = [];
+  let isFirst = true;
+
+  lines.forEach(line => {
+    switch (line.type) {
+      case "h1":
+        if (isFirst) {
+          isFirst = false;
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Google Sans", size: 64, bold: true, color: T.dark })],
+            spacing: { before: 0, after: 80 },
+          }));
+          children.push(new Paragraph({ children: [new TextRun({ text: "", size: 4 })], shading: { type: ShadingType.SOLID, color: T.blue }, spacing: { before: 0, after: 400 } }));
+        } else {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 40, bold: true, color: T.dark })],
+            spacing: { before: 400, after: 120 },
+          }));
+        }
+        break;
+      case "h2":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 26, bold: true, color: T.blue })],
+          spacing: { before: 360, after: 100 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } },
+        }));
+        break;
+      case "h3":
+        children.push(new Paragraph({
+          children: [new TextRun({ text: plain(line.text), font: "Calibri", size: 23, bold: true, color: T.grey1 })],
+          spacing: { before: 200, after: 60 },
+        }));
+        break;
+      case "bullet":
+        children.push(makeBullet(line.text, { bullet: "•", bulletColor: T.blue, font: "Calibri", size: 21, color: T.grey1, labelColor: T.dark, indent: 360 }));
+        break;
+      case "rule":
+        children.push(new Paragraph({ children: [new TextRun({ text: "" })], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: T.rule } }, spacing: { before: 160, after: 160 } }));
+        break;
+      default:
+        children.push(new Paragraph({
+          children: parseInline(line.text, { font: "Calibri", size: 22, color: T.grey1 }),
+          spacing: { before: 80, after: 100 },
+        }));
+    }
+  });
+  return children;
+}
+
+// ── DOCX route ────────────────────────────────────────────────────────────────
 
 router.post("/generate-doc", verifyUser, async (req, res) => {
   try {
-    const { content, filename = "eloria-document.docx" } = req.body;
+    const { content, type = "general", filename = "document.docx" } = req.body;
     if (!content) return res.status(400).json({ error: "content is required" });
 
-    const rawLines = content.split("\n");
-    const lines = rawLines.map(classifyLine).filter(Boolean);
+    const lines = parseLines(content);
 
-    const children = [];
-    let bulletBuffer = [];
-    let numberedBuffer = [];
-    let isFirstH1 = true;
-    let docTitle = "";
-
-    const flushBullets = () => {
-      if (!bulletBuffer.length) return;
-      bulletBuffer.forEach(({ text }) => {
-        // Split bullet at " — " to style the label differently
-        const dashIdx = text.indexOf(" — ");
-        const hasDash = dashIdx !== -1;
-        const labelPart = hasDash ? text.slice(0, dashIdx) : null;
-        const restPart  = hasDash ? text.slice(dashIdx) : text;
-
-        const runs = [];
-        if (hasDash) {
-          // parse the label part inline
-          const labelRuns = parseInline(labelPart, {
-            font: "Calibri", size: 21, color: THEME.accent2, bold: true,
-          });
-          runs.push(...labelRuns);
-          runs.push(new TextRun({
-            text: restPart,
-            font: "Georgia", size: 21, color: THEME.text,
-          }));
-        } else {
-          runs.push(...parseInline(text, {
-            font: "Georgia", size: 21, color: THEME.text,
-          }));
-        }
-
-        children.push(new Paragraph({
-          children: [
-            new TextRun({ text: "◆  ", font: "Calibri", size: 20, color: THEME.accent, bold: true }),
-            ...runs,
-          ],
-          spacing: { before: 60, after: 80 },
-          indent: { left: 440 },
-        }));
-      });
-      bulletBuffer = [];
+    const templateMap = {
+      company:  buildCompanyDoc,
+      invoice:  buildInvoiceDoc,
+      report:   buildReportDoc,
+      resume:   buildResumeDoc,
+      meeting:  buildMeetingDoc,
+      proposal: buildProposalDoc,
+      general:  buildGeneralDoc,
     };
 
-    const flushNumbered = () => {
-      if (!numberedBuffer.length) return;
-      numberedBuffer.forEach(({ text, num }) => {
-        children.push(new Paragraph({
-          children: [
-            new TextRun({ text: `${num}.  `, font: "Calibri", size: 21, color: THEME.accent, bold: true }),
-            ...parseInline(text, { font: "Georgia", size: 21, color: THEME.text }),
-          ],
-          spacing: { before: 60, after: 80 },
-          indent: { left: 400 },
-        }));
-      });
-      numberedBuffer = [];
-    };
+    const builder = templateMap[type] || buildGeneralDoc;
+    const children = builder(lines);
 
-    lines.forEach(line => {
-      if (line.type !== "bullet")   flushBullets();
-      if (line.type !== "numbered") flushNumbered();
+    const T = {
+      company:  { accent: "000000", muted: "6E6E73" },
+      invoice:  { accent: "635BFF", muted: "697386" },
+      report:   { accent: "C8A951", muted: "5D6D7E" },
+      resume:   { accent: "6366F1", muted: "52525B" },
+      meeting:  { accent: "2F80ED", muted: "9B9A97" },
+      proposal: { accent: "FF5A5F", muted: "767676" },
+      general:  { accent: "1A73E8", muted: "5F6368" },
+    }[type] || { accent: "1A73E8", muted: "5F6368" };
 
-      switch (line.type) {
+    const docTitle = lines.find(l => l.type === "h1")?.text || "Document";
 
-        case "h1":
-          if (isFirstH1) {
-            isFirstH1 = false;
-            docTitle = line.text;
-
-            // Gold top stripe
-            children.push(new Paragraph({
-              children: [new TextRun({ text: " ", size: 8 })],
-              shading: { type: ShadingType.SOLID, color: THEME.accent },
-              spacing: { before: 0, after: 0 },
-            }));
-
-            // Navy cover block
-            children.push(new Paragraph({
-              children: [
-                new TextRun({
-                  text: line.text.toUpperCase(),
-                  bold: true,
-                  font: "Palatino Linotype",
-                  size: 64,
-                  color: THEME.white,
-                  characterSpacing: 60,
-                }),
-              ],
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 600, after: 500 },
-              shading: { type: ShadingType.SOLID, color: THEME.primary },
-            }));
-
-            // Gold bottom stripe
-            children.push(new Paragraph({
-              children: [new TextRun({ text: " ", size: 8 })],
-              shading: { type: ShadingType.SOLID, color: THEME.accent },
-              spacing: { before: 0, after: 0 },
-            }));
-
-            // Byline
-            children.push(new Paragraph({
-              children: [new TextRun({
-                text: "PREPARED BY ELORIA AI",
-                font: "Calibri", size: 17,
-                color: THEME.muted, characterSpacing: 120,
-              })],
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 240, after: 600 },
-            }));
-
-            // Divider
-            children.push(new Paragraph({
-              children: [new TextRun({ text: "" })],
-              border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: THEME.accent } },
-              spacing: { before: 0, after: 480 },
-            }));
-
-          } else {
-            children.push(new Paragraph({
-              children: [new TextRun({
-                text: line.text.toUpperCase(),
-                bold: true, font: "Palatino Linotype",
-                size: 40, color: THEME.primary, characterSpacing: 40,
-              })],
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 560, after: 200 },
-              border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: THEME.accent } },
-            }));
-          }
-          break;
-
-        case "h2":
-          children.push(new Paragraph({
-            children: [
-              new TextRun({ text: "  ", size: 26 }),
-              new TextRun({
-                text: line.text.toUpperCase(),
-                bold: true, font: "Calibri",
-                size: 24, color: THEME.white, characterSpacing: 60,
-              }),
-            ],
-            spacing: { before: 480, after: 160 },
-            shading: { type: ShadingType.SOLID, color: THEME.accent2 },
-            border: {
-              left:   { style: BorderStyle.SINGLE, size: 18, color: THEME.accent },
-              bottom: { style: BorderStyle.SINGLE, size: 2,  color: THEME.accent },
-            },
-          }));
-          break;
-
-        case "h3":
-          children.push(new Paragraph({
-            children: [
-              new TextRun({ text: "— ", font: "Calibri", size: 22, color: THEME.accent, bold: true }),
-              new TextRun({
-                text: line.text, bold: true,
-                font: "Palatino Linotype", size: 25, color: THEME.accent2,
-              }),
-            ],
-            spacing: { before: 280, after: 100 },
-          }));
-          break;
-
-        case "bullet":
-          bulletBuffer.push({ text: line.text });
-          break;
-
-        case "numbered":
-          numberedBuffer.push({ text: line.text, num: line.num });
-          break;
-
-        case "rule":
-          children.push(new Paragraph({
-            children: [new TextRun({ text: "" })],
-            border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: THEME.subtle } },
-            spacing: { before: 200, after: 200 },
-          }));
-          break;
-
-        default: // text
-          children.push(new Paragraph({
-            children: parseInline(line.text, {
-              font: "Georgia", size: 22, color: THEME.text,
-            }),
-            spacing: { before: 80, after: 120 },
-            alignment: AlignmentType.JUSTIFIED,
-          }));
-      }
-    });
-
-    flushBullets();
-    flushNumbered();
-
-    // ── Header ──
     const header = new Header({
       children: [new Paragraph({
         children: [
-          new TextRun({ text: docTitle || "ELORIA AI", font: "Calibri", size: 16, color: THEME.accent, bold: true, characterSpacing: 80 }),
-          new TextRun({ text: "  ·  Confidential", font: "Calibri", size: 16, color: THEME.muted }),
+          new TextRun({ text: plain(docTitle).toUpperCase(), font: "Calibri", size: 15, color: T.accent, bold: true, characterSpacing: 80 }),
+          new TextRun({ text: "  ·  Confidential", font: "Calibri", size: 15, color: T.muted }),
         ],
         alignment: AlignmentType.RIGHT,
-        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: THEME.accent } },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 3, color: T.accent } },
       })],
     });
 
-    // ── Footer ──
     const footer = new Footer({
       children: [new Paragraph({
         children: [
-          new TextRun({ text: "Generated by Eloria AI  ·  Page ", font: "Calibri", size: 17, color: THEME.muted }),
-          new TextRun({ children: [PageNumber.CURRENT], font: "Calibri", size: 17, color: THEME.accent, bold: true }),
-          new TextRun({ text: " / ", font: "Calibri", size: 17, color: THEME.muted }),
-          new TextRun({ children: [PageNumber.TOTAL_PAGES], font: "Calibri", size: 17, color: THEME.muted }),
+          new TextRun({ text: "Page ", font: "Calibri", size: 16, color: T.muted }),
+          new TextRun({ children: [PageNumber.CURRENT], font: "Calibri", size: 16, color: T.accent, bold: true }),
+          new TextRun({ text: " / ", font: "Calibri", size: 16, color: T.muted }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], font: "Calibri", size: 16, color: T.muted }),
         ],
         alignment: AlignmentType.CENTER,
-        border: { top: { style: BorderStyle.SINGLE, size: 4, color: THEME.accent } },
-        spacing: { before: 120 },
+        border: { top: { style: BorderStyle.SINGLE, size: 3, color: T.accent } },
+        spacing: { before: 100 },
       })],
     });
 
@@ -349,15 +537,13 @@ router.post("/generate-doc", verifyUser, async (req, res) => {
       styles: {
         default: {
           document: {
-            run: { font: "Georgia", size: 22, color: THEME.text },
+            run: { font: "Calibri", size: 22, color: "1A1A1A" },
             paragraph: { spacing: { line: 288 } },
           },
         },
       },
       sections: [{
-        properties: {
-          page: { margin: { top: 1080, bottom: 1080, left: 1260, right: 1080 } },
-        },
+        properties: { page: { margin: { top: 1080, bottom: 1080, left: 1260, right: 1080 } } },
         headers: { default: header },
         footers: { default: footer },
         children,
@@ -375,11 +561,300 @@ router.post("/generate-doc", verifyUser, async (req, res) => {
   }
 });
 
-// ── PPTX ─────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// PPTX TEMPLATES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function buildPptxSlides(pptx, slides, type) {
+
+  const THEMES = {
+    pitch: {
+      bg: "FFFFFF", titleBg: "FFFFFF", titleColor: "111111",
+      accent: "111111", bullet: "6366F1", text: "374151",
+      muted: "9CA3AF", bar: "F3F4F6", barAccent: "6366F1",
+      font: "Calibri", titleFont: "Calibri",
+    },
+    company: {
+      bg: "000000", titleBg: "000000", titleColor: "FFFFFF",
+      accent: "FFFFFF", bullet: "A3A3A3", text: "D4D4D4",
+      muted: "737373", bar: "171717", barAccent: "FFFFFF",
+      font: "Helvetica Neue", titleFont: "Helvetica Neue",
+    },
+    edu: {
+      bg: "FFFFFF", titleBg: "F0F9FF", titleColor: "0369A1",
+      accent: "0EA5E9", bullet: "0EA5E9", text: "1E293B",
+      muted: "64748B", bar: "E0F2FE", barAccent: "0369A1",
+      font: "Calibri", titleFont: "Calibri",
+    },
+    general: {
+      bg: "FFFFFF", titleBg: "1E3A5F", titleColor: "FFFFFF",
+      accent: "2D6A9F", bullet: "2D6A9F", text: "2C3E50",
+      muted: "7F8C8D", bar: "EBF5FB", barAccent: "1E3A5F",
+      font: "Calibri", titleFont: "Calibri",
+    },
+  };
+
+  const TH = THEMES[type] || THEMES.general;
+
+  slides.forEach((lines, si) => {
+    const slide = pptx.addSlide();
+    const isFirst = si === 0;
+    const isLast  = si === slides.length - 1 && lines.length <= 3;
+
+    slide.background = { color: TH.bg };
+
+    if (isFirst) {
+      // ── COVER ──────────────────────────────────────────────────────────────
+
+      if (type === "company") {
+        // Apple Keynote — pure black, centered, cinematic
+        slide.background = { color: "000000" };
+        const h1 = lines.find(l => l.type === "h1");
+        const sub = lines.find(l => l.type !== "h1");
+        if (h1) slide.addText(plain(h1.text), {
+          x:0.5, y:1.6, w:9, h:1.8,
+          fontSize:52, bold:true, color:"FFFFFF",
+          fontFace:"Helvetica Neue", align:"center", valign:"middle",
+          charSpacing:2,
+        });
+        if (sub) slide.addText(plain(sub.text), {
+          x:0.5, y:3.5, w:9, h:0.6,
+          fontSize:20, color:"737373",
+          fontFace:"Helvetica Neue", align:"center",
+        });
+        // White center line
+        slide.addShape(pptx.ShapeType.rect, { x:4, y:3.2, w:2, h:0.03, fill:{color:"333333"}, line:{color:"333333"} });
+
+      } else if (type === "pitch") {
+        // YC/Sequoia — clean white, massive bold text
+        slide.background = { color:"FFFFFF" };
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.08, h:5.625, fill:{color:"6366F1"}, line:{color:"6366F1"} });
+        const h1 = lines.find(l => l.type === "h1");
+        const sub = lines.find(l => l.type !== "h1");
+        if (h1) slide.addText(plain(h1.text), {
+          x:0.3, y:1.2, w:9.4, h:2,
+          fontSize:54, bold:true, color:"111111",
+          fontFace:"Calibri", align:"left", valign:"middle",
+          charSpacing:-1,
+        });
+        if (sub) slide.addText(plain(sub.text), {
+          x:0.3, y:3.3, w:7, h:0.6,
+          fontSize:18, color:"6B7280",
+          fontFace:"Calibri", align:"left",
+        });
+        slide.addShape(pptx.ShapeType.rect, { x:0.3, y:3.1, w:3, h:0.04, fill:{color:"6366F1"}, line:{color:"6366F1"} });
+
+      } else if (type === "edu") {
+        // Canva edu — sky blue cover
+        slide.background = { color:"0EA5E9" };
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:4.5, w:10, h:1.125, fill:{color:"0284C7"}, line:{color:"0284C7"} });
+        const h1 = lines.find(l => l.type === "h1");
+        const sub = lines.find(l => l.type !== "h1");
+        if (h1) slide.addText(plain(h1.text), {
+          x:0.5, y:1.0, w:9, h:2,
+          fontSize:48, bold:true, color:"FFFFFF",
+          fontFace:"Calibri", align:"center", valign:"middle",
+        });
+        if (sub) slide.addText(plain(sub.text), {
+          x:0.5, y:3.1, w:9, h:0.6,
+          fontSize:18, color:"E0F2FE",
+          fontFace:"Calibri", align:"center",
+        });
+
+      } else {
+        // General — navy cover
+        slide.background = { color:"1E3A5F" };
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.07, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.555, w:10, h:0.07, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
+        const h1 = lines.find(l => l.type === "h1");
+        const sub = lines.find(l => l.type !== "h1");
+        if (h1) slide.addText(plain(h1.text), {
+          x:0.5, y:1.4, w:9, h:1.8,
+          fontSize:46, bold:true, color:"FFFFFF",
+          fontFace:"Calibri", align:"center", valign:"middle",
+        });
+        if (sub) slide.addText(plain(sub.text), {
+          x:0.5, y:3.3, w:9, h:0.6,
+          fontSize:18, color:"A8C0D6",
+          fontFace:"Calibri", align:"center",
+        });
+        slide.addShape(pptx.ShapeType.rect, { x:3.5, y:3.1, w:3, h:0.045, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
+      }
+
+    } else if (isLast) {
+      // ── CLOSING ────────────────────────────────────────────────────────────
+      if (type === "company") {
+        slide.background = { color:"000000" };
+        lines.forEach((l, i) => slide.addText(plain(l.text), {
+          x:0.5, y:1.8+i*1.0, w:9, h:0.9,
+          fontSize: l.type==="h1" ? 40:18, bold:l.type==="h1",
+          color: l.type==="h1" ? "FFFFFF":"737373",
+          fontFace:"Helvetica Neue", align:"center",
+        }));
+      } else {
+        slide.background = { color: TH.barAccent };
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.07, fill:{color:TH.bullet}, line:{color:TH.bullet} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.555, w:10, h:0.07, fill:{color:TH.bullet}, line:{color:TH.bullet} });
+        lines.forEach((l, i) => slide.addText(plain(l.text), {
+          x:0.5, y:1.6+i*1.0, w:9, h:0.9,
+          fontSize: l.type==="h1" ? 36:18, bold:l.type==="h1",
+          color: l.type==="h1" ? "FFFFFF":"E2E8F0",
+          fontFace: TH.titleFont, align:"center",
+        }));
+      }
+
+    } else {
+      // ── CONTENT SLIDES ──────────────────────────────────────────────────────
+
+      if (type === "company") {
+        // Apple Keynote content — black bg, white text
+        slide.background = { color:"000000" };
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.3, w:10, h:0.325, fill:{color:"0A0A0A"}, line:{color:"0A0A0A"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.295, w:10, h:0.04, fill:{color:"333333"}, line:{color:"333333"} });
+        slide.addText(`${si}`, { x:9.0, y:5.33, w:0.8, h:0.22, fontSize:8, color:"555555", fontFace:"Helvetica Neue", align:"right" });
+
+        let y = 0.3;
+        lines.forEach(line => {
+          if (line.type === "h1") {
+            slide.addText(plain(line.text), { x:0.5, y:0.15, w:9, h:0.7, fontSize:26, bold:true, color:"FFFFFF", fontFace:"Helvetica Neue", valign:"middle" });
+            slide.addShape(pptx.ShapeType.rect, { x:0.5, y:0.82, w:9, h:0.025, fill:{color:"333333"}, line:{color:"333333"} });
+            y = 1.0;
+          } else if (line.type === "h2") {
+            slide.addText(plain(line.text).toUpperCase(), { x:0.5, y, w:9, h:0.38, fontSize:12, bold:true, color:"737373", fontFace:"Helvetica Neue", charSpacing:4 });
+            y += 0.44;
+          } else if (line.type === "bullet") {
+            slide.addText([
+              { text:"— ", options:{ color:"555555", bold:true, fontSize:16, fontFace:"Helvetica Neue" } },
+              { text:plain(line.text), options:{ color:"D4D4D4", fontSize:16, fontFace:"Helvetica Neue" } },
+            ], { x:0.5, y, w:9, h:0.44, valign:"middle" });
+            y += 0.5;
+          } else {
+            slide.addText(plain(line.text), { x:0.5, y, w:9, h:0.4, fontSize:14, color:"737373", fontFace:"Helvetica Neue" });
+            y += 0.45;
+          }
+        });
+
+      } else if (type === "pitch") {
+        // YC/Sequoia — white, clean, left sidebar
+        slide.background = { color:"FFFFFF" };
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.08, h:5.625, fill:{color:"6366F1"}, line:{color:"6366F1"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.3, w:10, h:0.325, fill:{color:"F9FAFB"}, line:{color:"F9FAFB"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.295, w:10, h:0.03, fill:{color:"E5E7EB"}, line:{color:"E5E7EB"} });
+        slide.addText(`${si}`, { x:9.0, y:5.32, w:0.8, h:0.22, fontSize:8, color:"9CA3AF", fontFace:"Calibri", align:"right" });
+
+        let y = 0.15;
+        lines.forEach(line => {
+          if (line.type === "h1") {
+            slide.addShape(pptx.ShapeType.rect, { x:0.18, y:0, w:9.82, h:0.72, fill:{color:"F9FAFB"}, line:{color:"F9FAFB"} });
+            slide.addText(plain(line.text), { x:0.22, y:0.1, w:9.5, h:0.56, fontSize:22, bold:true, color:"111111", fontFace:"Calibri", valign:"middle" });
+            slide.addShape(pptx.ShapeType.rect, { x:0.18, y:0.72, w:9.82, h:0.03, fill:{color:"6366F1"}, line:{color:"6366F1"} });
+            y = 0.9;
+          } else if (line.type === "h2") {
+            slide.addShape(pptx.ShapeType.rect, { x:0.22, y:y+0.02, w:9.5, h:0.4, fill:{color:"EEF2FF"}, line:{color:"C7D2FE", width:0.5} });
+            slide.addText(plain(line.text).toUpperCase(), { x:0.3, y:y+0.03, w:9.3, h:0.36, fontSize:11, bold:true, color:"4338CA", fontFace:"Calibri", charSpacing:3 });
+            y += 0.54;
+          } else if (line.type === "bullet") {
+            const dashIdx = line.text.indexOf(" — ");
+            if (dashIdx !== -1) {
+              slide.addText([
+                { text:"◆  ", options:{ color:"6366F1", bold:true, fontSize:11 } },
+                { text:plain(line.text.slice(0, dashIdx)), options:{ color:"111111", bold:true, fontSize:14, fontFace:"Calibri" } },
+                { text:plain(line.text.slice(dashIdx)), options:{ color:"6B7280", fontSize:14, fontFace:"Calibri" } },
+              ], { x:0.28, y, w:9.4, h:0.44, valign:"middle" });
+            } else {
+              slide.addText([
+                { text:"◆  ", options:{ color:"6366F1", bold:true, fontSize:11 } },
+                { text:plain(line.text), options:{ color:"374151", fontSize:14, fontFace:"Calibri" } },
+              ], { x:0.28, y, w:9.4, h:0.44, valign:"middle" });
+            }
+            y += 0.48;
+          } else if (line.type === "bold") {
+            slide.addText(plain(line.text), { x:0.28, y, w:9.4, h:0.38, fontSize:14, bold:true, color:"111111", fontFace:"Calibri" });
+            y += 0.44;
+          } else {
+            slide.addText(plain(line.text), { x:0.28, y, w:9.4, h:0.38, fontSize:13, color:"6B7280", fontFace:"Calibri" });
+            y += 0.43;
+          }
+        });
+
+      } else if (type === "edu") {
+        // Canva edu — white with sky blue header
+        slide.background = { color:"FFFFFF" };
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.75, fill:{color:"0EA5E9"}, line:{color:"0EA5E9"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0.75, w:10, h:0.04, fill:{color:"BAE6FD"}, line:{color:"BAE6FD"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.28, w:10, h:0.345, fill:{color:"F0F9FF"}, line:{color:"F0F9FF"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.275, w:10, h:0.03, fill:{color:"BAE6FD"}, line:{color:"BAE6FD"} });
+        slide.addText(`${si}`, { x:9.0, y:5.31, w:0.8, h:0.22, fontSize:8, color:"7DD3FC", fontFace:"Calibri", align:"right" });
+
+        let y = 0.1;
+        lines.forEach(line => {
+          if (line.type === "h1") {
+            slide.addText(plain(line.text), { x:0.2, y:0.1, w:9.4, h:0.58, fontSize:22, bold:true, color:"FFFFFF", fontFace:"Calibri", valign:"middle" });
+            y = 0.95;
+          } else if (line.type === "h2") {
+            slide.addShape(pptx.ShapeType.rect, { x:0.2, y:y+0.02, w:9.6, h:0.42, fill:{color:"E0F2FE"}, line:{color:"BAE6FD", width:0.5} });
+            slide.addShape(pptx.ShapeType.rect, { x:0.2, y:y+0.02, w:0.07, h:0.42, fill:{color:"0EA5E9"}, line:{color:"0EA5E9"} });
+            slide.addText(plain(line.text), { x:0.35, y:y+0.03, w:9.3, h:0.36, fontSize:14, bold:true, color:"0369A1", fontFace:"Calibri", valign:"middle" });
+            y += 0.57;
+          } else if (line.type === "bullet") {
+            slide.addText([
+              { text:"● ", options:{ color:"0EA5E9", bold:true, fontSize:12 } },
+              { text:plain(line.text), options:{ color:"1E293B", fontSize:14, fontFace:"Calibri" } },
+            ], { x:0.3, y, w:9.3, h:0.44, valign:"middle" });
+            y += 0.48;
+          } else if (line.type === "bold") {
+            slide.addText(plain(line.text), { x:0.3, y, w:9.3, h:0.38, fontSize:14, bold:true, color:"0369A1", fontFace:"Calibri" });
+            y += 0.44;
+          } else {
+            slide.addText(plain(line.text), { x:0.3, y, w:9.3, h:0.38, fontSize:13, color:"64748B", fontFace:"Calibri" });
+            y += 0.43;
+          }
+        });
+
+      } else {
+        // General — navy/white professional
+        slide.background = { color:"FFFFFF" };
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.65, fill:{color:"1E3A5F"}, line:{color:"1E3A5F"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0.65, w:10, h:0.04, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.1, h:5.625, fill:{color:"1E3A5F"}, line:{color:"1E3A5F"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.28, w:10, h:0.345, fill:{color:"1E3A5F"}, line:{color:"1E3A5F"} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.275, w:10, h:0.04, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
+        slide.addText(`${si}`, { x:9.0, y:5.31, w:0.8, h:0.22, fontSize:8, color:"7F8C8D", fontFace:"Calibri", align:"right" });
+
+        let y = 0.1;
+        lines.forEach(line => {
+          if (line.type === "h1") {
+            slide.addText(plain(line.text), { x:0.18, y:0.1, w:9.5, h:0.5, fontSize:21, bold:true, color:"FFFFFF", fontFace:"Calibri", valign:"middle" });
+            y = 0.82;
+          } else if (line.type === "h2") {
+            slide.addShape(pptx.ShapeType.rect, { x:0.18, y:y+0.02, w:9.65, h:0.42, fill:{color:"EBF5FB"}, line:{color:"AED6F1", width:0.5} });
+            slide.addShape(pptx.ShapeType.rect, { x:0.18, y:y+0.02, w:0.07, h:0.42, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
+            slide.addText(plain(line.text).toUpperCase(), { x:0.32, y:y+0.03, w:9.3, h:0.36, fontSize:12, bold:true, color:"1E3A5F", fontFace:"Calibri", valign:"middle", charSpacing:2 });
+            y += 0.57;
+          } else if (line.type === "bullet") {
+            slide.addText([
+              { text:"◆  ", options:{ color:"2D6A9F", bold:true, fontSize:11 } },
+              { text:plain(line.text), options:{ color:"2C3E50", fontSize:14, fontFace:"Calibri" } },
+            ], { x:0.22, y, w:9.4, h:0.44, valign:"middle" });
+            y += 0.48;
+          } else if (line.type === "bold") {
+            slide.addText(plain(line.text), { x:0.22, y, w:9.4, h:0.38, fontSize:14, bold:true, color:"1E3A5F", fontFace:"Calibri" });
+            y += 0.44;
+          } else {
+            slide.addText(plain(line.text), { x:0.22, y, w:9.4, h:0.38, fontSize:13, color:"7F8C8D", fontFace:"Calibri" });
+            y += 0.43;
+          }
+        });
+      }
+    }
+  });
+}
+
+// ── PPTX route ────────────────────────────────────────────────────────────────
 
 router.post("/generate-pptx", verifyUser, async (req, res) => {
   try {
-    const { content, filename = "eloria-presentation.pptx" } = req.body;
+    const { content, type = "general", filename = "presentation.pptx" } = req.body;
     if (!content) return res.status(400).json({ error: "content is required" });
 
     const slides = content.split(/\n---\n/).map(block =>
@@ -391,189 +866,7 @@ router.post("/generate-pptx", verifyUser, async (req, res) => {
     pptx.layout = "LAYOUT_16x9";
     pptx.author = "Eloria AI";
 
-    // helper: strip all markdown for pptx plain text
-    const plain = (text) => text
-      .replace(/\*\*(.+?)\*\*/g, "$1")
-      .replace(/\*(.+?)\*/g,   "$1")
-      .replace(/`(.+?)`/g,     "$1");
-
-    // helper: rich text array splitting "Label — rest" for bullets
-    const bulletRuns = (text) => {
-      const dashIdx = text.indexOf(" — ");
-      if (dashIdx === -1) return [{ text: plain(text), options: { color: THEME.text, fontSize: 14, fontFace: "Calibri" } }];
-      return [
-        { text: plain(text.slice(0, dashIdx)), options: { color: THEME.accent2, fontSize: 14, bold: true, fontFace: "Calibri" } },
-        { text: plain(text.slice(dashIdx)),    options: { color: THEME.text,    fontSize: 14, fontFace: "Calibri" } },
-      ];
-    };
-
-    slides.forEach((lines, si) => {
-      const slide = pptx.addSlide();
-      const isFirst = si === 0;
-      const isLast  = si === slides.length - 1 && lines.length <= 3;
-
-      if (isFirst) {
-        // ── COVER ───────────────────────────────────────────────
-        slide.background = { color: THEME.primary };
-
-        // Gold bars top & bottom
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:0,     w:10, h:0.07, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.555, w:10, h:0.07, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-
-        // Left gold bar
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.14, h:5.625, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-
-        // Bottom dark strip
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:4.9, w:10, h:0.65, fill:{color:"091623"}, line:{color:"091623"} });
-
-        // Branding bottom
-        slide.addText("ELORIA AI  ·  Confidential", {
-          x:0.3, y:5.0, w:9.4, h:0.35,
-          fontSize:9, color:"5D8AA8", fontFace:"Calibri",
-          charSpacing:4, align:"center",
-        });
-
-        let y = 0.9;
-        lines.forEach(line => {
-          if (line.type === "h1") {
-            slide.addText(plain(line.text).toUpperCase(), {
-              x:0.3, y, w:9.4, h:1.6,
-              fontSize:44, bold:true, color:THEME.white,
-              fontFace:"Palatino Linotype",
-              align:"center", valign:"middle", charSpacing:3,
-              shadow:{ type:"outer", color:"000000", blur:6, offset:3, angle:45, opacity:0.4 },
-            });
-            y += 1.7;
-            // Gold underline
-            slide.addShape(pptx.ShapeType.rect, { x:2.5, y, w:5, h:0.05, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-            y += 0.2;
-          } else if (line.type === "h2" || line.type === "h3") {
-            slide.addText(plain(line.text), {
-              x:0.3, y, w:9.4, h:0.5,
-              fontSize:17, color:"A8C0D6",
-              fontFace:"Calibri", align:"center", charSpacing:2,
-            });
-            y += 0.55;
-          } else {
-            slide.addText(plain(line.text), {
-              x:0.3, y, w:9.4, h:0.4,
-              fontSize:14, color:"6D8FA8",
-              fontFace:"Calibri", align:"center",
-            });
-            y += 0.44;
-          }
-        });
-
-      } else if (isLast) {
-        // ── CLOSING ─────────────────────────────────────────────
-        slide.background = { color: THEME.accent2 };
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:0,     w:10, h:0.07, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.555, w:10, h:0.07, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-        slide.addText("ELORIA AI", {
-          x:0.3, y:5.15, w:9.4, h:0.35,
-          fontSize:9, color:THEME.accent, fontFace:"Calibri",
-          bold:true, charSpacing:8, align:"center",
-        });
-        lines.forEach((line, i) => {
-          slide.addText(plain(line.text), {
-            x:0.5, y:1.4 + i*1.0, w:9, h:0.9,
-            fontSize: line.type === "h1" ? 36 : 18,
-            bold: line.type === "h1",
-            color: line.type === "h1" ? THEME.white : "C5D9E8",
-            fontFace: line.type === "h1" ? "Palatino Linotype" : "Calibri",
-            align:"center",
-          });
-        });
-
-      } else {
-        // ── CONTENT SLIDE ────────────────────────────────────────
-        slide.background = { color: THEME.white };
-
-        // Navy top bar
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.6, fill:{color:THEME.primary}, line:{color:THEME.primary} });
-        // Gold accent under top bar
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:0.6, w:10, h:0.045, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-        // Left navy sidebar
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.1, h:5.625, fill:{color:THEME.primary}, line:{color:THEME.primary} });
-        // Navy bottom bar
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.28, w:10, h:0.345, fill:{color:THEME.primary}, line:{color:THEME.primary} });
-        // Gold accent above bottom bar
-        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.275, w:10, h:0.04, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-
-        // Footer text
-        slide.addText("ELORIA AI", { x:0.2, y:5.31, w:2, h:0.28, fontSize:8, color:THEME.accent, fontFace:"Calibri", bold:true, charSpacing:5 });
-        slide.addText(`${si}`, { x:8.8, y:5.31, w:0.9, h:0.28, fontSize:8, color:THEME.muted, fontFace:"Calibri", align:"right" });
-
-        let y = 0.09;
-
-        lines.forEach(line => {
-          if (line.type === "h1") {
-            // Title in top bar
-            slide.addText(plain(line.text), {
-              x:0.18, y:0.1, w:9.5, h:0.44,
-              fontSize:20, bold:true, color:THEME.white,
-              fontFace:"Calibri", valign:"middle", charSpacing:1,
-            });
-            y = 0.75;
-
-          } else if (line.type === "h2") {
-            // Section heading with gold left tab
-            slide.addShape(pptx.ShapeType.rect, { x:0.18, y:y+0.02, w:9.65, h:0.44, fill:{color:"EAF0F6"}, line:{color:THEME.accent, width:0.5} });
-            slide.addShape(pptx.ShapeType.rect, { x:0.18, y:y+0.02, w:0.07, h:0.44, fill:{color:THEME.accent}, line:{color:THEME.accent} });
-            slide.addText(plain(line.text).toUpperCase(), {
-              x:0.34, y:y+0.03, w:9.3, h:0.38,
-              fontSize:13, bold:true, color:THEME.accent2,
-              fontFace:"Calibri", valign:"middle", charSpacing:2,
-            });
-            y += 0.58;
-
-          } else if (line.type === "h3") {
-            slide.addText("▪  " + plain(line.text), {
-              x:0.22, y, w:9.4, h:0.38,
-              fontSize:13, bold:true, color:THEME.accent2,
-              fontFace:"Calibri",
-            });
-            y += 0.44;
-
-          } else if (line.type === "bullet") {
-            slide.addText([
-              { text:"◆  ", options:{ color:THEME.accent, bold:true, fontSize:11, fontFace:"Calibri" } },
-              ...bulletRuns(line.text),
-            ], {
-              x:0.22, y, w:9.42, h:0.42,
-              fontFace:"Calibri", valign:"middle",
-            });
-            y += 0.46;
-
-          } else if (line.type === "numbered") {
-            slide.addText([
-              { text:`${line.num}.  `, options:{ color:THEME.accent, bold:true, fontSize:13, fontFace:"Calibri" } },
-              { text:plain(line.text), options:{ color:THEME.text, fontSize:13, fontFace:"Calibri" } },
-            ], {
-              x:0.22, y, w:9.42, h:0.42,
-              fontFace:"Calibri", valign:"middle",
-            });
-            y += 0.46;
-
-          } else if (line.type === "bold") {
-            slide.addText(plain(line.text), {
-              x:0.22, y, w:9.4, h:0.38,
-              fontSize:13, bold:true, color:THEME.primary,
-              fontFace:"Calibri",
-            });
-            y += 0.42;
-
-          } else {
-            slide.addText(plain(line.text), {
-              x:0.22, y, w:9.4, h:0.38,
-              fontSize:13, color:THEME.muted,
-              fontFace:"Calibri",
-            });
-            y += 0.42;
-          }
-        });
-      }
-    });
+    buildPptxSlides(pptx, slides, type);
 
     const buffer = await pptx.write({ outputType: "nodebuffer" });
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");

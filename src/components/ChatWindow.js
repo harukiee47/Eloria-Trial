@@ -103,28 +103,31 @@ function detectCodeBlocks(text) {
 }
 
 function detectDocBlocks(text) {
-  const regex = /```document\n([\s\S]*?)```/g;
+  const regex = /```document(?::(\w+))?\n([\s\S]*?)```/g;
   const blocks = [];
   let match;
-  while ((match = regex.exec(text)) !== null) blocks.push(match[1].trim());
+  while ((match = regex.exec(text)) !== null) {
+    blocks.push({ type: match[1] || "general", content: match[2].trim() });
+  }
   return blocks;
 }
 
 function detectPresentationBlocks(text) {
-  const regex = /```presentation\n([\s\S]*?)```/g;
+  const regex = /```presentation(?::(\w+))?\n([\s\S]*?)```/g;
   const blocks = [];
   let match;
-  while ((match = regex.exec(text)) !== null) blocks.push(match[1].trim());
+  while ((match = regex.exec(text)) !== null) {
+    blocks.push({ type: match[1] || "general", content: match[2].trim() });
+  }
   return blocks;
 }
 
-async function generateDocx(rawText, filename) {
-  const { auth } = await import("../services/firebase");
+async function generateDocx(block, filename) {
   const token = await auth.currentUser.getIdToken();
   const res = await fetch("https://eloria-trial.onrender.com/api/docs/generate-doc", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ content: rawText, filename }),
+    body: JSON.stringify({ content: block.content, type: block.type, filename }),
   });
   if (!res.ok) { alert("Failed to generate document"); return; }
   const blob = await res.blob();
@@ -134,13 +137,12 @@ async function generateDocx(rawText, filename) {
   URL.revokeObjectURL(url);
 }
 
-async function generatePptx(rawText, filename) {
-  const { auth } = await import("../services/firebase");
+async function generatePptx(block, filename) {
   const token = await auth.currentUser.getIdToken();
   const res = await fetch("https://eloria-trial.onrender.com/api/docs/generate-pptx", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ content: rawText, filename }),
+    body: JSON.stringify({ content: block.content, type: block.type, filename }),
   });
   if (!res.ok) { alert("Failed to generate presentation"); return; }
   const blob = await res.blob();
@@ -376,7 +378,7 @@ function DownloadPptxButton({ text }) {
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
-      <span className="cw-download-text">Download slides</span>
+      <span className="cw-download-text">Download PPT</span>
     </button>
   );
 }
