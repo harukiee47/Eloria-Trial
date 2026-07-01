@@ -25,6 +25,14 @@ function parseInline(text, base = {}) {
   return runs.length ? runs : [new TextRun({ text, ...base })];
 }
 
+function parseSlideBlock(rawBlock) {
+  const tagMatch = rawBlock.match(/^\s*\[slide:(\w+)\]\s*\n/);
+  const slideType = tagMatch ? tagMatch[1] : "bullets";
+  const content = tagMatch ? rawBlock.slice(tagMatch[0].length) : rawBlock;
+  const lines = content.split("\n").map(classifyLine).filter(Boolean);
+  return { slideType, lines };
+}
+
 function plain(text) {
   return text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").replace(/`(.+?)`/g, "$1");
 }
