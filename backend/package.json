@@ -15,6 +15,7 @@
     "firebase-admin": "^13.10.0",
     "multer": "^2.2.0",
     "openai": "^4.20.1",
+    "pptx-automizer": "^0.8.2",
     "pptxgenjs": "^4.0.1"
   },
   "devDependencies": {
