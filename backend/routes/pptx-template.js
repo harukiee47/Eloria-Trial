@@ -18,6 +18,11 @@ const SLIDE_MAP = {
   quote:      { file: "engineering-proposal.pptx", num: 9, shapes: ["Google Shape;256;p44", "Google Shape;257;p44"] },
 };
 
+function capLength(text, maxChars) {
+  if (!text) return text;
+  return text.length > maxChars ? text.slice(0, maxChars - 1).trim() + "…" : text;
+}
+
 // ── Build content values in the SAME ORDER as each map's shapes array ────────
 function getReplacementValues(slideType, lines) {
   const h1 = lines.find(l => l.type === "h1")?.text || "";

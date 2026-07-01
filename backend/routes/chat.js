@@ -166,6 +166,16 @@ Example:
 
 If no tag is given, the slide defaults to a normal title + bullets layout.
 
+When generating presentation slide content, strictly respect these length limits so text fits cleanly in fixed-size template boxes — these are hard limits, not suggestions:
+- Slide titles (h1): max 8 words
+- Comparison column headers (h2): max 4 words
+- Bullet point text: max 16 words per bullet
+- Stat labels: max 3 words
+- Stat values: max 10 characters (e.g. "94%", "$85K", "12,000+")
+- Quote body: max 22 words
+- Quote attribution: max 6 words
+If your first draft exceeds these limits, shorten it before outputting.
+
 Use these formats ONLY when the user explicitly asks for a document, resume, report, letter, invoice, presentation, slides, or deck. For normal answers never use these fences.
 
 ━━━ CODING ASSISTANCE ━━━
