@@ -352,33 +352,75 @@ return (
 }
 
 function DownloadDocButton({ text }) {
+  const [loading, setLoading] = useState(false);
   const blocks = detectDocBlocks(text);
   if (blocks.length === 0) return null;
-  const handleDownload = () => generateDocx(blocks[0], "eloria-document.docx");
+
+  const handleDownload = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await generateDocx(blocks[0], "eloria-document.docx");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <button className="cw-download-btn" onClick={handleDownload} title="Download Word document">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      <span className="cw-download-text">Download Word doc</span>
+    <button
+      className="cw-download-btn"
+      onClick={handleDownload}
+      disabled={loading}
+      title={loading ? "Generating…" : "Download Word document"}
+      style={loading ? { opacity: 0.6, cursor: "default" } : {}}
+    >
+      {loading ? (
+        <span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,.4)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "cwSpin .7s linear infinite" }} />
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      )}
+      <span className="cw-download-text">{loading ? "Generating…" : "Download Word doc"}</span>
     </button>
   );
 }
 
 function DownloadPptxButton({ text }) {
+  const [loading, setLoading] = useState(false);
   const blocks = detectPresentationBlocks(text);
   if (blocks.length === 0) return null;
-  const handleDownload = () => generatePptx(blocks[0], "eloria-presentation.pptx");
+
+  const handleDownload = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await generatePptx(blocks[0], "eloria-presentation.pptx");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <button className="cw-download-btn" onClick={handleDownload} title="Download PowerPoint">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      <span className="cw-download-text">Download PPT</span>
+    <button
+      className="cw-download-btn"
+      onClick={handleDownload}
+      disabled={loading}
+      title={loading ? "Generating…" : "Download PowerPoint"}
+      style={loading ? { opacity: 0.6, cursor: "default" } : {}}
+    >
+      {loading ? (
+        <span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,.4)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "cwSpin .7s linear infinite" }} />
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      )}
+      <span className="cw-download-text">{loading ? "Generating…" : "Download PPT"}</span>
     </button>
   );
 }

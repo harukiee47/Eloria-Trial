@@ -5,6 +5,7 @@ import fs from "fs";
 const automizer = new Automizer({
   templateDir: path.join(process.cwd(), "templates"),
   outputDir: path.join(process.cwd(), "tmp-output"),
+  removeExistingSlides: true,
 });
 
 // ── Shape maps per slide type ─────────────────────────────────────────────────
@@ -71,10 +72,10 @@ function getReplacementValues(slideType, lines) {
 
 // ── Main builder — clones template slides and swaps text ─────────────────────
 export async function buildTemplatedPptx(slidesData, outputFilename) {
-  let pres = automizer
-    .loadRoot("marketing-plan.pptx")
-    .load("marketing-plan.pptx", "marketing")
-    .load("engineering-proposal.pptx", "engineering");
+let pres = automizer
+  .loadRoot("blank-root.pptx")
+  .load("marketing-plan.pptx", "marketing")
+  .load("engineering-proposal.pptx", "engineering");
 
   slidesData.forEach((slideData) => {
     const slideType = SLIDE_MAP[slideData.slideType] ? slideData.slideType : "bullets";
