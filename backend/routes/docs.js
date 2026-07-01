@@ -561,6 +561,61 @@ router.post("/generate-doc", verifyUser, async (req, res) => {
   }
 });
 
+// ── Shared: render one card-style bullet ──────────────────────────────────────
+function renderBulletCard(slide, pptx, text, x, y, w, colors, idx) {
+  const h = 0.62;
+  const dashIdx = text.indexOf(" — ");
+  const label = dashIdx !== -1 ? plain(text.slice(0, dashIdx)) : null;
+  const rest  = dashIdx !== -1 ? plain(text.slice(dashIdx + 3)) : plain(text);
+
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x, y, w, h, rectRadius: 0.08,
+    fill: { color: colors.cardBg },
+    line: { color: colors.cardBorder, width: 0.75 },
+  });
+
+  slide.addShape(pptx.ShapeType.ellipse, {
+    x: x + 0.12, y: y + h / 2 - 0.15, w: 0.3, h: 0.3,
+    fill: { color: colors.badgeBg }, line: { color: colors.badgeBg },
+  });
+  slide.addText(`${idx + 1}`, {
+    x: x + 0.12, y: y + h / 2 - 0.15, w: 0.3, h: 0.3,
+    fontSize: 12, bold: true, color: colors.badgeText,
+    fontFace: colors.font, align: "center", valign: "middle",
+  });
+
+  if (label) {
+    slide.addText([
+      { text: label + "\n", options: { bold: true, fontSize: 13, color: colors.cardTitle, fontFace: colors.font } },
+      { text: rest, options: { fontSize: 11, color: colors.cardBody, fontFace: colors.font } },
+    ], {
+      x: x + 0.55, y: y + 0.05, w: w - 0.7, h: h - 0.1,
+      valign: "middle", lineSpacing: 14,
+    });
+  } else {
+    slide.addText(rest, {
+      x: x + 0.55, y: y + 0.05, w: w - 0.7, h: h - 0.1,
+      fontSize: 13, color: colors.cardBody, fontFace: colors.font, valign: "middle",
+    });
+  }
+}
+
+// ── Shared: lay out bullets as cards, 1 or 2 columns ───────────────────────────
+function renderBulletGrid(slide, pptx, bullets, startY, colors) {
+  const twoCol = bullets.length > 4;
+  const colW = twoCol ? 4.75 : 9.5;
+  const gap = 0.16;
+  bullets.forEach((b, i) => {
+    const col = twoCol ? i % 2 : 0;
+    const row = twoCol ? Math.floor(i / 2) : i;
+    const x = 0.25 + col * (colW + gap);
+    const y = startY + row * (0.62 + gap);
+    renderBulletCard(slide, pptx, b.text, x, y, colW, colors, i);
+  });
+  const rows = twoCol ? Math.ceil(bullets.length / 2) : bullets.length;
+  return rows * (0.62 + gap);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PPTX TEMPLATES
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -573,24 +628,28 @@ function buildPptxSlides(pptx, slides, type) {
       accent: "111111", bullet: "6366F1", text: "374151",
       muted: "9CA3AF", bar: "F3F4F6", barAccent: "6366F1",
       font: "Calibri", titleFont: "Calibri",
+      cardColors: { font: "Calibri", cardBg: "F9FAFB", cardBorder: "E5E7EB", badgeBg: "6366F1", badgeText: "FFFFFF", cardTitle: "111111", cardBody: "4B5563" },
     },
     company: {
       bg: "000000", titleBg: "000000", titleColor: "FFFFFF",
       accent: "FFFFFF", bullet: "A3A3A3", text: "D4D4D4",
       muted: "737373", bar: "171717", barAccent: "FFFFFF",
       font: "Helvetica Neue", titleFont: "Helvetica Neue",
+      cardColors: { font: "Helvetica Neue", cardBg: "141414", cardBorder: "2A2A2A", badgeBg: "FFFFFF", badgeText: "000000", cardTitle: "FFFFFF", cardBody: "A3A3A3" },
     },
     edu: {
       bg: "FFFFFF", titleBg: "F0F9FF", titleColor: "0369A1",
       accent: "0EA5E9", bullet: "0EA5E9", text: "1E293B",
       muted: "64748B", bar: "E0F2FE", barAccent: "0369A1",
       font: "Calibri", titleFont: "Calibri",
+      cardColors: { font: "Calibri", cardBg: "F0F9FF", cardBorder: "BAE6FD", badgeBg: "0EA5E9", badgeText: "FFFFFF", cardTitle: "0369A1", cardBody: "334155" },
     },
     general: {
       bg: "FFFFFF", titleBg: "1E3A5F", titleColor: "FFFFFF",
       accent: "2D6A9F", bullet: "2D6A9F", text: "2C3E50",
       muted: "7F8C8D", bar: "EBF5FB", barAccent: "1E3A5F",
       font: "Calibri", titleFont: "Calibri",
+      cardColors: { font: "Calibri", cardBg: "EBF5FB", cardBorder: "AED6F1", badgeBg: "2D6A9F", badgeText: "FFFFFF", cardTitle: "1E3A5F", cardBody: "45607A" },
     },
   };
 
@@ -604,85 +663,66 @@ function buildPptxSlides(pptx, slides, type) {
     slide.background = { color: TH.bg };
 
     if (isFirst) {
-      // ── COVER ──────────────────────────────────────────────────────────────
-
+      // ── COVER ── (unchanged from before)
       if (type === "company") {
-        // Apple Keynote — pure black, centered, cinematic
         slide.background = { color: "000000" };
         const h1 = lines.find(l => l.type === "h1");
         const sub = lines.find(l => l.type !== "h1");
         if (h1) slide.addText(plain(h1.text), {
-          x:0.5, y:1.6, w:9, h:1.8,
-          fontSize:52, bold:true, color:"FFFFFF",
-          fontFace:"Helvetica Neue", align:"center", valign:"middle",
-          charSpacing:2,
+          x:0.5, y:1.6, w:9, h:1.8, fontSize:52, bold:true, color:"FFFFFF",
+          fontFace:"Helvetica Neue", align:"center", valign:"middle", charSpacing:2,
         });
         if (sub) slide.addText(plain(sub.text), {
-          x:0.5, y:3.5, w:9, h:0.6,
-          fontSize:20, color:"737373",
+          x:0.5, y:3.5, w:9, h:0.6, fontSize:20, color:"737373",
           fontFace:"Helvetica Neue", align:"center",
         });
-        // White center line
         slide.addShape(pptx.ShapeType.rect, { x:4, y:3.2, w:2, h:0.03, fill:{color:"333333"}, line:{color:"333333"} });
 
       } else if (type === "pitch") {
-        // YC/Sequoia — clean white, massive bold text
         slide.background = { color:"FFFFFF" };
         slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.08, h:5.625, fill:{color:"6366F1"}, line:{color:"6366F1"} });
         const h1 = lines.find(l => l.type === "h1");
         const sub = lines.find(l => l.type !== "h1");
         if (h1) slide.addText(plain(h1.text), {
-          x:0.3, y:1.2, w:9.4, h:2,
-          fontSize:54, bold:true, color:"111111",
-          fontFace:"Calibri", align:"left", valign:"middle",
-          charSpacing:-1,
+          x:0.3, y:1.2, w:9.4, h:2, fontSize:54, bold:true, color:"111111",
+          fontFace:"Calibri", align:"left", valign:"middle", charSpacing:-1,
         });
         if (sub) slide.addText(plain(sub.text), {
-          x:0.3, y:3.3, w:7, h:0.6,
-          fontSize:18, color:"6B7280",
-          fontFace:"Calibri", align:"left",
+          x:0.3, y:3.3, w:7, h:0.6, fontSize:18, color:"6B7280", fontFace:"Calibri", align:"left",
         });
         slide.addShape(pptx.ShapeType.rect, { x:0.3, y:3.1, w:3, h:0.04, fill:{color:"6366F1"}, line:{color:"6366F1"} });
 
       } else if (type === "edu") {
-        // Canva edu — sky blue cover
         slide.background = { color:"0EA5E9" };
         slide.addShape(pptx.ShapeType.rect, { x:0, y:4.5, w:10, h:1.125, fill:{color:"0284C7"}, line:{color:"0284C7"} });
         const h1 = lines.find(l => l.type === "h1");
         const sub = lines.find(l => l.type !== "h1");
         if (h1) slide.addText(plain(h1.text), {
-          x:0.5, y:1.0, w:9, h:2,
-          fontSize:48, bold:true, color:"FFFFFF",
+          x:0.5, y:1.0, w:9, h:2, fontSize:48, bold:true, color:"FFFFFF",
           fontFace:"Calibri", align:"center", valign:"middle",
         });
         if (sub) slide.addText(plain(sub.text), {
-          x:0.5, y:3.1, w:9, h:0.6,
-          fontSize:18, color:"E0F2FE",
-          fontFace:"Calibri", align:"center",
+          x:0.5, y:3.1, w:9, h:0.6, fontSize:18, color:"E0F2FE", fontFace:"Calibri", align:"center",
         });
 
       } else {
-        // General — navy cover
         slide.background = { color:"1E3A5F" };
         slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.07, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:5.555, w:10, h:0.07, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
         const h1 = lines.find(l => l.type === "h1");
         const sub = lines.find(l => l.type !== "h1");
         if (h1) slide.addText(plain(h1.text), {
-          x:0.5, y:1.4, w:9, h:1.8,
-          fontSize:46, bold:true, color:"FFFFFF",
+          x:0.5, y:1.4, w:9, h:1.8, fontSize:46, bold:true, color:"FFFFFF",
           fontFace:"Calibri", align:"center", valign:"middle",
         });
         if (sub) slide.addText(plain(sub.text), {
-          x:0.5, y:3.3, w:9, h:0.6,
-          fontSize:18, color:"A8C0D6",
-          fontFace:"Calibri", align:"center",
+          x:0.5, y:3.3, w:9, h:0.6, fontSize:18, color:"A8C0D6", fontFace:"Calibri", align:"center",
         });
         slide.addShape(pptx.ShapeType.rect, { x:3.5, y:3.1, w:3, h:0.045, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
       }
 
     } else if (isLast) {
-      // ── CLOSING ────────────────────────────────────────────────────────────
+      // ── CLOSING ── (unchanged from before)
       if (type === "company") {
         slide.background = { color:"000000" };
         lines.forEach((l, i) => slide.addText(plain(l.text), {
@@ -704,17 +744,26 @@ function buildPptxSlides(pptx, slides, type) {
       }
 
     } else {
-      // ── CONTENT SLIDES ──────────────────────────────────────────────────────
+      // ── CONTENT SLIDES — now with card-grid bullets ──────────────────────────
+
+      const cc = TH.cardColors;
+      let y = 0.1;
+      let pendingBullets = [];
+
+      const flushBulletGrid = () => {
+        if (!pendingBullets.length) return;
+        const used = renderBulletGrid(slide, pptx, pendingBullets, y, cc);
+        y += used;
+        pendingBullets = [];
+      };
 
       if (type === "company") {
-        // Apple Keynote content — black bg, white text
-        slide.background = { color:"000000" };
         slide.addShape(pptx.ShapeType.rect, { x:0, y:5.3, w:10, h:0.325, fill:{color:"0A0A0A"}, line:{color:"0A0A0A"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:5.295, w:10, h:0.04, fill:{color:"333333"}, line:{color:"333333"} });
         slide.addText(`${si}`, { x:9.0, y:5.33, w:0.8, h:0.22, fontSize:8, color:"555555", fontFace:"Helvetica Neue", align:"right" });
 
-        let y = 0.3;
         lines.forEach(line => {
+          if (line.type !== "bullet") flushBulletGrid();
           if (line.type === "h1") {
             slide.addText(plain(line.text), { x:0.5, y:0.15, w:9, h:0.7, fontSize:26, bold:true, color:"FFFFFF", fontFace:"Helvetica Neue", valign:"middle" });
             slide.addShape(pptx.ShapeType.rect, { x:0.5, y:0.82, w:9, h:0.025, fill:{color:"333333"}, line:{color:"333333"} });
@@ -723,27 +772,22 @@ function buildPptxSlides(pptx, slides, type) {
             slide.addText(plain(line.text).toUpperCase(), { x:0.5, y, w:9, h:0.38, fontSize:12, bold:true, color:"737373", fontFace:"Helvetica Neue", charSpacing:4 });
             y += 0.44;
           } else if (line.type === "bullet") {
-            slide.addText([
-              { text:"— ", options:{ color:"555555", bold:true, fontSize:16, fontFace:"Helvetica Neue" } },
-              { text:plain(line.text), options:{ color:"D4D4D4", fontSize:16, fontFace:"Helvetica Neue" } },
-            ], { x:0.5, y, w:9, h:0.44, valign:"middle" });
-            y += 0.5;
+            pendingBullets.push(line);
           } else {
             slide.addText(plain(line.text), { x:0.5, y, w:9, h:0.4, fontSize:14, color:"737373", fontFace:"Helvetica Neue" });
             y += 0.45;
           }
         });
+        flushBulletGrid();
 
       } else if (type === "pitch") {
-        // YC/Sequoia — white, clean, left sidebar
-        slide.background = { color:"FFFFFF" };
         slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.08, h:5.625, fill:{color:"6366F1"}, line:{color:"6366F1"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:5.3, w:10, h:0.325, fill:{color:"F9FAFB"}, line:{color:"F9FAFB"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:5.295, w:10, h:0.03, fill:{color:"E5E7EB"}, line:{color:"E5E7EB"} });
         slide.addText(`${si}`, { x:9.0, y:5.32, w:0.8, h:0.22, fontSize:8, color:"9CA3AF", fontFace:"Calibri", align:"right" });
 
-        let y = 0.15;
         lines.forEach(line => {
+          if (line.type !== "bullet") flushBulletGrid();
           if (line.type === "h1") {
             slide.addShape(pptx.ShapeType.rect, { x:0.18, y:0, w:9.82, h:0.72, fill:{color:"F9FAFB"}, line:{color:"F9FAFB"} });
             slide.addText(plain(line.text), { x:0.22, y:0.1, w:9.5, h:0.56, fontSize:22, bold:true, color:"111111", fontFace:"Calibri", valign:"middle" });
@@ -754,20 +798,7 @@ function buildPptxSlides(pptx, slides, type) {
             slide.addText(plain(line.text).toUpperCase(), { x:0.3, y:y+0.03, w:9.3, h:0.36, fontSize:11, bold:true, color:"4338CA", fontFace:"Calibri", charSpacing:3 });
             y += 0.54;
           } else if (line.type === "bullet") {
-            const dashIdx = line.text.indexOf(" — ");
-            if (dashIdx !== -1) {
-              slide.addText([
-                { text:"◆  ", options:{ color:"6366F1", bold:true, fontSize:11 } },
-                { text:plain(line.text.slice(0, dashIdx)), options:{ color:"111111", bold:true, fontSize:14, fontFace:"Calibri" } },
-                { text:plain(line.text.slice(dashIdx)), options:{ color:"6B7280", fontSize:14, fontFace:"Calibri" } },
-              ], { x:0.28, y, w:9.4, h:0.44, valign:"middle" });
-            } else {
-              slide.addText([
-                { text:"◆  ", options:{ color:"6366F1", bold:true, fontSize:11 } },
-                { text:plain(line.text), options:{ color:"374151", fontSize:14, fontFace:"Calibri" } },
-              ], { x:0.28, y, w:9.4, h:0.44, valign:"middle" });
-            }
-            y += 0.48;
+            pendingBullets.push(line);
           } else if (line.type === "bold") {
             slide.addText(plain(line.text), { x:0.28, y, w:9.4, h:0.38, fontSize:14, bold:true, color:"111111", fontFace:"Calibri" });
             y += 0.44;
@@ -776,18 +807,17 @@ function buildPptxSlides(pptx, slides, type) {
             y += 0.43;
           }
         });
+        flushBulletGrid();
 
       } else if (type === "edu") {
-        // Canva edu — white with sky blue header
-        slide.background = { color:"FFFFFF" };
         slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.75, fill:{color:"0EA5E9"}, line:{color:"0EA5E9"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:0.75, w:10, h:0.04, fill:{color:"BAE6FD"}, line:{color:"BAE6FD"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:5.28, w:10, h:0.345, fill:{color:"F0F9FF"}, line:{color:"F0F9FF"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:5.275, w:10, h:0.03, fill:{color:"BAE6FD"}, line:{color:"BAE6FD"} });
         slide.addText(`${si}`, { x:9.0, y:5.31, w:0.8, h:0.22, fontSize:8, color:"7DD3FC", fontFace:"Calibri", align:"right" });
 
-        let y = 0.1;
         lines.forEach(line => {
+          if (line.type !== "bullet") flushBulletGrid();
           if (line.type === "h1") {
             slide.addText(plain(line.text), { x:0.2, y:0.1, w:9.4, h:0.58, fontSize:22, bold:true, color:"FFFFFF", fontFace:"Calibri", valign:"middle" });
             y = 0.95;
@@ -797,11 +827,7 @@ function buildPptxSlides(pptx, slides, type) {
             slide.addText(plain(line.text), { x:0.35, y:y+0.03, w:9.3, h:0.36, fontSize:14, bold:true, color:"0369A1", fontFace:"Calibri", valign:"middle" });
             y += 0.57;
           } else if (line.type === "bullet") {
-            slide.addText([
-              { text:"● ", options:{ color:"0EA5E9", bold:true, fontSize:12 } },
-              { text:plain(line.text), options:{ color:"1E293B", fontSize:14, fontFace:"Calibri" } },
-            ], { x:0.3, y, w:9.3, h:0.44, valign:"middle" });
-            y += 0.48;
+            pendingBullets.push(line);
           } else if (line.type === "bold") {
             slide.addText(plain(line.text), { x:0.3, y, w:9.3, h:0.38, fontSize:14, bold:true, color:"0369A1", fontFace:"Calibri" });
             y += 0.44;
@@ -810,10 +836,9 @@ function buildPptxSlides(pptx, slides, type) {
             y += 0.43;
           }
         });
+        flushBulletGrid();
 
       } else {
-        // General — navy/white professional
-        slide.background = { color:"FFFFFF" };
         slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.65, fill:{color:"1E3A5F"}, line:{color:"1E3A5F"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:0.65, w:10, h:0.04, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
         slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.1, h:5.625, fill:{color:"1E3A5F"}, line:{color:"1E3A5F"} });
@@ -821,8 +846,8 @@ function buildPptxSlides(pptx, slides, type) {
         slide.addShape(pptx.ShapeType.rect, { x:0, y:5.275, w:10, h:0.04, fill:{color:"2D6A9F"}, line:{color:"2D6A9F"} });
         slide.addText(`${si}`, { x:9.0, y:5.31, w:0.8, h:0.22, fontSize:8, color:"7F8C8D", fontFace:"Calibri", align:"right" });
 
-        let y = 0.1;
         lines.forEach(line => {
+          if (line.type !== "bullet") flushBulletGrid();
           if (line.type === "h1") {
             slide.addText(plain(line.text), { x:0.18, y:0.1, w:9.5, h:0.5, fontSize:21, bold:true, color:"FFFFFF", fontFace:"Calibri", valign:"middle" });
             y = 0.82;
@@ -832,11 +857,7 @@ function buildPptxSlides(pptx, slides, type) {
             slide.addText(plain(line.text).toUpperCase(), { x:0.32, y:y+0.03, w:9.3, h:0.36, fontSize:12, bold:true, color:"1E3A5F", fontFace:"Calibri", valign:"middle", charSpacing:2 });
             y += 0.57;
           } else if (line.type === "bullet") {
-            slide.addText([
-              { text:"◆  ", options:{ color:"2D6A9F", bold:true, fontSize:11 } },
-              { text:plain(line.text), options:{ color:"2C3E50", fontSize:14, fontFace:"Calibri" } },
-            ], { x:0.22, y, w:9.4, h:0.44, valign:"middle" });
-            y += 0.48;
+            pendingBullets.push(line);
           } else if (line.type === "bold") {
             slide.addText(plain(line.text), { x:0.22, y, w:9.4, h:0.38, fontSize:14, bold:true, color:"1E3A5F", fontFace:"Calibri" });
             y += 0.44;
@@ -845,6 +866,7 @@ function buildPptxSlides(pptx, slides, type) {
             y += 0.43;
           }
         });
+        flushBulletGrid();
       }
     }
   });
