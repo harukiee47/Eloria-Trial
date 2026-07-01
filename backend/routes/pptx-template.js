@@ -72,10 +72,18 @@ function getReplacementValues(slideType, lines) {
 
 // ── Main builder — clones template slides and swaps text ─────────────────────
 export async function buildTemplatedPptx(slidesData, outputFilename) {
-let pres = automizer
-  .loadRoot("blank-root.pptx")
-  .load("marketing-plan.pptx", "marketing")
-  .load("engineering-proposal.pptx", "engineering");
+  const templateDir = path.join(process.cwd(), "templates");
+  const mpPath = path.join(templateDir, "marketing-plan.pptx");
+  const epPath = path.join(templateDir, "engineering-proposal.pptx");
+
+  console.log("DEBUG templateDir:", templateDir);
+  console.log("DEBUG marketing-plan.pptx exists:", fs.existsSync(mpPath), "size:", fs.existsSync(mpPath) ? fs.statSync(mpPath).size : "N/A");
+  console.log("DEBUG engineering-proposal.pptx exists:", fs.existsSync(epPath), "size:", fs.existsSync(epPath) ? fs.statSync(epPath).size : "N/A");
+
+  let pres = automizer
+    .loadRoot("marketing-plan.pptx")
+    .load("marketing-plan.pptx", "marketing")
+    .load("engineering-proposal.pptx", "engineering");
 
   slidesData.forEach((slideData) => {
     const slideType = SLIDE_MAP[slideData.slideType] ? slideData.slideType : "bullets";
