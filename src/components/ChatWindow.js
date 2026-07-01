@@ -119,9 +119,11 @@ function detectPresentationBlocks(text) {
 }
 
 async function generateDocx(rawText, filename) {
+  const { auth } = await import("../services/firebase");
+  const token = await auth.currentUser.getIdToken();
   const res = await fetch("https://eloria-trial.onrender.com/api/docs/generate-doc", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ content: rawText, filename }),
   });
   if (!res.ok) { alert("Failed to generate document"); return; }
@@ -133,9 +135,11 @@ async function generateDocx(rawText, filename) {
 }
 
 async function generatePptx(rawText, filename) {
+  const { auth } = await import("../services/firebase");
+  const token = await auth.currentUser.getIdToken();
   const res = await fetch("https://eloria-trial.onrender.com/api/docs/generate-pptx", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ content: rawText, filename }),
   });
   if (!res.ok) { alert("Failed to generate presentation"); return; }
@@ -1656,17 +1660,6 @@ const CW_STYLE = `
       height: 14px;
     }
   }
-
-@media (prefers-color-scheme: dark) {
-  .cw-download-btn {
-    background: linear-gradient(135deg, #fffee8f8 0%, #fffee8f8 100%);
-    box-shadow: 0 6px 20px rgba(210, 190, 165, 0.3);
-  }
-  .cw-download-btn:hover {
-    background: linear-gradient(135deg, #fffee8f8 0%, #fffee8f8 100%);
-    box-shadow: 0 10px 30px rgba(210, 190, 165, 0.4);
-  }
-}
 
   /* ── THINKING ────────────────────────────────────────── */
   .cw-thinking {
