@@ -1,140 +1,206 @@
 import express from "express";
 import { verifyUser } from "../middleware/auth.js";
 import {
-  Document, Packer, Paragraph, HeadingLevel, TextRun,
+  Document, Packer, Paragraph, TextRun,
   AlignmentType, BorderStyle, ShadingType, PageNumber,
-  Header, Footer, Table, TableRow, TableCell, WidthType,
-  UnderlineType, TabStopType, TabStopLeader,
+  Header, Footer, UnderlineType,
 } from "docx";
 import PptxGenJS from "pptxgenjs";
 
 const router = express.Router();
 
-// ── Theme ─────────────────────────────────────────────────────────────────────
-
 const THEME = {
-  primary:   "0D1B2A",   // near-black navy
-  accent:    "C9A84C",   // gold
-  accent2:   "1B4F72",   // deep sapphire
-  highlight: "F0E6CC",   // warm gold tint
-  light:     "F7F9FC",   // off-white
-  text:      "1A1A2E",   // rich dark
-  muted:     "7F8C8D",   // cool grey
-  white:     "FFFFFF",
-  border:    "C9A84C",   // gold border
-  subtle:    "ECF0F1",   // light rule
-  red:       "C0392B",
-  green:     "1E8449",
+  primary:  "0D1B2A",
+  accent:   "C9A84C",
+  accent2:  "1B4F72",
+  text:     "1A1A2E",
+  muted:    "7F8C8D",
+  white:    "FFFFFF",
+  light:    "F4F6F8",
+  border:   "C9A84C",
+  subtle:   "DEE2E6",
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Inline markdown parser → TextRun[] ───────────────────────────────────────
+// Handles **bold**, *italic*, `code`, and plain text mixed together
 
-function parseMarkdownDoc(raw) {
-  return raw.split("\n").filter(l => l.trim()).map(line => {
-    if (line.startsWith("# "))    return { type: "h1",     text: line.slice(2).trim() };
-    if (line.startsWith("## "))   return { type: "h2",     text: line.slice(3).trim() };
-    if (line.startsWith("### "))  return { type: "h3",     text: line.slice(4).trim() };
-    if (line.startsWith("- "))    return { type: "bullet", text: line.slice(2).trim() };
-    if (line.startsWith("  - "))  return { type: "bullet2",text: line.slice(4).trim() };
-    if (/^\*\*(.+)\*\*$/.test(line.trim())) return { type: "bold", text: line.trim().replace(/\*\*/g, "") };
-    if (/^\d+\.\s/.test(line.trim())) return { type: "numbered", text: line.trim().replace(/^\d+\.\s/, ""), num: line.trim().match(/^(\d+)\./)[1] };
-    return { type: "text", text: line.trim() };
-  });
+function parseInline(text, baseOpts = {}) {
+  const runs = [];
+  // regex: captures **bold**, *italic*, `code`, or plain text chunks
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|([^*`]+)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match[1] !== undefined) {
+      runs.push(new TextRun({
+        text: match[1],
+        bold: true,
+        ...baseOpts,
+      }));
+    } else if (match[2] !== undefined) {
+      runs.push(new TextRun({
+        text: match[2],
+        italics: true,
+        ...baseOpts,
+      }));
+    } else if (match[3] !== undefined) {
+      runs.push(new TextRun({
+        text: match[3],
+        font: "Courier New",
+        size: (baseOpts.size || 22) - 2,
+        color: "C0392B",
+        highlight: "yellow",
+        ...baseOpts,
+        font: "Courier New",
+      }));
+    } else if (match[4] !== undefined) {
+      const t = match[4];
+      if (t.trim()) {
+        runs.push(new TextRun({
+          text: t,
+          ...baseOpts,
+        }));
+      }
+    }
+  }
+  return runs.length ? runs : [new TextRun({ text, ...baseOpts })];
 }
 
-function parseSlides(raw) {
-  return raw.split(/\n---\n/).map(slide => parseMarkdownDoc(slide));
+// ── Line classifier ───────────────────────────────────────────────────────────
+
+function classifyLine(raw) {
+  const line = raw.trim();
+  if (!line) return null;
+
+  // Explicit markdown headings
+  if (line.startsWith("# "))   return { type: "h1",     text: line.slice(2).trim() };
+  if (line.startsWith("## "))  return { type: "h2",     text: line.slice(3).trim() };
+  if (line.startsWith("### ")) return { type: "h3",     text: line.slice(4).trim() };
+
+  // Bullet lines (with or without inline bold)
+  if (line.startsWith("- ") || line.startsWith("• ")) {
+    return { type: "bullet", text: line.replace(/^[-•]\s*/, "") };
+  }
+
+  // Strip outer ** to check what's inside
+  const innerBold = line.match(/^\*\*(.+)\*\*$/);
+  const inner = innerBold ? innerBold[1].trim() : null;
+
+  if (inner) {
+    const isAllCaps = inner === inner.toUpperCase() && inner.length > 3 && !/[a-z]/.test(inner);
+    const isShort   = inner.length < 60;
+    const hasSymbols = /[&'—]/.test(inner); // "Founder & Owner", "Let's"
+
+    // ALL CAPS bold short line = section heading
+    if (isAllCaps && isShort && !hasSymbols) {
+      return { type: "h2", text: inner };
+    }
+
+    // Short bold line (not all caps) = subheading or label
+    if (isShort && !hasSymbols) {
+      // Check if it looks like a name/title (no sentence punctuation)
+      if (!/[.!?,]/.test(inner)) return { type: "h3", text: inner };
+    }
+  }
+
+  // Numbered list
+  const numbered = line.match(/^(\d+)[.)]\s+(.+)/);
+  if (numbered) return { type: "numbered", text: numbered[2], num: numbered[1] };
+
+  // Horizontal rule
+  if (/^[-*_]{3,}$/.test(line)) return { type: "rule" };
+
+  // Default: body text (may contain inline markdown)
+  return { type: "text", text: line };
 }
 
-function stripInlineMarkdown(text) {
-  return text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").replace(/`(.+?)`/g, "$1");
-}
-
-// ── DOCX builder ──────────────────────────────────────────────────────────────
+// ── DOCX ─────────────────────────────────────────────────────────────────────
 
 router.post("/generate-doc", verifyUser, async (req, res) => {
   try {
     const { content, filename = "eloria-document.docx" } = req.body;
     if (!content) return res.status(400).json({ error: "content is required" });
 
-    const lines = parseMarkdownDoc(content);
+    const rawLines = content.split("\n");
+    const lines = rawLines.map(classifyLine).filter(Boolean);
+
     const children = [];
     let bulletBuffer = [];
     let numberedBuffer = [];
     let isFirstH1 = true;
-    let numberedCount = 0;
+    let docTitle = "";
 
     const flushBullets = () => {
-      bulletBuffer.forEach(({ text, level }) => {
-        const isNested = level === 2;
+      if (!bulletBuffer.length) return;
+      bulletBuffer.forEach(({ text }) => {
+        // Split bullet at " — " to style the label differently
+        const dashIdx = text.indexOf(" — ");
+        const hasDash = dashIdx !== -1;
+        const labelPart = hasDash ? text.slice(0, dashIdx) : null;
+        const restPart  = hasDash ? text.slice(dashIdx) : text;
+
+        const runs = [];
+        if (hasDash) {
+          // parse the label part inline
+          const labelRuns = parseInline(labelPart, {
+            font: "Calibri", size: 21, color: THEME.accent2, bold: true,
+          });
+          runs.push(...labelRuns);
+          runs.push(new TextRun({
+            text: restPart,
+            font: "Georgia", size: 21, color: THEME.text,
+          }));
+        } else {
+          runs.push(...parseInline(text, {
+            font: "Georgia", size: 21, color: THEME.text,
+          }));
+        }
+
         children.push(new Paragraph({
           children: [
-            new TextRun({
-              text: isNested ? "◦  " : "◆  ",
-              font: "Calibri",
-              size: isNested ? 18 : 20,
-              color: isNested ? THEME.muted : THEME.accent,
-              bold: !isNested,
-            }),
-            new TextRun({
-              text: stripInlineMarkdown(text),
-              font: "Georgia",
-              size: isNested ? 19 : 21,
-              color: THEME.text,
-            }),
+            new TextRun({ text: "◆  ", font: "Calibri", size: 20, color: THEME.accent, bold: true }),
+            ...runs,
           ],
-          spacing: { after: isNested ? 50 : 80, before: isNested ? 30 : 50 },
-          indent: { left: isNested ? 720 : 440 },
+          spacing: { before: 60, after: 80 },
+          indent: { left: 440 },
         }));
       });
       bulletBuffer = [];
     };
 
     const flushNumbered = () => {
+      if (!numberedBuffer.length) return;
       numberedBuffer.forEach(({ text, num }) => {
         children.push(new Paragraph({
           children: [
-            new TextRun({
-              text: `${num}.  `,
-              font: "Calibri",
-              size: 21,
-              color: THEME.accent,
-              bold: true,
-            }),
-            new TextRun({
-              text: stripInlineMarkdown(text),
-              font: "Georgia",
-              size: 21,
-              color: THEME.text,
-            }),
+            new TextRun({ text: `${num}.  `, font: "Calibri", size: 21, color: THEME.accent, bold: true }),
+            ...parseInline(text, { font: "Georgia", size: 21, color: THEME.text }),
           ],
-          spacing: { after: 80, before: 50 },
-          indent: { left: 360 },
+          spacing: { before: 60, after: 80 },
+          indent: { left: 400 },
         }));
       });
       numberedBuffer = [];
-      numberedCount = 0;
     };
 
     lines.forEach(line => {
-      if (line.type !== "bullet" && line.type !== "bullet2" && bulletBuffer.length) flushBullets();
-      if (line.type !== "numbered" && numberedBuffer.length) flushNumbered();
+      if (line.type !== "bullet")   flushBullets();
+      if (line.type !== "numbered") flushNumbered();
 
       switch (line.type) {
 
-        // ── COVER TITLE ──
         case "h1":
           if (isFirstH1) {
             isFirstH1 = false;
+            docTitle = line.text;
 
-            // Gold top rule
+            // Gold top stripe
             children.push(new Paragraph({
-              children: [new TextRun({ text: "", size: 2 })],
+              children: [new TextRun({ text: " ", size: 8 })],
               shading: { type: ShadingType.SOLID, color: THEME.accent },
               spacing: { before: 0, after: 0 },
             }));
 
-            // Dark navy cover block
+            // Navy cover block
             children.push(new Paragraph({
               children: [
                 new TextRun({
@@ -143,243 +209,140 @@ router.post("/generate-doc", verifyUser, async (req, res) => {
                   font: "Palatino Linotype",
                   size: 64,
                   color: THEME.white,
-                  characterSpacing: 80,
-                }),
-              ],
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 560, after: 560 },
-              shading: { type: ShadingType.SOLID, color: THEME.primary },
-            }));
-
-            // Gold bottom rule
-            children.push(new Paragraph({
-              children: [new TextRun({ text: "", size: 2 })],
-              shading: { type: ShadingType.SOLID, color: THEME.accent },
-              spacing: { before: 0, after: 0 },
-            }));
-
-            // Subtitle label
-            children.push(new Paragraph({
-              children: [
-                new TextRun({
-                  text: "PREPARED BY ELORIA AI",
-                  font: "Calibri",
-                  size: 17,
-                  color: THEME.muted,
-                  characterSpacing: 120,
-                }),
-              ],
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 200, after: 600 },
-            }));
-
-            // Divider line
-            children.push(new Paragraph({
-              children: [new TextRun({ text: "" })],
-              border: {
-                bottom: { style: BorderStyle.SINGLE, size: 4, color: THEME.subtle },
-              },
-              spacing: { before: 0, after: 400 },
-            }));
-
-          } else {
-            // Secondary H1
-            children.push(new Paragraph({
-              children: [
-                new TextRun({
-                  text: line.text.toUpperCase(),
-                  bold: true,
-                  font: "Palatino Linotype",
-                  size: 40,
-                  color: THEME.primary,
                   characterSpacing: 60,
                 }),
               ],
               alignment: AlignmentType.CENTER,
+              spacing: { before: 600, after: 500 },
+              shading: { type: ShadingType.SOLID, color: THEME.primary },
+            }));
+
+            // Gold bottom stripe
+            children.push(new Paragraph({
+              children: [new TextRun({ text: " ", size: 8 })],
+              shading: { type: ShadingType.SOLID, color: THEME.accent },
+              spacing: { before: 0, after: 0 },
+            }));
+
+            // Byline
+            children.push(new Paragraph({
+              children: [new TextRun({
+                text: "PREPARED BY ELORIA AI",
+                font: "Calibri", size: 17,
+                color: THEME.muted, characterSpacing: 120,
+              })],
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 240, after: 600 },
+            }));
+
+            // Divider
+            children.push(new Paragraph({
+              children: [new TextRun({ text: "" })],
+              border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: THEME.accent } },
+              spacing: { before: 0, after: 480 },
+            }));
+
+          } else {
+            children.push(new Paragraph({
+              children: [new TextRun({
+                text: line.text.toUpperCase(),
+                bold: true, font: "Palatino Linotype",
+                size: 40, color: THEME.primary, characterSpacing: 40,
+              })],
+              alignment: AlignmentType.CENTER,
               spacing: { before: 560, after: 200 },
-              border: {
-                bottom: { style: BorderStyle.SINGLE, size: 8, color: THEME.accent },
-              },
+              border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: THEME.accent } },
             }));
           }
           break;
 
-        // ── SECTION HEADING ──
         case "h2":
-          // Gold left bar + dark navy bg
           children.push(new Paragraph({
             children: [
-              new TextRun({ text: "  ", font: "Calibri", size: 28 }),
+              new TextRun({ text: "  ", size: 26 }),
               new TextRun({
                 text: line.text.toUpperCase(),
-                bold: true,
-                font: "Calibri",
-                size: 26,
-                color: THEME.white,
-                characterSpacing: 60,
+                bold: true, font: "Calibri",
+                size: 24, color: THEME.white, characterSpacing: 60,
               }),
             ],
             spacing: { before: 480, after: 160 },
             shading: { type: ShadingType.SOLID, color: THEME.accent2 },
             border: {
-              left:   { style: BorderStyle.SINGLE, size: 20, color: THEME.accent },
+              left:   { style: BorderStyle.SINGLE, size: 18, color: THEME.accent },
               bottom: { style: BorderStyle.SINGLE, size: 2,  color: THEME.accent },
             },
           }));
           break;
 
-        // ── SUB HEADING ──
         case "h3":
           children.push(new Paragraph({
             children: [
+              new TextRun({ text: "— ", font: "Calibri", size: 22, color: THEME.accent, bold: true }),
               new TextRun({
-                text: "— ",
-                font: "Calibri",
-                size: 22,
-                color: THEME.accent,
-                bold: true,
-              }),
-              new TextRun({
-                text: line.text,
-                bold: true,
-                font: "Palatino Linotype",
-                size: 26,
-                color: THEME.accent2,
-                underline: { type: UnderlineType.NONE },
+                text: line.text, bold: true,
+                font: "Palatino Linotype", size: 25, color: THEME.accent2,
               }),
             ],
-            spacing: { before: 320, after: 100 },
+            spacing: { before: 280, after: 100 },
           }));
           break;
 
-        // ── BOLD LINE ──
-        case "bold":
-          children.push(new Paragraph({
-            children: [
-              new TextRun({
-                text: line.text,
-                bold: true,
-                font: "Calibri",
-                size: 23,
-                color: THEME.primary,
-              }),
-            ],
-            spacing: { before: 180, after: 80 },
-            border: {
-              left: { style: BorderStyle.SINGLE, size: 8, color: THEME.accent },
-            },
-            indent: { left: 200 },
-          }));
-          break;
-
-        // ── BULLETS ──
         case "bullet":
-          bulletBuffer.push({ text: line.text, level: 1 });
-          break;
-        case "bullet2":
-          bulletBuffer.push({ text: line.text, level: 2 });
+          bulletBuffer.push({ text: line.text });
           break;
 
-        // ── NUMBERED ──
         case "numbered":
-          numberedCount++;
-          numberedBuffer.push({ text: line.text, num: numberedCount });
+          numberedBuffer.push({ text: line.text, num: line.num });
           break;
 
-        // ── BODY TEXT ──
-        default:
+        case "rule":
           children.push(new Paragraph({
-            children: [
-              new TextRun({
-                text: stripInlineMarkdown(line.text),
-                font: "Georgia",
-                size: 22,
-                color: THEME.text,
-              }),
-            ],
+            children: [new TextRun({ text: "" })],
+            border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: THEME.subtle } },
+            spacing: { before: 200, after: 200 },
+          }));
+          break;
+
+        default: // text
+          children.push(new Paragraph({
+            children: parseInline(line.text, {
+              font: "Georgia", size: 22, color: THEME.text,
+            }),
             spacing: { before: 80, after: 120 },
             alignment: AlignmentType.JUSTIFIED,
-            indent: { firstLine: 360 },
           }));
       }
     });
 
-    if (bulletBuffer.length) flushBullets();
-    if (numberedBuffer.length) flushNumbered();
+    flushBullets();
+    flushNumbered();
 
     // ── Header ──
     const header = new Header({
-      children: [
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "ELORIA AI",
-              font: "Calibri",
-              size: 16,
-              color: THEME.accent,
-              bold: true,
-              characterSpacing: 100,
-            }),
-            new TextRun({
-              text: "  •  Confidential Document",
-              font: "Calibri",
-              size: 16,
-              color: THEME.muted,
-            }),
-          ],
-          alignment: AlignmentType.RIGHT,
-          border: {
-            bottom: { style: BorderStyle.SINGLE, size: 4, color: THEME.accent },
-          },
-          spacing: { after: 0 },
-        }),
-      ],
+      children: [new Paragraph({
+        children: [
+          new TextRun({ text: docTitle || "ELORIA AI", font: "Calibri", size: 16, color: THEME.accent, bold: true, characterSpacing: 80 }),
+          new TextRun({ text: "  ·  Confidential", font: "Calibri", size: 16, color: THEME.muted }),
+        ],
+        alignment: AlignmentType.RIGHT,
+        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: THEME.accent } },
+      })],
     });
 
     // ── Footer ──
     const footer = new Footer({
-      children: [
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "Generated by Eloria AI  ·  ",
-              font: "Calibri",
-              size: 17,
-              color: THEME.muted,
-            }),
-            new TextRun({
-              text: "Page ",
-              font: "Calibri",
-              size: 17,
-              color: THEME.muted,
-            }),
-            new TextRun({
-              children: [PageNumber.CURRENT],
-              font: "Calibri",
-              size: 17,
-              color: THEME.accent,
-              bold: true,
-            }),
-            new TextRun({
-              text: " / ",
-              font: "Calibri",
-              size: 17,
-              color: THEME.muted,
-            }),
-            new TextRun({
-              children: [PageNumber.TOTAL_PAGES],
-              font: "Calibri",
-              size: 17,
-              color: THEME.muted,
-            }),
-          ],
-          alignment: AlignmentType.CENTER,
-          border: {
-            top: { style: BorderStyle.SINGLE, size: 4, color: THEME.accent },
-          },
-          spacing: { before: 120 },
-        }),
-      ],
+      children: [new Paragraph({
+        children: [
+          new TextRun({ text: "Generated by Eloria AI  ·  Page ", font: "Calibri", size: 17, color: THEME.muted }),
+          new TextRun({ children: [PageNumber.CURRENT], font: "Calibri", size: 17, color: THEME.accent, bold: true }),
+          new TextRun({ text: " / ", font: "Calibri", size: 17, color: THEME.muted }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], font: "Calibri", size: 17, color: THEME.muted }),
+        ],
+        alignment: AlignmentType.CENTER,
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: THEME.accent } },
+        spacing: { before: 120 },
+      })],
     });
 
     const doc = new Document({
@@ -393,9 +356,7 @@ router.post("/generate-doc", verifyUser, async (req, res) => {
       },
       sections: [{
         properties: {
-          page: {
-            margin: { top: 1080, bottom: 1080, left: 1260, right: 1080 },
-          },
+          page: { margin: { top: 1080, bottom: 1080, left: 1260, right: 1080 } },
         },
         headers: { default: header },
         footers: { default: footer },
@@ -414,283 +375,199 @@ router.post("/generate-doc", verifyUser, async (req, res) => {
   }
 });
 
-// ── PPTX builder ──────────────────────────────────────────────────────────────
+// ── PPTX ─────────────────────────────────────────────────────────────────────
 
 router.post("/generate-pptx", verifyUser, async (req, res) => {
   try {
     const { content, filename = "eloria-presentation.pptx" } = req.body;
     if (!content) return res.status(400).json({ error: "content is required" });
 
-    const slides = parseSlides(content);
-    const pptx = new PptxGenJS();
+    const slides = content.split(/\n---\n/).map(block =>
+      block.split("\n").map(classifyLine).filter(Boolean)
+    );
 
+    const pptx = new PptxGenJS();
     pptx.defineLayout({ name: "LAYOUT_16x9", width: 10, height: 5.625 });
     pptx.layout = "LAYOUT_16x9";
     pptx.author = "Eloria AI";
-    pptx.company = "Kairox";
 
-    slides.forEach((lines, slideIndex) => {
+    // helper: strip all markdown for pptx plain text
+    const plain = (text) => text
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/\*(.+?)\*/g,   "$1")
+      .replace(/`(.+?)`/g,     "$1");
+
+    // helper: rich text array splitting "Label — rest" for bullets
+    const bulletRuns = (text) => {
+      const dashIdx = text.indexOf(" — ");
+      if (dashIdx === -1) return [{ text: plain(text), options: { color: THEME.text, fontSize: 14, fontFace: "Calibri" } }];
+      return [
+        { text: plain(text.slice(0, dashIdx)), options: { color: THEME.accent2, fontSize: 14, bold: true, fontFace: "Calibri" } },
+        { text: plain(text.slice(dashIdx)),    options: { color: THEME.text,    fontSize: 14, fontFace: "Calibri" } },
+      ];
+    };
+
+    slides.forEach((lines, si) => {
       const slide = pptx.addSlide();
-      const isFirst = slideIndex === 0;
-      const isLast = slideIndex === slides.length - 1;
+      const isFirst = si === 0;
+      const isLast  = si === slides.length - 1 && lines.length <= 3;
 
       if (isFirst) {
-        // ── COVER SLIDE ──────────────────────────────────────────
-        // Full dark background
+        // ── COVER ───────────────────────────────────────────────
         slide.background = { color: THEME.primary };
 
-        // Gold diagonal accent stripe (simulated with rect)
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 4.8, w: 10, h: 0.06,
-          fill: { color: THEME.accent },
-          line: { color: THEME.accent },
-        });
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 0, w: 10, h: 0.06,
-          fill: { color: THEME.accent },
-          line: { color: THEME.accent },
+        // Gold bars top & bottom
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0,     w:10, h:0.07, fill:{color:THEME.accent}, line:{color:THEME.accent} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.555, w:10, h:0.07, fill:{color:THEME.accent}, line:{color:THEME.accent} });
+
+        // Left gold bar
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.14, h:5.625, fill:{color:THEME.accent}, line:{color:THEME.accent} });
+
+        // Bottom dark strip
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:4.9, w:10, h:0.65, fill:{color:"091623"}, line:{color:"091623"} });
+
+        // Branding bottom
+        slide.addText("ELORIA AI  ·  Confidential", {
+          x:0.3, y:5.0, w:9.4, h:0.35,
+          fontSize:9, color:"5D8AA8", fontFace:"Calibri",
+          charSpacing:4, align:"center",
         });
 
-        // Left gold vertical bar
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 0, w: 0.12, h: 5.625,
-          fill: { color: THEME.accent },
-          line: { color: THEME.accent },
-        });
-
-        // Watermark text top right
-        slide.addText("ELORIA AI", {
-          x: 7.2, y: 0.18, w: 2.6, h: 0.35,
-          fontSize: 10, color: "C9A84C",
-          fontFace: "Calibri", bold: true,
-          charSpacing: 6, align: "right", transparency: 30,
-        });
-
-        let y = 1.2;
+        let y = 0.9;
         lines.forEach(line => {
           if (line.type === "h1") {
-            slide.addText(line.text, {
-              x: 0.4, y, w: 9.2, h: 1.5,
-              fontSize: 46, bold: true,
-              color: THEME.white,
-              fontFace: "Palatino Linotype",
-              align: "left", valign: "middle",
-              charSpacing: 2,
+            slide.addText(plain(line.text).toUpperCase(), {
+              x:0.3, y, w:9.4, h:1.6,
+              fontSize:44, bold:true, color:THEME.white,
+              fontFace:"Palatino Linotype",
+              align:"center", valign:"middle", charSpacing:3,
+              shadow:{ type:"outer", color:"000000", blur:6, offset:3, angle:45, opacity:0.4 },
             });
-            y += 1.55;
+            y += 1.7;
             // Gold underline
-            slide.addShape(pptx.ShapeType.rect, {
-              x: 0.4, y, w: 4, h: 0.045,
-              fill: { color: THEME.accent },
-              line: { color: THEME.accent },
+            slide.addShape(pptx.ShapeType.rect, { x:2.5, y, w:5, h:0.05, fill:{color:THEME.accent}, line:{color:THEME.accent} });
+            y += 0.2;
+          } else if (line.type === "h2" || line.type === "h3") {
+            slide.addText(plain(line.text), {
+              x:0.3, y, w:9.4, h:0.5,
+              fontSize:17, color:"A8C0D6",
+              fontFace:"Calibri", align:"center", charSpacing:2,
             });
-            y += 0.18;
-          } else if (line.type === "h2") {
-            slide.addText(line.text.toUpperCase(), {
-              x: 0.4, y, w: 9, h: 0.5,
-              fontSize: 16, bold: true,
-              color: THEME.accent,
-              fontFace: "Calibri",
-              align: "left", charSpacing: 4,
-            });
-            y += 0.52;
+            y += 0.55;
           } else {
-            slide.addText(line.text, {
-              x: 0.4, y, w: 8.5, h: 0.45,
-              fontSize: 16,
-              color: "A8C0D6",
-              fontFace: "Calibri",
-              align: "left",
+            slide.addText(plain(line.text), {
+              x:0.3, y, w:9.4, h:0.4,
+              fontSize:14, color:"6D8FA8",
+              fontFace:"Calibri", align:"center",
             });
-            y += 0.48;
+            y += 0.44;
           }
         });
 
-        // Bottom date/branding bar
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 5.0, w: 10, h: 0.625,
-          fill: { color: "091623" },
-          line: { color: "091623" },
-        });
-        slide.addText("Confidential  ·  Generated by Eloria AI", {
-          x: 0.3, y: 5.1, w: 9.4, h: 0.4,
-          fontSize: 10, color: "5D8AA8",
-          fontFace: "Calibri", align: "center",
-          charSpacing: 2,
-        });
-
-      } else if (isLast && lines.length <= 3) {
-        // ── CLOSING SLIDE ─────────────────────────────────────────
+      } else if (isLast) {
+        // ── CLOSING ─────────────────────────────────────────────
         slide.background = { color: THEME.accent2 };
-
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 0, w: 10, h: 0.06,
-          fill: { color: THEME.accent },
-          line: { color: THEME.accent },
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0,     w:10, h:0.07, fill:{color:THEME.accent}, line:{color:THEME.accent} });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.555, w:10, h:0.07, fill:{color:THEME.accent}, line:{color:THEME.accent} });
+        slide.addText("ELORIA AI", {
+          x:0.3, y:5.15, w:9.4, h:0.35,
+          fontSize:9, color:THEME.accent, fontFace:"Calibri",
+          bold:true, charSpacing:8, align:"center",
         });
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 5.565, w: 10, h: 0.06,
-          fill: { color: THEME.accent },
-          line: { color: THEME.accent },
-        });
-
         lines.forEach((line, i) => {
-          slide.addText(line.text, {
-            x: 0.5, y: 1.8 + i * 0.9, w: 9, h: 0.8,
-            fontSize: line.type === "h1" ? 38 : 20,
+          slide.addText(plain(line.text), {
+            x:0.5, y:1.4 + i*1.0, w:9, h:0.9,
+            fontSize: line.type === "h1" ? 36 : 18,
             bold: line.type === "h1",
             color: line.type === "h1" ? THEME.white : "C5D9E8",
             fontFace: line.type === "h1" ? "Palatino Linotype" : "Calibri",
-            align: "center",
+            align:"center",
           });
         });
 
-        slide.addText("ELORIA AI", {
-          x: 0.3, y: 5.1, w: 9.4, h: 0.35,
-          fontSize: 10, color: THEME.accent,
-          fontFace: "Calibri", bold: true,
-          charSpacing: 8, align: "center",
-        });
-
       } else {
-        // ── CONTENT SLIDES ────────────────────────────────────────
+        // ── CONTENT SLIDE ────────────────────────────────────────
         slide.background = { color: THEME.white };
 
+        // Navy top bar
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:10, h:0.6, fill:{color:THEME.primary}, line:{color:THEME.primary} });
+        // Gold accent under top bar
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0.6, w:10, h:0.045, fill:{color:THEME.accent}, line:{color:THEME.accent} });
         // Left navy sidebar
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 0, w: 0.1, h: 5.625,
-          fill: { color: THEME.primary },
-          line: { color: THEME.primary },
-        });
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:0.1, h:5.625, fill:{color:THEME.primary}, line:{color:THEME.primary} });
+        // Navy bottom bar
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.28, w:10, h:0.345, fill:{color:THEME.primary}, line:{color:THEME.primary} });
+        // Gold accent above bottom bar
+        slide.addShape(pptx.ShapeType.rect, { x:0, y:5.275, w:10, h:0.04, fill:{color:THEME.accent}, line:{color:THEME.accent} });
 
-        // Top bar with gold accent
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 0, w: 10, h: 0.55,
-          fill: { color: THEME.primary },
-          line: { color: THEME.primary },
-        });
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 0.55, w: 10, h: 0.04,
-          fill: { color: THEME.accent },
-          line: { color: THEME.accent },
-        });
+        // Footer text
+        slide.addText("ELORIA AI", { x:0.2, y:5.31, w:2, h:0.28, fontSize:8, color:THEME.accent, fontFace:"Calibri", bold:true, charSpacing:5 });
+        slide.addText(`${si}`, { x:8.8, y:5.31, w:0.9, h:0.28, fontSize:8, color:THEME.muted, fontFace:"Calibri", align:"right" });
 
-        // Bottom bar
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 5.28, w: 10, h: 0.345,
-          fill: { color: THEME.primary },
-          line: { color: THEME.primary },
-        });
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 5.275, w: 10, h: 0.04,
-          fill: { color: THEME.accent },
-          line: { color: THEME.accent },
-        });
-
-        // Branding + slide number in footer
-        slide.addText("ELORIA AI", {
-          x: 0.2, y: 5.31, w: 2, h: 0.28,
-          fontSize: 9, color: THEME.accent,
-          fontFace: "Calibri", bold: true, charSpacing: 5,
-        });
-        slide.addText(`${slideIndex}`, {
-          x: 8.8, y: 5.31, w: 0.9, h: 0.28,
-          fontSize: 9, color: THEME.muted,
-          fontFace: "Calibri", align: "right",
-        });
-
-        let y = 0.08;
+        let y = 0.09;
 
         lines.forEach(line => {
           if (line.type === "h1") {
-            // Slide title in top bar
-            slide.addText(line.text, {
-              x: 0.2, y: 0.07, w: 9.4, h: 0.44,
-              fontSize: 20, bold: true,
-              color: THEME.white,
-              fontFace: "Calibri",
-              valign: "middle", charSpacing: 1,
+            // Title in top bar
+            slide.addText(plain(line.text), {
+              x:0.18, y:0.1, w:9.5, h:0.44,
+              fontSize:20, bold:true, color:THEME.white,
+              fontFace:"Calibri", valign:"middle", charSpacing:1,
             });
             y = 0.75;
 
           } else if (line.type === "h2") {
-            // Section divider
-            slide.addShape(pptx.ShapeType.rect, {
-              x: 0.18, y: y + 0.02, w: 9.65, h: 0.42,
-              fill: { color: "EAF0F6" },
-              line: { color: THEME.accent, width: 0.5 },
+            // Section heading with gold left tab
+            slide.addShape(pptx.ShapeType.rect, { x:0.18, y:y+0.02, w:9.65, h:0.44, fill:{color:"EAF0F6"}, line:{color:THEME.accent, width:0.5} });
+            slide.addShape(pptx.ShapeType.rect, { x:0.18, y:y+0.02, w:0.07, h:0.44, fill:{color:THEME.accent}, line:{color:THEME.accent} });
+            slide.addText(plain(line.text).toUpperCase(), {
+              x:0.34, y:y+0.03, w:9.3, h:0.38,
+              fontSize:13, bold:true, color:THEME.accent2,
+              fontFace:"Calibri", valign:"middle", charSpacing:2,
             });
-            slide.addShape(pptx.ShapeType.rect, {
-              x: 0.18, y: y + 0.02, w: 0.06, h: 0.42,
-              fill: { color: THEME.accent },
-              line: { color: THEME.accent },
-            });
-            slide.addText(line.text, {
-              x: 0.32, y: y + 0.03, w: 9.3, h: 0.38,
-              fontSize: 14, bold: true,
-              color: THEME.accent2,
-              fontFace: "Calibri",
-              valign: "middle", charSpacing: 1,
-            });
-            y += 0.56;
+            y += 0.58;
 
           } else if (line.type === "h3") {
-            slide.addText("▪  " + line.text, {
-              x: 0.25, y, w: 9.4, h: 0.38,
-              fontSize: 13, bold: true,
-              color: THEME.accent2,
-              fontFace: "Calibri",
+            slide.addText("▪  " + plain(line.text), {
+              x:0.22, y, w:9.4, h:0.38,
+              fontSize:13, bold:true, color:THEME.accent2,
+              fontFace:"Calibri",
             });
             y += 0.44;
 
           } else if (line.type === "bullet") {
             slide.addText([
-              { text: "◆  ", options: { color: THEME.accent, bold: true, fontSize: 11 } },
-              { text: stripInlineMarkdown(line.text), options: { color: THEME.text, fontSize: 13 } },
+              { text:"◆  ", options:{ color:THEME.accent, bold:true, fontSize:11, fontFace:"Calibri" } },
+              ...bulletRuns(line.text),
             ], {
-              x: 0.3, y, w: 9.35, h: 0.4,
-              fontFace: "Calibri",
-              valign: "middle",
+              x:0.22, y, w:9.42, h:0.42,
+              fontFace:"Calibri", valign:"middle",
             });
-            y += 0.44;
-
-          } else if (line.type === "bullet2") {
-            slide.addText([
-              { text: "  ◦  ", options: { color: THEME.muted, fontSize: 10 } },
-              { text: stripInlineMarkdown(line.text), options: { color: THEME.muted, fontSize: 12 } },
-            ], {
-              x: 0.4, y, w: 9.2, h: 0.36,
-              fontFace: "Calibri",
-              valign: "middle",
-            });
-            y += 0.4;
-
-          } else if (line.type === "bold") {
-            slide.addText(line.text, {
-              x: 0.25, y, w: 9.4, h: 0.38,
-              fontSize: 13, bold: true,
-              color: THEME.primary,
-              fontFace: "Calibri",
-            });
-            y += 0.42;
+            y += 0.46;
 
           } else if (line.type === "numbered") {
             slide.addText([
-              { text: `${line.num}.  `, options: { color: THEME.accent, bold: true, fontSize: 13 } },
-              { text: stripInlineMarkdown(line.text), options: { color: THEME.text, fontSize: 13 } },
+              { text:`${line.num}.  `, options:{ color:THEME.accent, bold:true, fontSize:13, fontFace:"Calibri" } },
+              { text:plain(line.text), options:{ color:THEME.text, fontSize:13, fontFace:"Calibri" } },
             ], {
-              x: 0.3, y, w: 9.35, h: 0.4,
-              fontFace: "Calibri",
-              valign: "middle",
+              x:0.22, y, w:9.42, h:0.42,
+              fontFace:"Calibri", valign:"middle",
             });
-            y += 0.44;
+            y += 0.46;
+
+          } else if (line.type === "bold") {
+            slide.addText(plain(line.text), {
+              x:0.22, y, w:9.4, h:0.38,
+              fontSize:13, bold:true, color:THEME.primary,
+              fontFace:"Calibri",
+            });
+            y += 0.42;
 
           } else {
-            slide.addText(stripInlineMarkdown(line.text), {
-              x: 0.25, y, w: 9.4, h: 0.38,
-              fontSize: 13,
-              color: THEME.muted,
-              fontFace: "Calibri",
+            slide.addText(plain(line.text), {
+              x:0.22, y, w:9.4, h:0.38,
+              fontSize:13, color:THEME.muted,
+              fontFace:"Calibri",
             });
             y += 0.42;
           }
