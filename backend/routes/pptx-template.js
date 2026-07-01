@@ -1,5 +1,6 @@
 import { Automizer, ModifyTextHelper } from "pptx-automizer";
 import path from "path";
+import fs from "fs";
 
 const automizer = new Automizer({
   templateDir: path.join(process.cwd(), "templates"),
@@ -90,7 +91,12 @@ export async function buildTemplatedPptx(slidesData, outputFilename) {
     });
   });
 
-  const outPath = path.join(process.cwd(), "tmp-output", outputFilename);
-  await pres.write(outputFilename);
-  return outPath;
+const outDir = path.join(process.cwd(), "tmp-output");
+if (!fs.existsSync(outDir)) {
+  fs.mkdirSync(outDir, { recursive: true });
+}
+
+const outPath = path.join(outDir, outputFilename);
+await pres.write(outputFilename);
+return outPath;
 }
