@@ -1678,7 +1678,7 @@ const copyCliCommand = () => {
             </div>
           </>}
 
-          {panel === "code" && <>
+     {panel === "code" && <>
   <div className="panel-hdr">
     <span className="panel-title">
       <span className="panel-title-icon"><IconCode /></span>
@@ -1691,51 +1691,52 @@ const copyCliCommand = () => {
     <div className="code-splash-emblem"><IconCode /></div>
     <h3>Your AI code workspace</h3>
     <p>A full-featured development environment with AI completions, multi-file editing, and an integrated terminal.</p>
-    <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
-      <IconExternal /> Open Eloria Code
-    </button>
-    <div className="code-tabs">
-  <button
-    className={`code-tab${codeTab === "browser" ? " active" : ""}`}
-    onClick={() => setCodeTab("browser")}
-  >
-    <IconExternal /> Browser
-  </button>
-  <button
-    className={`code-tab${codeTab === "terminal" ? " active" : ""}`}
-    data-tab="terminal"
-    onClick={() => setCodeTab("terminal")}
-  >
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
-    </svg>
-    Terminal
-  </button>
-</div>
 
-{codeTab === "browser" ? (
-  <>
-    <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
-      <IconExternal /> Open Eloria Code
-    </button>
-    <p className="code-splash-note">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-      </svg>
-      Opens in a new tab
-    </p>
-  </>
-) : (
-  <div className="code-cli-cmd">
-    <code>npm install -g eloria-cli</code>
-    <button className={`code-cli-copy${cliCopied ? " copied" : ""}`} onClick={copyCliCommand} title="Copy command">
-      {cliCopied ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      ) : (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-      )}
-    </button>
-  </div>
+    <div className="code-tabs">
+      <button
+        className={`code-tab${codeTab === "browser" ? " active" : ""}`}
+        onClick={() => setCodeTab("browser")}
+      >
+        <IconExternal /> Browser
+      </button>
+      <button
+        className={`code-tab${codeTab === "terminal" ? " active" : ""}`}
+        data-tab="terminal"
+        onClick={() => setCodeTab("terminal")}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+        </svg>
+        Terminal
+      </button>
+    </div>
+
+    {codeTab === "browser" ? (
+      <>
+        <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
+          <IconExternal /> Open Eloria Code
+        </button>
+        <p className="code-splash-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          Opens in a new tab
+        </p>
+      </>
+    ) : (
+      <>
+        <div className="code-cli-cmd">
+          <code>npm install -g eloria-cli</code>
+          <button className={`code-cli-copy${cliCopied ? " copied" : ""}`} onClick={copyCliCommand} title="Copy command">
+            {cliCopied ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            )}
+          </button>
+        </div>
+        <p className="code-splash-note">Run this in your terminal to get started</p>
+      </>
     )}
   </div>
 </>}
