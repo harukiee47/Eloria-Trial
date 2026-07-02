@@ -56,6 +56,14 @@ export function buildAnthropicMessages(messages) {
       contentParts.push({ type: "text", text: "Please analyze the above." });
     }
 
+  
+    if (contentParts.length === 0) {
+      contentParts.push({ type: "text", text: msg.content?.trim() || "(no content)" });
+    }
+if (contentParts.length === 0) {
+      console.warn("buildAnthropicMessages: empty content for message, files:", JSON.stringify(msg.files));
+      contentParts.push({ type: "text", text: msg.content?.trim() || "(no content)" });
+    }
     return { role: msg.role, content: contentParts };
   });
 }

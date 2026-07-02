@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Eloria CLI Login</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f0e8; }
+    button { padding:12px 24px; background:#0d3a35; color:#fff; border:none; border-radius:8px; font-size:15px; cursor:pointer; }
+    #status { margin-top:16px; color:#333; }
+  </style>
+</head>
+<body>
+  <div style="text-align:center;">
+    <h2>Login to Eloria CLI</h2>
+    <button id="loginBtn">Sign in with Google</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDmfVTBxzZgqdshD6ld91XSTImZ-LsS39A",
+      authDomain: "speed-eb68b.firebaseapp.com",
+      projectId: "speed-eb68b",
+      storageBucket: "speed-eb68b.firebasestorage.app",
+      messagingSenderId: "253379248208",
+      appId: "1:253379248208:web:f19f6e6248fa3705411155"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session");
+
+    document.getElementById("loginBtn").onclick = async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        const result = await firebase.auth().signInWithPopup(provider);
+        const idToken = await result.user.getIdToken();
+
+        const res = await fetch("https://eloria-trial.onrender.com/api/cli/complete-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, idToken }),
+        });
+
+        if (res.ok) {
+          document.getElementById("status").textContent = "✓ Logged in! You can close this tab and return to your terminal.";
+        } else {
+          document.getElementById("status").textContent = "Login failed. Please try again.";
+        }
+      } catch (err) {
+        document.getElementById("status").textContent = "Error: " + err.message;
+      }
+    };
+  </script>
+</body>
+</html>
