@@ -1592,6 +1592,7 @@ Do NOT explain at length — just generate the code.`;
     setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender: "log", text, ...extra }]);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const runShellCommand = async (program, args) => {
   if (!isDesktopApp) {
     pushLog(`Can't run "${program}" — this feature requires the desktop app.`, { icon: "!" });
