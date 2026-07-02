@@ -530,50 +530,60 @@ const SIDEBAR_STYLE = `
   }
   .code-splash-note svg { width: 12px; height: 12px; flex-shrink: 0; }
 
-.code-cli-link {
-    margin-top: 18px;
-    display: flex; align-items: center; gap: 6px;
-    background: #f5f0ea; border: 1px solid var(--border-soft);
-    cursor: pointer;
-    font-size: 12.5px; font-weight: 500; color: var(--t2);
-    font-family: var(--font); transition: all .12s;
-    padding: 7px 12px;
-    border-radius: var(--r-sm);
-  }
-  .code-cli-link:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: #efe8de;
-  }
-  .code-cli-link svg { width: 13px; height: 13px; flex-shrink: 0; }
+.code-tabs {
+  display: flex;
+  background: #f5f0ea;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  padding: 3px;
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 260px;
+}
+.code-tab {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--t3);
+  font-family: var(--font);
+  padding: 8px 10px;
+  border-radius: 6px;
+  transition: all .15s;
+}
+.code-tab svg { width: 13px; height: 13px; }
+.code-tab.active {
+  background: #fff;
+  color: var(--t1);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.code-tab:not(.active):hover { color: var(--t2); }
 
-  .code-cli-reveal {
-    margin-top: 10px;
-    width: 100%; max-width: 220px;
-    display: flex; align-items: center; gap: 8px;
-    background: #f5f0ea; border: 1px solid var(--border-soft);
-    border-radius: var(--r-sm); padding: 7px 9px;
-    animation: popIn .15s ease;
-  }
-  .code-cli-reveal code {
-    flex: 1; font-family: 'SF Mono', Consolas, monospace;
-    font-size: 10.5px; color: var(--t1); white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; text-align: left;
-  }
-  .code-cli-copy {
-    background: none; border: none; cursor: pointer;
-    color: var(--t3); padding: 3px; display: flex;
-    align-items: center; justify-content: center;
-    border-radius: 4px; transition: color .12s, background .12s;
-    flex-shrink: 0;
-  }
-  .code-cli-copy:hover { color: var(--t1); background: #e9e4dc; }
-  .code-cli-copy svg { width: 11px; height: 11px; }
-  .code-cli-copy.copied { color: var(--accent); }
+.code-cli-cmd {
+  display: flex; align-items: center; gap: 8px;
+  background: #f5f0ea; border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm); padding: 9px 12px;
+  width: 100%; max-width: 260px;
+  margin-top: 4px;
+}
+.code-cli-cmd code {
+  flex: 1; font-family: 'SF Mono', Consolas, monospace;
+  font-size: 11px; color: var(--t1); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; text-align: left;
+}
+.code-cli-copy {
+  background: none; border: none; cursor: pointer;
+  color: var(--t3); padding: 4px; display: flex;
+  align-items: center; justify-content: center;
+  border-radius: 4px; transition: color .12s, background .12s;
+  flex-shrink: 0;
+}
+.code-cli-copy:hover { color: var(--t1); background: #e9e4dc; }
+.code-cli-copy svg { width: 12px; height: 12px; }
+.code-cli-copy.copied { color: var(--accent); }
 
-  @media(max-width: 640px) {
-    .code-cli-link, .code-cli-reveal { display: none; }
-  }
+@media(max-width: 640px) {
+  .code-tabs .code-tab[data-tab="terminal"] { display: none; }
+}
 
   .code-proj-list {
     flex: 1; overflow-y: auto; padding: 4px 8px 16px;
@@ -988,7 +998,7 @@ const [codeProjects] = useState(() => {
   const isMobile = () => window.innerWidth <= 640;
 
   const [cliCopied, setCliCopied] = useState(false);
-  const [showCliCmd, setShowCliCmd] = useState(false);
+  const [codeTab, setCodeTab] = useState("browser"); 
 
 const copyCliCommand = () => {
   navigator.clipboard.writeText("npm install -g eloria-cli");
@@ -1684,31 +1694,48 @@ const copyCliCommand = () => {
     <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
       <IconExternal /> Open Eloria Code
     </button>
+    <div className="code-tabs">
+  <button
+    className={`code-tab${codeTab === "browser" ? " active" : ""}`}
+    onClick={() => setCodeTab("browser")}
+  >
+    <IconExternal /> Browser
+  </button>
+  <button
+    className={`code-tab${codeTab === "terminal" ? " active" : ""}`}
+    data-tab="terminal"
+    onClick={() => setCodeTab("terminal")}
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+    </svg>
+    Terminal
+  </button>
+</div>
+
+{codeTab === "browser" ? (
+  <>
+    <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
+      <IconExternal /> Open Eloria Code
+    </button>
     <p className="code-splash-note">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
       Opens in a new tab
     </p>
-
-    <button className="code-cli-link" onClick={() => setShowCliCmd(v => !v)}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
-      </svg>
-      Prefer the terminal?
+  </>
+) : (
+  <div className="code-cli-cmd">
+    <code>npm install -g eloria-cli</code>
+    <button className={`code-cli-copy${cliCopied ? " copied" : ""}`} onClick={copyCliCommand} title="Copy command">
+      {cliCopied ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      )}
     </button>
-
-    {showCliCmd && (
-      <div className="code-cli-reveal">
-        <code>npm install -g eloria-cli</code>
-        <button className={`code-cli-copy${cliCopied ? " copied" : ""}`} onClick={copyCliCommand} title="Copy command">
-          {cliCopied ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          )}
-        </button>
-      </div>
+  </div>
     )}
   </div>
 </>}
