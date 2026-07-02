@@ -530,15 +530,22 @@ const SIDEBAR_STYLE = `
   }
   .code-splash-note svg { width: 12px; height: 12px; flex-shrink: 0; }
 
- .code-cli-link {
+.code-cli-link {
     margin-top: 18px;
-    display: flex; align-items: center; gap: 5px;
-    background: none; border: none; cursor: pointer;
-    font-size: 11.5px; color: var(--t3);
-    font-family: var(--font); transition: color .12s;
+    display: flex; align-items: center; gap: 6px;
+    background: #f5f0ea; border: 1px solid var(--border-soft);
+    cursor: pointer;
+    font-size: 12.5px; font-weight: 500; color: var(--t2);
+    font-family: var(--font); transition: all .12s;
+    padding: 7px 12px;
+    border-radius: var(--r-sm);
   }
-  .code-cli-link:hover { color: var(--accent); }
-  .code-cli-link svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .code-cli-link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: #efe8de;
+  }
+  .code-cli-link svg { width: 13px; height: 13px; flex-shrink: 0; }
 
   .code-cli-reveal {
     margin-top: 10px;
@@ -1238,7 +1245,7 @@ const copyCliCommand = () => {
             <div className="mcs-feature">
               <div className="mcs-feature-ic"><IconTerminal /></div>
               <div className="mcs-feature-text">
-                <strong>Live editor</strong>
+                <strong>Live editor & Terminal</strong>
                 Multi-file editing with an integrated shell
               </div>
             </div>

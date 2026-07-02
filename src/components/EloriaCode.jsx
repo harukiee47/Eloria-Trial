@@ -1815,7 +1815,7 @@ IMPORTANT INSTRUCTIONS:
 
     if (activeFile.status === "pending" && !messages.length) return (
       <div className="ec-pending-view">
-        <div className="ec-pending-icon">⏳</div>
+        <div className="ec-pending-icon"></div>
         <div className="ec-pending-title">{taskTitleForFile(activeFile.name)}</div>
         <div className="ec-pending-sub">This task is pending. Describe what {activeFile.name} should do and Eloria will build it.</div>
       </div>
@@ -1915,7 +1915,7 @@ IMPORTANT INSTRUCTIONS:
               <span className="ec-task-dot main" />
               <div className="ec-task-info">
                 <div className="ec-task-title">Main Chat</div>
-                <div className="ec-task-sub">Project-level conversation</div>
+                <div className="ec-task-sub">Project conversation</div>
               </div>
             </div>
 
