@@ -534,9 +534,9 @@ const SIDEBAR_STYLE = `
     margin-top: 22px;
     width: 100%;
     max-width: 220px;
-    background: #0d0d0d;
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
     padding: 14px 14px 12px;
     text-align: left;
   }
@@ -544,31 +544,31 @@ const SIDEBAR_STYLE = `
     display: flex; align-items: center; gap: 7px;
     margin-bottom: 8px;
   }
-  .code-cli-card-head svg { width: 13px; height: 13px; color: #9a9a9a; flex-shrink: 0; }
+  .code-cli-card-head svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
   .code-cli-card-head span {
-    font-size: 11px; font-weight: 700; color: #e8e8e8;
-    letter-spacing: .02em;
+    font-size: 10px; font-weight: 700; color: var(--t2);
+    letter-spacing: .04em;
   }
   .code-cli-cmd {
     display: flex; align-items: center; gap: 8px;
-    background: #1a1a1a; border: 1px solid rgba(255,255,255,.07);
-    border-radius: 7px; padding: 7px 9px;
+    background: #f5f0ea; border: 1px solid var(--border-soft);
+    border-radius: var(--r-sm); padding: 7px 9px;
   }
   .code-cli-cmd code {
     flex: 1; font-family: 'SF Mono', Consolas, monospace;
-    font-size: 10.5px; color: #d0d0d0; white-space: nowrap;
+    font-size: 10.5px; color: var(--t1); white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
   }
   .code-cli-copy {
     background: none; border: none; cursor: pointer;
-    color: #9a9a9a; padding: 2px; display: flex;
+    color: var(--t3); padding: 3px; display: flex;
     align-items: center; justify-content: center;
     border-radius: 4px; transition: color .12s, background .12s;
     flex-shrink: 0;
   }
-  .code-cli-copy:hover { color: #fff; background: rgba(255,255,255,.08); }
+  .code-cli-copy:hover { color: var(--t1); background: #e9e4dc; }
   .code-cli-copy svg { width: 11px; height: 11px; }
-  .code-cli-copy.copied { color: #7fd7a3; }
+  .code-cli-copy.copied { color: var(--accent); }
 
   .code-proj-list {
     flex: 1; overflow-y: auto; padding: 4px 8px 16px;
@@ -1659,32 +1659,6 @@ const copyCliCommand = () => {
                       })}
                   </>
               }
-            </div>
-          </>}
-
-          {/* ── ELORIA CODE PANEL (desktop only) ── */}
-          {panel === "code" && <>
-            <div className="panel-hdr">
-              <span className="panel-title">
-                <span className="panel-title-icon"><IconCode /></span>
-                Eloria Code
-              </span>
-              <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
-            </div>
-
-            <div className="code-splash">
-              <div className="code-splash-emblem"><IconCode /></div>
-              <h3>Your AI code workspace</h3>
-              <p>A full-featured development environment with AI completions, multi-file editing, and an integrated terminal.</p>
-              <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
-                <IconExternal /> Open Eloria Code
-              </button>
-              <p className="code-splash-note">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
-                Opens in a new tab
-              </p>
             </div>
           </>}
 
