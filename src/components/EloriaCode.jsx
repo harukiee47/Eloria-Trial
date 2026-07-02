@@ -970,7 +970,8 @@ const handleRun = async () => {
     const token = await auth.currentUser?.getIdToken();
     const sep = selectedFile.path.includes("\\") ? "\\" : "/";
     const inputDir = selectedFile.path.substring(0, selectedFile.path.lastIndexOf(sep));
-    const inputNameNoExt = selectedFile.name.replace(/\.[^.]+$/, "");
+    // eslint-disable-next-line no-unused-vars
+const inputNameNoExt = selectedFile.name.replace(/\.[^.]+$/, "");
 
     const prompt = `You are an ffmpeg expert. Convert the user's request into an ffmpeg command.
 Input file: "${selectedFile.path}"
