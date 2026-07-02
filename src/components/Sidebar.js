@@ -530,34 +530,28 @@ const SIDEBAR_STYLE = `
   }
   .code-splash-note svg { width: 12px; height: 12px; flex-shrink: 0; }
 
-  .code-cli-card {
-    margin-top: 22px;
-    width: 100%;
-    max-width: 220px;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    padding: 14px 14px 12px;
-    text-align: left;
+ .code-cli-link {
+    margin-top: 18px;
+    display: flex; align-items: center; gap: 5px;
+    background: none; border: none; cursor: pointer;
+    font-size: 11.5px; color: var(--t3);
+    font-family: var(--font); transition: color .12s;
   }
-  .code-cli-card-head {
-    display: flex; align-items: center; gap: 7px;
-    margin-bottom: 8px;
-  }
-  .code-cli-card-head svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
-  .code-cli-card-head span {
-    font-size: 10px; font-weight: 700; color: var(--t2);
-    letter-spacing: .04em;
-  }
-  .code-cli-cmd {
+  .code-cli-link:hover { color: var(--accent); }
+  .code-cli-link svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+  .code-cli-reveal {
+    margin-top: 10px;
+    width: 100%; max-width: 220px;
     display: flex; align-items: center; gap: 8px;
     background: #f5f0ea; border: 1px solid var(--border-soft);
     border-radius: var(--r-sm); padding: 7px 9px;
+    animation: popIn .15s ease;
   }
-  .code-cli-cmd code {
+  .code-cli-reveal code {
     flex: 1; font-family: 'SF Mono', Consolas, monospace;
     font-size: 10.5px; color: var(--t1); white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis;
+    overflow: hidden; text-overflow: ellipsis; text-align: left;
   }
   .code-cli-copy {
     background: none; border: none; cursor: pointer;
@@ -569,6 +563,10 @@ const SIDEBAR_STYLE = `
   .code-cli-copy:hover { color: var(--t1); background: #e9e4dc; }
   .code-cli-copy svg { width: 11px; height: 11px; }
   .code-cli-copy.copied { color: var(--accent); }
+
+  @media(max-width: 640px) {
+    .code-cli-link, .code-cli-reveal { display: none; }
+  }
 
   .code-proj-list {
     flex: 1; overflow-y: auto; padding: 4px 8px 16px;
@@ -983,6 +981,7 @@ const [codeProjects] = useState(() => {
   const isMobile = () => window.innerWidth <= 640;
 
   const [cliCopied, setCliCopied] = useState(false);
+  const [showCliCmd, setShowCliCmd] = useState(false);
 
 const copyCliCommand = () => {
   navigator.clipboard.writeText("npm install -g eloria-cli");
@@ -1685,15 +1684,15 @@ const copyCliCommand = () => {
       Opens in a new tab
     </p>
 
-    {/* ── GET ELORIA IN YOUR TERMINAL ── */}
-    <div className="code-cli-card">
-      <div className="code-cli-card-head">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
-        </svg>
-        <span>GET ELORIA IN YOUR TERMINAL</span>
-      </div>
-      <div className="code-cli-cmd">
+    <button className="code-cli-link" onClick={() => setShowCliCmd(v => !v)}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+      </svg>
+      Prefer the terminal?
+    </button>
+
+    {showCliCmd && (
+      <div className="code-cli-reveal">
         <code>npm install -g eloria-cli</code>
         <button className={`code-cli-copy${cliCopied ? " copied" : ""}`} onClick={copyCliCommand} title="Copy command">
           {cliCopied ? (
@@ -1703,7 +1702,7 @@ const copyCliCommand = () => {
           )}
         </button>
       </div>
-    </div>
+    )}
   </div>
 </>}
 
