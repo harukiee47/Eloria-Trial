@@ -530,6 +530,46 @@ const SIDEBAR_STYLE = `
   }
   .code-splash-note svg { width: 12px; height: 12px; flex-shrink: 0; }
 
+  .code-cli-card {
+    margin-top: 22px;
+    width: 100%;
+    max-width: 220px;
+    background: #0d0d0d;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 14px 14px 12px;
+    text-align: left;
+  }
+  .code-cli-card-head {
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 8px;
+  }
+  .code-cli-card-head svg { width: 13px; height: 13px; color: #9a9a9a; flex-shrink: 0; }
+  .code-cli-card-head span {
+    font-size: 11px; font-weight: 700; color: #e8e8e8;
+    letter-spacing: .02em;
+  }
+  .code-cli-cmd {
+    display: flex; align-items: center; gap: 8px;
+    background: #1a1a1a; border: 1px solid rgba(255,255,255,.07);
+    border-radius: 7px; padding: 7px 9px;
+  }
+  .code-cli-cmd code {
+    flex: 1; font-family: 'SF Mono', Consolas, monospace;
+    font-size: 10.5px; color: #d0d0d0; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .code-cli-copy {
+    background: none; border: none; cursor: pointer;
+    color: #9a9a9a; padding: 2px; display: flex;
+    align-items: center; justify-content: center;
+    border-radius: 4px; transition: color .12s, background .12s;
+    flex-shrink: 0;
+  }
+  .code-cli-copy:hover { color: #fff; background: rgba(255,255,255,.08); }
+  .code-cli-copy svg { width: 11px; height: 11px; }
+  .code-cli-copy.copied { color: #7fd7a3; }
+
   .code-proj-list {
     flex: 1; overflow-y: auto; padding: 4px 8px 16px;
     scrollbar-width: thin; scrollbar-color: #d8d4cc transparent;
@@ -941,6 +981,14 @@ const [codeProjects] = useState(() => {
   const [creatingGroup, setCreatingGroup] = useState(false);
 
   const isMobile = () => window.innerWidth <= 640;
+
+  const [cliCopied, setCliCopied] = useState(false);
+
+const copyCliCommand = () => {
+  navigator.clipboard.writeText("npm install -g eloria-cli");
+  setCliCopied(true);
+  setTimeout(() => setCliCopied(false), 1800);
+};
 
   useEffect(() => {
     if (!document.getElementById("eloria-global")) {
@@ -1639,6 +1687,51 @@ const [codeProjects] = useState(() => {
               </p>
             </div>
           </>}
+
+          {panel === "code" && <>
+  <div className="panel-hdr">
+    <span className="panel-title">
+      <span className="panel-title-icon"><IconCode /></span>
+      Eloria Code
+    </span>
+    <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
+  </div>
+
+  <div className="code-splash">
+    <div className="code-splash-emblem"><IconCode /></div>
+    <h3>Your AI code workspace</h3>
+    <p>A full-featured development environment with AI completions, multi-file editing, and an integrated terminal.</p>
+    <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
+      <IconExternal /> Open Eloria Code
+    </button>
+    <p className="code-splash-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      Opens in a new tab
+    </p>
+
+    {/* ── GET ELORIA IN YOUR TERMINAL ── */}
+    <div className="code-cli-card">
+      <div className="code-cli-card-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+        </svg>
+        <span>GET ELORIA IN YOUR TERMINAL</span>
+      </div>
+      <div className="code-cli-cmd">
+        <code>npm install -g eloria-cli</code>
+        <button className={`code-cli-copy${cliCopied ? " copied" : ""}`} onClick={copyCliCommand} title="Copy command">
+          {cliCopied ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+</>}
 
           {/* ── MOBILE ACCOUNT ── */}
           <div className="sb-mobile-acct">

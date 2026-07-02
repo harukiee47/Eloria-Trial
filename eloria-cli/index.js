@@ -141,6 +141,31 @@ async function main() {
     process.exit(0);
   }
 
+  if (args[0] === "--version" || args[0] === "-v") {
+    console.log("eloria-cli v1.0.0");
+    process.exit(0);
+  }
+
+  if (args[0] === "--help" || args[0] === "-h") {
+    console.log(`
+${chalk.bold("Eloria Code CLI")}
+
+Usage:
+  eloria              Start an interactive coding session
+  eloria login        Force a fresh login (switch accounts)
+  eloria logout       Log out and clear saved credentials
+  eloria --version    Show the installed version
+  eloria --help       Show this help message
+
+Inside a session:
+  Type your request and press Enter.
+  Type 'exit' to quit.
+  When Eloria wants to read/write files or run a command,
+  you'll be asked to confirm (y/n) before it happens.
+`);
+    process.exit(0);
+  }
+
   const forceRelogin = args[0] === "login" || args.includes("--relogin");
   let token = forceRelogin ? null : config.get("token");
 
