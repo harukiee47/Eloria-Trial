@@ -7,6 +7,7 @@ import EloriaCodeWelcome from "./EloriaCodeWelcome";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
 import { invoke } from "@tauri-apps/api/core";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
 // ─── SUPPORTED EXTENSIONS ─────────────────────────────────────────────────────
 const SUPPORTED_EXTS = new Set([
@@ -875,6 +876,19 @@ function EloriaTasks({ isDesktopApp, uid }) {
   const [isRunning, setIsRunning] = useState(false);
   const bodyRef = useRef(null);
   const textareaRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null); // { path, name }
+
+const pickFile = async () => {
+  try {
+    const path = await openDialog({
+      multiple: false,
+      filters: [{ name: "Video", extensions: ["mp4","mov","avi","mkv","webm","m4v","flv","wmv","ts"] }]
+    });
+    if (path && typeof path === "string") {
+      setSelectedFile({ path, name: path.split(/[\\/]/).pop() });
+    }
+  } catch (err) { console.error("picker error", err); }
+};
 
   useEffect(() => {
     if (!uid || !isDesktopApp) { setLoaded(true); return; }
@@ -936,31 +950,98 @@ const handleRun = async () => {
   setChats(workingChats.map(c => {
     if (c.id !== chatId) return c;
     const isFirstMsg = c.messages.length === 0;
-    return {
-      ...c,
-      title: isFirstMsg ? userText.slice(0, 40) : c.title,
-      messages: [...c.messages, userMsg],
-      updatedAt: now,
-    };
+    return { ...c, title: isFirstMsg ? userText.slice(0, 40) : c.title, messages: [...c.messages, userMsg], updatedAt: now };
   }));
 
   setInput("");
   setIsRunning(true);
 
-  // TEMP: hardcoded test args — replace with AI-generated args once that layer is wired
-  const testArgs = ["-version"];
-
-  try {
-    const result = await invoke("run_ffmpeg", { args: testArgs });
+  if (!selectedFile) {
     setChats(prev => prev.map(c => c.id !== chatId ? c : {
       ...c,
-      messages: [...c.messages, { id: Date.now() + 2, sender: "ai", text: "```\n" + result + "\n```" }],
+      messages: [...c.messages, { id: Date.now() + 2, sender: "ai", text: "Please select a video file first — click the 📎 button." }],
       updatedAt: new Date().toISOString(),
     }));
+    setIsRunning(false);
+    return;
+  }
+
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    const sep = selectedFile.path.includes("\\") ? "\\" : "/";
+    const inputDir = selectedFile.path.substring(0, selectedFile.path.lastIndexOf(sep));
+    const inputNameNoExt = selectedFile.name.replace(/\.[^.]+$/, "");
+
+    const prompt = `You are an ffmpeg expert. Convert the user's request into an ffmpeg command.
+Input file: "${selectedFile.path}"
+Output directory: "${inputDir}"
+User request: "${userText}"
+
+Rules:
+- Use the exact input path for -i
+- Output file goes in "${inputDir}" with a descriptive filename
+- Include -y flag
+- Use simple, safe ffmpeg args
+
+Respond ONLY with raw JSON (no markdown fences, no explanation):
+{"args": ["-y", "-i", "EXACT_INPUT_PATH", "...more args...", "FULL_OUTPUT_PATH"], "description": "one sentence summary"}`;
+
+    const aiRes = await fetch("https://eloria-trial.onrender.com/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messages: [
+          { role: "user", content: "You respond with raw JSON only. No markdown." },
+          { role: "assistant", content: "Understood." },
+          { role: "user", content: prompt }
+        ]
+      })
+    });
+
+    if (!aiRes.ok) throw new Error("AI request failed");
+
+    const reader = aiRes.body.getReader();
+    const decoder = new TextDecoder();
+    let rawText = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.startsWith("data: "));
+      for (const line of lines) {
+        try {
+          const json = JSON.parse(line.slice(6));
+          if (json.done || json.error) break;
+          if (json.text) rawText += json.text;
+        } catch {}
+      }
+    }
+
+    const cleaned = rawText.replace(/```json|```/g, "").trim();
+    let parsed;
+    try { parsed = JSON.parse(cleaned); } catch { throw new Error("AI returned invalid response: " + cleaned.slice(0, 200)); }
+
+    const { args, description } = parsed;
+    if (!args || !Array.isArray(args)) throw new Error("No valid ffmpeg args from AI");
+
+    setChats(prev => prev.map(c => c.id !== chatId ? c : {
+      ...c,
+      messages: [...c.messages, { id: Date.now() + 2, sender: "log", text: `▸ ${description || "Running ffmpeg…"}` }],
+      updatedAt: new Date().toISOString(),
+    }));
+
+    await invoke("run_ffmpeg", { args });
+    const outputPath = args[args.length - 1];
+
+    setChats(prev => prev.map(c => c.id !== chatId ? c : {
+      ...c,
+      messages: [...c.messages, { id: Date.now() + 3, sender: "ai", text: `✓ Done!\n\nOutput saved to:\n\`\`\`\n${outputPath}\n\`\`\`` }],
+      updatedAt: new Date().toISOString(),
+    }));
+
   } catch (err) {
     setChats(prev => prev.map(c => c.id !== chatId ? c : {
       ...c,
-      messages: [...c.messages, { id: Date.now() + 2, sender: "ai", text: `ffmpeg failed:\n\`\`\`\n${err}\n\`\`\`` }],
+      messages: [...c.messages, { id: Date.now() + 3, sender: "ai", text: `Failed: ${err.message || err}` }],
       updatedAt: new Date().toISOString(),
     }));
   } finally {
@@ -1085,25 +1166,33 @@ const handleRun = async () => {
         </div>
 
         <div className="ect-input-wrap">
-          <div className="ect-input-box">
-            <div className="ect-textarea-row">
-              <textarea
-                ref={textareaRef}
-                className="ect-textarea"
-                rows={1}
-                value={input}
-                placeholder="e.g. Trim my_video.mp4 to the first 30 seconds"
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleRun(); } }}
-                disabled={isRunning}
-              />
-              <button className="ect-send" onClick={handleRun} disabled={isRunning || !input.trim()}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
-                  <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+         <div className="ect-input-box">
+  {selectedFile && (
+    <div style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 2px", borderBottom:"1px solid #dde0d9" }}>
+      <span style={{ fontSize:12, color:"#276152" }}>📎</span>
+      <span style={{ fontSize:12, color:"#0D3A35", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{selectedFile.name}</span>
+      <button onClick={() => setSelectedFile(null)} style={{ background:"none", border:"none", color:"#7a8a84", cursor:"pointer", fontSize:11, padding:"0 2px" }}>✕</button>
+    </div>
+  )}
+  <div className="ect-textarea-row">
+    <button onClick={pickFile} disabled={isRunning} title="Pick video file" style={{ background:"none", border:"none", cursor:"pointer", fontSize:16, padding:"0 4px", color:"#7a8a84", flexShrink:0 }}>📎</button>
+    <textarea
+      ref={textareaRef}
+      className="ect-textarea"
+      rows={1}
+      value={input}
+      placeholder={selectedFile ? `What do you want to do with ${selectedFile.name}?` : "Pick a video file 📎 then describe what to do…"}
+      onChange={e => setInput(e.target.value)}
+      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleRun(); } }}
+      disabled={isRunning}
+    />
+    <button className="ect-send" onClick={handleRun} disabled={isRunning || !input.trim()}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+        <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+      </svg>
+    </button>
+  </div>
+</div>
           <p className="ect-hint">Tasks run directly on your machine · verify results before relying on them</p>
         </div>
       </main>
