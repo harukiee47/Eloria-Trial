@@ -943,6 +943,7 @@ function EloriaTasks({ isDesktopApp, uid }) {
     }));
 
     setInput("");
+    setIsRunning(true);
     // Real ffmpeg/AI execution wires in here next
   };
 
