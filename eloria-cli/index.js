@@ -13,44 +13,80 @@ const execAsync = promisify(exec);
 const API_BASE = "https://eloria-trial.onrender.com/api";
 const config = new Conf({ projectName: "eloria-cli" });
 
+// ── Safe fetch wrapper — catches network failures cleanly ────────────────────
+async function safeFetch(url, options = {}, retries = 1) {
+  try {
+    const res = await fetch(url, options);
+    return res;
+  } catch (err) {
+    if (retries > 0) {
+      console.log(chalk.gray("  Connection issue, retrying..."));
+      await new Promise(r => setTimeout(r, 1500));
+      return safeFetch(url, options, retries - 1);
+    }
+    throw new Error("Can't reach Eloria's servers. Check your internet connection and try again.");
+  }
+}
+
 async function login() {
-  const res = await fetch(`${API_BASE}/cli/start-session`, { method: "POST" });
-  const { sessionId, loginUrl } = await res.json();
+  try {
+    const res = await safeFetch(`${API_BASE}/cli/start-session`, { method: "POST" });
+    const { sessionId, loginUrl } = await res.json();
 
-  console.log(chalk.cyan("Opening browser to log in..."));
-  console.log(chalk.gray(loginUrl));
-  await open(loginUrl);
+    console.log(chalk.cyan("Opening browser to log in..."));
+    console.log(chalk.gray(loginUrl));
+    await open(loginUrl);
 
-  console.log(chalk.gray("Waiting for login..."));
-  return new Promise((resolve) => {
-    const interval = setInterval(async () => {
-      const check = await fetch(`${API_BASE}/cli/check-session/${sessionId}`);
-      const data = await check.json();
-      if (data.status === "done") {
-        clearInterval(interval);
-        config.set("token", data.token);
-        console.log(chalk.green("✓ Logged in!"));
-        resolve(data.token);
-      }
-    }, 2000);
-  });
+    console.log(chalk.gray("Waiting for login..."));
+    return await new Promise((resolve, reject) => {
+      let attempts = 0;
+      const maxAttempts = 150; // ~5 minutes at 2s intervals
+      const interval = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts) {
+          clearInterval(interval);
+          reject(new Error("Login timed out. Please run 'eloria' again."));
+          return;
+        }
+        try {
+          const check = await safeFetch(`${API_BASE}/cli/check-session/${sessionId}`);
+          const data = await check.json();
+          if (data.status === "done") {
+            clearInterval(interval);
+            config.set("token", data.token);
+            console.log(chalk.green("✓ Logged in!"));
+            resolve(data.token);
+          }
+        } catch {
+          // ignore transient poll errors, keep trying until maxAttempts
+        }
+      }, 2000);
+    });
+  } catch (err) {
+    console.log(chalk.red(`✗ ${err.message}`));
+    process.exit(1);
+  }
 }
 
 async function checkPlan(token) {
-  const res = await fetch(`${API_BASE}/membership/status`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.plan;
+  try {
+    const res = await safeFetch(`${API_BASE}/membership/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.plan;
+  } catch (err) {
+    console.log(chalk.red(`✗ ${err.message}`));
+    process.exit(1);
+  }
 }
 
-// ── Tool executors — run locally on the user's machine ─────────────────────
+// ── Tool executors ────────────────────────────────────────────────────────
 async function executeTool(name, input) {
   try {
     if (name === "read_file") {
-      const content = await fs.readFile(path.resolve(input.path), "utf-8");
-      return content;
+      return await fs.readFile(path.resolve(input.path), "utf-8");
     }
     if (name === "write_file") {
       await fs.mkdir(path.dirname(path.resolve(input.path)), { recursive: true });
@@ -62,11 +98,18 @@ async function executeTool(name, input) {
       return entries.map(e => (e.isDirectory() ? `${e.name}/` : e.name)).join("\n");
     }
     if (name === "run_command") {
-      const { stdout, stderr } = await execAsync(input.command, { cwd: process.cwd(), timeout: 30000 });
-      return stdout || stderr || "(command produced no output)";
+      try {
+        const { stdout, stderr } = await execAsync(input.command, { cwd: process.cwd(), timeout: 30000 });
+        return stdout || stderr || "(command produced no output)";
+      } catch (cmdErr) {
+        // exec throws on non-zero exit code — still return useful info instead of failing silently
+        return `Command exited with an error:\n${cmdErr.stderr || cmdErr.message}`;
+      }
     }
     return `Unknown tool: ${name}`;
   } catch (err) {
+    if (err.code === "ENOENT") return `Error: File or directory not found: ${input.path}`;
+    if (err.code === "EACCES") return `Error: Permission denied: ${input.path}`;
     return `Error: ${err.message}`;
   }
 }
@@ -85,6 +128,7 @@ async function confirmToolUse(name, input) {
       rl.close();
       resolve(answer.trim().toLowerCase() === "y");
     });
+    rl.on("SIGINT", () => { rl.close(); resolve(false); });
   });
 }
 
@@ -124,63 +168,119 @@ function startChatLoop(token) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const history = [];
 
+  process.on("SIGINT", () => {
+    console.log(chalk.gray("\n\nGoodbye!"));
+    process.exit(0);
+  });
+
   const ask = () => {
     rl.question(chalk.cyan("\n> "), async (input) => {
       const trimmed = input.trim();
-      if (trimmed === "exit") { rl.close(); return; }
+      if (trimmed === "exit") { rl.close(); process.exit(0); }
       if (trimmed === "") { ask(); return; }
 
       history.push({ role: "user", content: trimmed });
-      await runTurn(token, history);
+
+      try {
+        await runTurn(token, history);
+      } catch (err) {
+        if (err.message.includes("401") || err.message.includes("Unauthorized")) {
+          console.log(chalk.red("\n✗ Your session expired. Please log in again."));
+          config.delete("token");
+          process.exit(1);
+        }
+        console.log(chalk.red(`\n✗ ${err.message}`));
+      }
       ask();
     });
   };
   ask();
 }
 
-// Handles one full turn, including any tool-use back-and-forth, until the model gives a final text answer
 async function runTurn(token, history) {
-  const res = await fetch(`${API_BASE}/code`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ messages: history, useTools: true }),
-  });
+  let res;
+  try {
+    res = await safeFetch(`${API_BASE}/code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messages: history, useTools: true }),
+    });
+  } catch (err) {
+    throw new Error(err.message);
+  }
+
+  if (res.status === 401) throw new Error("401 Unauthorized");
+  if (res.status === 429) throw new Error("Rate limit reached. Try again in a moment.");
+  if (!res.ok) throw new Error(`Server error (${res.status}). Try again.`);
+
+  // ── "thinking..." indicator while waiting for first token ──
+  let firstTokenReceived = false;
+  const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  let spinnerIndex = 0;
+  const spinner = setInterval(() => {
+    process.stdout.write(`\r${chalk.gray(spinnerFrames[spinnerIndex])} ${chalk.gray("Thinking...")}`);
+    spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length;
+  }, 80);
+
+  const clearSpinner = () => {
+    clearInterval(spinner);
+    process.stdout.write("\r\x1b[K"); // clear the spinner line
+  };
 
   let aiText = "";
   const toolUses = [];
   let stopReason = null;
 
-  for await (const chunk of res.body) {
-    const lines = chunk.toString().split("\n").filter(l => l.startsWith("data: "));
-    for (const line of lines) {
-      try {
-        const json = JSON.parse(line.slice(6));
-        if (json.text) { process.stdout.write(json.text); aiText += json.text; }
-        if (json.toolUse) { toolUses.push(json.toolUse); }
-        if (json.done) { stopReason = json.stopReason; }
-      } catch {}
+  try {
+    for await (const chunk of res.body) {
+      const lines = chunk.toString().split("\n").filter(l => l.startsWith("data: "));
+      for (const line of lines) {
+        try {
+          const json = JSON.parse(line.slice(6));
+          if (json.error) throw new Error(json.error);
+          if (json.text) {
+            if (!firstTokenReceived) {
+              clearSpinner();
+              process.stdout.write(chalk.magenta("Eloria: "));
+              firstTokenReceived = true;
+            }
+            process.stdout.write(chalk.white(json.text));
+            aiText += json.text;
+          }
+          if (json.toolUse) { toolUses.push(json.toolUse); }
+          if (json.done) { stopReason = json.stopReason; }
+        } catch (parseErr) {
+          // ignore malformed individual chunks
+        }
+      }
     }
+  } catch (streamErr) {
+    clearSpinner();
+    throw new Error("Connection interrupted while receiving response.");
   }
-  console.log();
 
-  // Build the assistant's content blocks (text + tool_use) for the history
+  clearSpinner(); // in case stream ended with only a tool call, no text
+  if (firstTokenReceived) console.log();
+
   const assistantContent = [];
   if (aiText) assistantContent.push({ type: "text", text: aiText });
   toolUses.forEach(t => assistantContent.push({ type: "tool_use", id: t.id, name: t.name, input: t.input }));
-  history.push({ role: "assistant", content: assistantContent });
+  if (assistantContent.length > 0) history.push({ role: "assistant", content: assistantContent });
 
   if (stopReason === "tool_use" && toolUses.length > 0) {
     const toolResults = [];
     for (const t of toolUses) {
       const allowed = await confirmToolUse(t.name, t.input);
       const result = allowed ? await executeTool(t.name, t.input) : "User denied this tool call.";
+      if (allowed) console.log(chalk.green(`  ✓ Done`));
       toolResults.push({ type: "tool_result", tool_use_id: t.id, content: String(result) });
     }
     history.push({ role: "user", content: toolResults });
-
-    // Recurse — the model needs to see tool results and respond again
     await runTurn(token, history);
   }
 }
 
-main();
+main().catch((err) => {
+  console.log(chalk.red(`\n✗ Unexpected error: ${err.message}`));
+  process.exit(1);
+});
