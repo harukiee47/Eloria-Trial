@@ -542,6 +542,185 @@ const EC_STYLE = `
 
   /* Main chat indicator */
   .ec-main-chat-badge { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: rgba(255,255,255,.08); color: var(--t3); margin-left: 4px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  
+  /* Mode tabs (Code / Tasks) */
+  .ec-mode-tabs { display: flex; background: var(--bg-hi); border: 1px solid var(--border); border-radius: 6px; padding: 2px; gap: 2px; }
+  .ec-mode-tab { padding: 4px 12px; border-radius: 4px; background: none; border: none; cursor: pointer; font-size: 11.5px; font-weight: 600; color: var(--t3); font-family: var(--ui); transition: all .15s; }
+  .ec-mode-tab:hover { color: var(--t2); }
+  .ec-mode-tab.active { background: var(--t1); color: #111; }
+
+/* ── TASKS PANEL — light theme, matches main chat ─────────────── */
+  .ec-tasks-workspace {
+    flex: 1; display: flex; overflow: hidden; min-height: 0;
+    background: #FBF6F0; font-family: 'DM Sans', -apple-system, sans-serif;
+  }
+
+  /* sidebar */
+  .ect-sidebar {
+    flex: 0 0 240px; max-width: 240px;
+    background: #fdfaf6; border-right: 1px solid #dde0d9;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .ect-sidebar-top {
+    height: 48px; min-height: 48px; padding: 0 12px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #dde0d9; flex-shrink: 0;
+  }
+  .ect-sidebar-title { font-size: 13px; font-weight: 600; color: #0D3A35; flex: 1; }
+  .ect-new-btn {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: #eaf2ef; border: 1px solid rgba(39,97,82,.18);
+    color: #276152; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s;
+  }
+  .ect-new-btn:hover { background: #dcece5; }
+  .ect-chat-list { flex: 1; overflow-y: auto; padding: 6px 8px; scrollbar-width: thin; }
+  .ect-empty { padding: 20px 10px; font-size: 12px; color: #7a8a84; line-height: 1.7; text-align: center; }
+
+  .ect-chat-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 8px; border-radius: 8px; margin-bottom: 2px;
+    cursor: pointer; transition: background .12s;
+    border-left: 2px solid transparent;
+  }
+  .ect-chat-row:hover { background: #f2ede7; }
+  .ect-chat-row.active { background: #eaf2ef; border-left-color: #276152; }
+  .ect-chat-row-icon { color: #7a8a84; flex-shrink: 0; display: flex; }
+  .ect-chat-row.active .ect-chat-row-icon { color: #276152; }
+  .ect-chat-row-info { flex: 1; min-width: 0; }
+  .ect-chat-row-title {
+    font-size: 12.5px; color: #0D3A35; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; line-height: 1.4;
+  }
+  .ect-chat-row.active .ect-chat-row-title { font-weight: 600; color: #1a4a3d; }
+  .ect-chat-row-sub { font-size: 10.5px; color: #7a8a84; margin-top: 1px; }
+  .ect-chat-row-del {
+    background: none; border: none; cursor: pointer; color: #7a8a84;
+    font-size: 12px; padding: 3px 5px; border-radius: 4px;
+    opacity: 0; transition: opacity .12s, color .12s; flex-shrink: 0;
+  }
+  .ect-chat-row:hover .ect-chat-row-del { opacity: 1; }
+  .ect-chat-row-del:hover { color: #c04040; }
+
+  /* main column */
+  .ect-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #FBF6F0; }
+  .ect-header {
+    height: 56px; min-height: 56px; padding: 0 18px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #dde0d9; background: #FBF6F0; flex-shrink: 0;
+  }
+  .ect-header-icon {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: #eaf2ef; display: flex; align-items: center; justify-content: center;
+    color: #276152; flex-shrink: 0;
+  }
+  .ect-header-title { font-size: 14.5px; font-weight: 600; color: #0D3A35; }
+  .ect-header-sub { font-size: 11px; color: #7a8a84; }
+
+  .ect-body {
+    flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column; scrollbar-width: thin;
+    scrollbar-color: #e0e0da transparent; padding: 12px 0 8px;
+  }
+
+  .ect-pending {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 10px; padding: 40px 24px; text-align: center;
+  }
+  .ect-pending-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: #eaf2ef; display: flex; align-items: center; justify-content: center;
+    color: #276152; margin-bottom: 4px;
+  }
+  .ect-pending-title { font-size: 15px; font-weight: 600; color: #0D3A35; }
+  .ect-pending-sub { font-size: 12.5px; color: #7a8a84; line-height: 1.65; max-width: 300px; }
+
+  /* message rows — mirrors cw-msg-row / cw-bubble */
+  .ect-msg-row { display: flex; padding: 5px 18px; max-width: 720px; width: 100%; margin: 0 auto; }
+  .ect-msg-row.user { justify-content: flex-end; }
+  .ect-msg-row.ai { justify-content: flex-start; gap: 8px; align-items: flex-end; }
+  .ect-avatar {
+    width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+    background: #eaf2ef; border: 1px solid rgba(39,97,82,.18);
+    display: flex; align-items: center; justify-content: center;
+    color: #276152; margin-bottom: 2px;
+  }
+  .ect-bubble {
+    max-width: 78%; padding: 10px 15px; border-radius: 18px;
+    font-size: 14.5px; line-height: 1.55; word-break: break-word;
+  }
+  .ect-msg-row.user .ect-bubble {
+    background: #276152; color: #fff; border-bottom-right-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  }
+  .ect-msg-row.ai .ect-bubble {
+    background: #fff; color: #0D3A35; border: 1px solid #ececea;
+    border-bottom-left-radius: 5px; box-shadow: 0 1px 6px rgba(0,0,0,.04);
+  }
+
+  .ect-log-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 18px; max-width: 720px; width: 100%; margin: 0 auto;
+    font-size: 11.5px; color: #7a8a84;
+  }
+
+  .ect-thinking {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 18px; max-width: 720px; width: 100%; margin: 0 auto;
+  }
+  .ect-thinking-dots { display: flex; gap: 4px; }
+  .ect-thinking-dots span {
+    width: 5px; height: 5px; border-radius: 50%; background: #276152;
+    opacity: .4; animation: cwDot 1.2s ease-in-out infinite;
+  }
+  .ect-thinking-dots span:nth-child(2) { animation-delay: .2s; }
+  .ect-thinking-dots span:nth-child(3) { animation-delay: .4s; }
+
+  /* input — mirrors cw-input-wrap / cw-input-box */
+  .ect-input-wrap { flex-shrink: 0; padding: 8px 16px 14px; background: #FBF6F0; border-top: 1px solid #dde0d9; }
+  .ect-input-box {
+    max-width: 720px; margin: 0 auto;
+    background: #fafaf8; border: 1.5px solid #cdd0c9; border-radius: 18px;
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+    transition: border-color .15s, box-shadow .15s; box-shadow: 0 1px 6px rgba(0,0,0,.04);
+  }
+  .ect-input-box:focus-within {
+    border-color: rgba(13,58,53,.35); box-shadow: 0 0 0 3px rgba(13,58,53,.07);
+    background: #fff;
+  }
+  .ect-textarea-row { display: flex; align-items: flex-end; gap: 8px; }
+  .ect-textarea {
+    flex: 1; border: none; background: none; outline: none;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0D3A35;
+    resize: none; min-height: 22px; max-height: 120px; line-height: 1.55;
+    overflow-y: auto; caret-color: #0d3a35;
+  }
+  .ect-textarea::placeholder { color: #7a8a84; }
+  .ect-send {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: #0d3a35; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; color: #fff; transition: opacity .13s, transform .1s;
+  }
+  .ect-send:hover:not(:disabled) { opacity: .88; transform: scale(1.05); }
+  .ect-send:disabled { opacity: .3; cursor: default; }
+  .ect-hint { text-align: center; font-size: 11px; color: #7a8a84; margin-top: 6px; }
+
+  /* locked (browser) state */
+  .ect-locked {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 14px; padding: 40px; text-align: center;
+    background: #FBF6F0;
+  }
+  .ect-locked-icon {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: linear-gradient(145deg, #0d3a35 0%, #1d6152 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; box-shadow: 0 4px 20px rgba(13,58,53,.2);
+  }
+  .ect-locked-title { font-size: 16px; font-weight: 700; color: #0D3A35; }
+  .ect-locked-sub { font-size: 12.5px; color: #7a8a84; line-height: 1.7; max-width: 320px; }
 `;
 
 // ─── FIRESTORE HELPERS ─────────────────────────────────────────────────────
@@ -576,6 +755,15 @@ async function loadProjectSummary(uid, projectId) {
 }
 async function saveProjectSummary(uid, projectId, summary) {
   await setDoc(doc(db, "users", uid), { codeProjectSummaries: { [String(projectId)]: JSON.parse(JSON.stringify(summary)) } }, { merge: true });
+}
+
+async function loadTaskChats(uid) {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return [];
+  return snap.data().eloriaTaskChats || [];
+}
+async function saveTaskChats(uid, chats) {
+  await setDoc(doc(db, "users", uid), { eloriaTaskChats: JSON.parse(JSON.stringify(chats)) }, { merge: true });
 }
 
 // ─── ATTACHMENT BUBBLE ─────────────────────────────────────────────────────
@@ -677,6 +865,230 @@ function AutoBuildProgress({ files, doneCount, activeIdx }) {
   );
 }
 
+// ─── TASKS PANEL (video editing, file tasks, etc — desktop only) ───────────
+function EloriaTasks({ isDesktopApp, uid }) {
+  const [chats, setChats] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const [input, setInput] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
+  const bodyRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (!uid || !isDesktopApp) { setLoaded(true); return; }
+    loadTaskChats(uid).then(loadedChats => {
+      setChats(loadedChats);
+      if (loadedChats.length > 0) setActiveChatId(loadedChats[0].id);
+      setLoaded(true);
+    });
+  }, [uid, isDesktopApp]);
+
+  useEffect(() => {
+    if (!uid || !loaded) return;
+    saveTaskChats(uid, chats);
+  }, [chats, uid, loaded]);
+
+  useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight; }, [chats, activeChatId, isRunning]);
+
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+  }, [input]);
+
+  const activeChat = chats.find(c => c.id === activeChatId) || null;
+
+  const newChat = () => {
+    const chat = { id: Date.now(), title: "New Task", messages: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    setChats(prev => [chat, ...prev]);
+    setActiveChatId(chat.id);
+    setInput("");
+  };
+
+  const deleteChat = (e, chatId) => {
+    e.stopPropagation();
+    setChats(prev => prev.filter(c => c.id !== chatId));
+    if (activeChatId === chatId) {
+      const remaining = chats.filter(c => c.id !== chatId);
+      setActiveChatId(remaining.length > 0 ? remaining[0].id : null);
+    }
+  };
+
+  const handleRun = () => {
+    if (!input.trim() || isRunning) return;
+    let chatId = activeChatId;
+    let workingChats = chats;
+
+    if (!chatId) {
+      const chat = { id: Date.now(), title: input.trim().slice(0, 40), messages: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      workingChats = [chat, ...chats];
+      chatId = chat.id;
+      setActiveChatId(chatId);
+    }
+
+    const userMsg = { id: Date.now() + 1, sender: "user", text: input.trim() };
+    const now = new Date().toISOString();
+
+    setChats(workingChats.map(c => {
+      if (c.id !== chatId) return c;
+      const isFirstMsg = c.messages.length === 0;
+      return {
+        ...c,
+        title: isFirstMsg ? input.trim().slice(0, 40) : c.title,
+        messages: [...c.messages, userMsg],
+        updatedAt: now,
+      };
+    }));
+
+    setInput("");
+    // Real ffmpeg/AI execution wires in here next
+  };
+
+  const IconZap = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  );
+  const IconPlus = () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  );
+  const IconMonitor = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+  );
+
+  if (!isDesktopApp) {
+    return (
+      <div className="ec-tasks-workspace">
+        <div className="ect-locked">
+          <div className="ect-locked-icon"><IconMonitor /></div>
+          <div className="ect-locked-title">Desktop app required</div>
+          <div className="ect-locked-sub">
+            Tasks runs real commands on your machine — video editing, file conversion, and more.
+            This needs the Eloria desktop app, not the browser.
+          </div>
+          <button className="ec-topbar-btn solid" onClick={() => window.open("https://your-download-page", "_blank")}>
+            Download Eloria Desktop
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ec-tasks-workspace">
+      {/* LEFT — chat list */}
+      <aside className="ect-sidebar">
+        <div className="ect-sidebar-top">
+          <span className="ect-sidebar-title">Tasks</span>
+          <button className="ect-new-btn" onClick={newChat} title="New task"><IconPlus /></button>
+        </div>
+        <div className="ect-chat-list">
+          {chats.length === 0 ? (
+            <div className="ect-empty">No tasks yet.<br/>Start a new one below.</div>
+          ) : (
+            chats.map(chat => (
+              <div
+                key={chat.id}
+                className={`ect-chat-row${chat.id === activeChatId ? " active" : ""}`}
+                onClick={() => setActiveChatId(chat.id)}
+              >
+                <span className="ect-chat-row-icon"><IconZap /></span>
+                <div className="ect-chat-row-info">
+                  <div className="ect-chat-row-title">{chat.title || "New Task"}</div>
+                  <div className="ect-chat-row-sub">{timeAgo(chat.updatedAt)}</div>
+                </div>
+                <button className="ect-chat-row-del" onClick={e => deleteChat(e, chat.id)}>✕</button>
+              </div>
+            ))
+          )}
+        </div>
+      </aside>
+
+      {/* RIGHT — conversation */}
+      <main className="ect-main">
+        <div className="ect-header">
+          <div className="ect-header-icon"><IconZap /></div>
+          <div>
+            <div className="ect-header-title">{activeChat?.title || "Tasks"}</div>
+            <div className="ect-header-sub">Runs directly on your machine</div>
+          </div>
+        </div>
+
+        <div className="ect-body" ref={bodyRef}>
+          {!activeChat || activeChat.messages.length === 0 ? (
+            <div className="ect-pending">
+              <div className="ect-pending-icon"><IconZap /></div>
+              <div className="ect-pending-title">What do you need done?</div>
+              <div className="ect-pending-sub">
+                Describe a task — trim a video, convert a file, run a script — and Eloria will handle it directly on your machine.
+              </div>
+            </div>
+          ) : (
+            activeChat.messages.map(msg => {
+              if (msg.sender === "user") {
+                return (
+                  <div key={msg.id} className="ect-msg-row user">
+                    <div className="ect-bubble">{msg.text}</div>
+                  </div>
+                );
+              }
+              if (msg.sender === "log") {
+                return (
+                  <div key={msg.id} className="ect-log-row">
+                    <span>{msg.icon || "·"}</span>
+                    <span>{msg.text}</span>
+                  </div>
+                );
+              }
+              return (
+                <div key={msg.id} className="ect-msg-row ai">
+                  <div className="ect-avatar"><IconZap /></div>
+                  <div className="ect-bubble">{msg.text}</div>
+                </div>
+              );
+            })
+          )}
+          {isRunning && (
+            <div className="ect-thinking">
+              <div className="ect-avatar" style={{ margin: 0 }}><IconZap /></div>
+              <div className="ect-thinking-dots"><span/><span/><span/></div>
+            </div>
+          )}
+        </div>
+
+        <div className="ect-input-wrap">
+          <div className="ect-input-box">
+            <div className="ect-textarea-row">
+              <textarea
+                ref={textareaRef}
+                className="ect-textarea"
+                rows={1}
+                value={input}
+                placeholder="e.g. Trim my_video.mp4 to the first 30 seconds"
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleRun(); } }}
+                disabled={isRunning}
+              />
+              <button className="ect-send" onClick={handleRun} disabled={isRunning || !input.trim()}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+                  <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <p className="ect-hint">Tasks run directly on your machine · verify results before relying on them</p>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 // ─── MAIN ──────────────────────────────────────────────────────────────────
 export default function EloriaCode() {
   const MAIN_CHAT_ID = "main";
@@ -702,6 +1114,8 @@ export default function EloriaCode() {
   const [newFileName,    setNewFileName]    = useState("");
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [showWelcome,    setShowWelcome]    = useState(() => !localStorage.getItem("eloria_code_welcomed"));
+  const [appMode, setAppMode] = useState("code"); // "code" or "tasks"
+const isDesktopApp = typeof window !== "undefined" && !!window.__TAURI__;
 
   // Auto-build state
   const [autoBuildQueue,   setAutoBuildQueue]   = useState([]); // [{id, name}]
@@ -1462,12 +1876,21 @@ IMPORTANT INSTRUCTIONS:
       <div className="ec-topbar">
         <div className="ec-topbar-logo"><img src={logo} alt="Eloria" /></div>
         <span className="ec-topbar-title">Eloria Workspace</span>
+        <div className="ec-topbar-sep" />
+        <div className="ec-mode-tabs">
+          <button className={`ec-mode-tab${appMode === "code" ? " active" : ""}`} onClick={() => setAppMode("code")}>Code</button>
+          <button className={`ec-mode-tab${appMode === "tasks" ? " active" : ""}`} onClick={() => setAppMode("tasks")}>Tasks</button>
+        </div>
         <div className="ec-topbar-spacer" />
         <button className="ec-topbar-btn solid" onClick={() => setShowProjectModal(true)}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           New Project
         </button>
       </div>
+
+      {appMode === "tasks" ? (
+  <EloriaTasks isDesktopApp={isDesktopApp} uid={uid} />
+) : (
 
       <div className="ec-projects-screen">
         <div className="ec-projects-body">
@@ -1503,6 +1926,7 @@ IMPORTANT INSTRUCTIONS:
           )}
         </div>
       </div>
+      )}
 
       {showProjectModal && (
         <div className="ec-modal-backdrop" onClick={() => setShowProjectModal(false)}>
@@ -1883,15 +2307,23 @@ IMPORTANT INSTRUCTIONS:
       <input ref={folderInputRef} type="file" webkitdirectory="true" directory="true" multiple style={{ display:"none" }} onChange={handleFolderSelect} />
       {showWelcome && <EloriaCodeWelcome onDismiss={() => setShowWelcome(false)} userName={userName} />}
 
-      <div className="ec-topbar">
+    <div className="ec-topbar">
         <div className="ec-topbar-logo"><img src={logo} alt="Eloria" /></div>
         <span className="ec-topbar-title">Eloria Workspace</span>
         <div className="ec-topbar-sep" />
+        <div className="ec-mode-tabs">
+          <button className={`ec-mode-tab${appMode === "code" ? " active" : ""}`} onClick={() => setAppMode("code")}>Code</button>
+          <button className={`ec-mode-tab${appMode === "tasks" ? " active" : ""}`} onClick={() => setAppMode("tasks")}>Tasks</button>
+        </div>
         <div className="ec-topbar-badge">Eloria Code</div>
         <div className="ec-topbar-spacer" />
         <button className="ec-topbar-btn ghost" onClick={() => setShowFileModal(true)}>Add File</button>
         <button className="ec-topbar-btn solid" onClick={() => { switchToMain(); textareaRef.current?.focus(); }}>Main Chat</button>
       </div>
+
+       {appMode === "tasks" ? (
+        <EloriaTasks isDesktopApp={isDesktopApp} uid={uid} />
+      ) : (
 
       <div className="ec-workspace">
         {/* LEFT — task sidebar */}
@@ -2088,6 +2520,7 @@ IMPORTANT INSTRUCTIONS:
           <div className="ec-right-body">{rightContent()}</div>
         </aside>
       </div>
+      )}
 
       {/* Limit modal */}
       {showLimitModal && (
