@@ -6,6 +6,7 @@ import logo from "../assets/logo.png";
 import EloriaCodeWelcome from "./EloriaCodeWelcome";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
+import { invoke } from "@tauri-apps/api/core";
 
 // ─── SUPPORTED EXTENSIONS ─────────────────────────────────────────────────────
 const SUPPORTED_EXTS = new Set([
@@ -916,36 +917,56 @@ function EloriaTasks({ isDesktopApp, uid }) {
     }
   };
 
-  const handleRun = () => {
-    if (!input.trim() || isRunning) return;
-    let chatId = activeChatId;
-    let workingChats = chats;
+const handleRun = async () => {
+  if (!input.trim() || isRunning) return;
+  let chatId = activeChatId;
+  let workingChats = chats;
 
-    if (!chatId) {
-      const chat = { id: Date.now(), title: input.trim().slice(0, 40), messages: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-      workingChats = [chat, ...chats];
-      chatId = chat.id;
-      setActiveChatId(chatId);
-    }
+  if (!chatId) {
+    const chat = { id: Date.now(), title: input.trim().slice(0, 40), messages: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    workingChats = [chat, ...chats];
+    chatId = chat.id;
+    setActiveChatId(chatId);
+  }
 
-    const userMsg = { id: Date.now() + 1, sender: "user", text: input.trim() };
-    const now = new Date().toISOString();
+  const userText = input.trim();
+  const userMsg = { id: Date.now() + 1, sender: "user", text: userText };
+  const now = new Date().toISOString();
 
-    setChats(workingChats.map(c => {
-      if (c.id !== chatId) return c;
-      const isFirstMsg = c.messages.length === 0;
-      return {
-        ...c,
-        title: isFirstMsg ? input.trim().slice(0, 40) : c.title,
-        messages: [...c.messages, userMsg],
-        updatedAt: now,
-      };
+  setChats(workingChats.map(c => {
+    if (c.id !== chatId) return c;
+    const isFirstMsg = c.messages.length === 0;
+    return {
+      ...c,
+      title: isFirstMsg ? userText.slice(0, 40) : c.title,
+      messages: [...c.messages, userMsg],
+      updatedAt: now,
+    };
+  }));
+
+  setInput("");
+  setIsRunning(true);
+
+  // TEMP: hardcoded test args — replace with AI-generated args once that layer is wired
+  const testArgs = ["-version"];
+
+  try {
+    const result = await invoke("run_ffmpeg", { args: testArgs });
+    setChats(prev => prev.map(c => c.id !== chatId ? c : {
+      ...c,
+      messages: [...c.messages, { id: Date.now() + 2, sender: "ai", text: "```\n" + result + "\n```" }],
+      updatedAt: new Date().toISOString(),
     }));
-
-    setInput("");
-    setIsRunning(true);
-    // Real ffmpeg/AI execution wires in here next
-  };
+  } catch (err) {
+    setChats(prev => prev.map(c => c.id !== chatId ? c : {
+      ...c,
+      messages: [...c.messages, { id: Date.now() + 2, sender: "ai", text: `ffmpeg failed:\n\`\`\`\n${err}\n\`\`\`` }],
+      updatedAt: new Date().toISOString(),
+    }));
+  } finally {
+    setIsRunning(false);
+  }
+};
 
   const IconZap = () => (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1570,6 +1591,24 @@ Do NOT explain at length — just generate the code.`;
   const pushLog = (text, extra = {}) => {
     setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender: "log", text, ...extra }]);
   };
+
+  const runShellCommand = async (program, args) => {
+  if (!isDesktopApp) {
+    pushLog(`Can't run "${program}" — this feature requires the desktop app.`, { icon: "!" });
+    return null;
+  }
+  pushLog(`Running: ${program} ${args.join(" ")}`, { icon: "▸" });
+  try {
+    const output = await invoke("run_shell_command", { program, args });
+    pushLog(`✓ ${program} finished`, { icon: "✓", kind: "build", diff: null });
+    setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender: "ai", text: "```\n" + output + "\n```" }]);
+    return output;
+  } catch (err) {
+    pushLog(`✗ ${program} failed`, { icon: "!" });
+    setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender: "ai", text: `Command failed:\n\`\`\`\n${err}\n\`\`\`` }]);
+    return null;
+  }
+};
 
   const readFileAsText = (file) => new Promise(resolve => { const r = new FileReader(); r.onload = e => resolve(e.target.result); r.onerror = () => resolve("[could not read]"); r.readAsText(file); });
 

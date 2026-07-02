@@ -8,7 +8,17 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
-    "shell:allow-execute",
-    "deep-link:default"
-]
+    "deep-link:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        { "name": "ffmpeg", "cmd": "ffmpeg", "args": true },
+        { "name": "npm", "cmd": "npm", "args": true },
+        { "name": "node", "cmd": "node", "args": true },
+        { "name": "git", "cmd": "git", "args": true },
+        { "name": "python", "cmd": "python", "args": true },
+        { "name": "pip", "cmd": "pip", "args": true }
+      ]
+    }
+  ]
 }
