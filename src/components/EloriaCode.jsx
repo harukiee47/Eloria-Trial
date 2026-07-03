@@ -115,29 +115,29 @@ const EC_STYLE = `
     color: #0D3A35; font-size: 13px;
   }
 
-  .ecw-topbar {
-    height: 48px; min-height: 48px;
-    display: flex; align-items: center; padding: 0 16px; gap: 10px;
-    background: #FBF6F0; border-bottom: 1px solid #dde0d9;
-    flex-shrink: 0; position: relative; z-index: 10;
-  }
-  .ecw-topbar-logo { width: 22px; height: 22px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
-  .ecw-topbar-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .ecw-topbar-title { font-size: 13.5px; font-weight: 600; color: #0D3A35; letter-spacing: -.01em; }
-  .ecw-topbar-sep { width: 1px; height: 16px; background: #dde0d9; }
-.ecw-topbar { position: relative; }
-.ecw-topbar-center {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center;
+.ecw-root { background: #F5F0E8; }
+.ecw-shell { background: #F5F0E8; }
+.ecw-main { background: #F5F0E8; }
+.ecw-body { background: #F5F0E8; }
+.ecw-input-wrap { background: #F5F0E8; padding: 0 24px 32px; }
+
+.ecw-topbar {
+  height: 56px; min-height: 56px;
+  display: flex; align-items: center; padding: 0 20px; gap: 10px;
+  background: #F5F0E8; border-bottom: 1px solid #e2ddd4;
+  flex-shrink: 0; position: relative; z-index: 10;
 }
-.ecw-topbar-badge {
-  display: flex; align-items: center; gap: 7px;
-  padding: 6px 16px; border-radius: 8px;
-  background: #0D3A35; color: #FBF6F0;
-  font-size: 12.5px; font-weight: 700; letter-spacing: .03em;
-  box-shadow: 0 2px 10px rgba(13,58,53,0.25);
+.ecw-topbar-logo { width: 28px; height: 28px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+.ecw-topbar-logo img { width: 100%; height: 100%; object-fit: contain; }
+.ecw-topbar-titles { display: flex; flex-direction: column; line-height: 1.2; }
+.ecw-topbar-title { font-size: 14px; font-weight: 700; color: #0D3A35; }
+.ecw-topbar-subtitle { font-size: 11px; color: #9a9a8a; }
+.ecw-topbar-spacer { flex: 1; }
+.ecw-topbar-free {
+  padding: 5px 13px; border-radius: 20px;
+  border: 1px solid #c5c0b5; font-size: 12px; font-weight: 600;
+  color: #5a5a4a; background: transparent;
 }
-.ecw-topbar-badge svg { width: 12px; height: 12px; }
 
   .ecw-back-btn {
     display: flex; align-items: center; gap: 6px;
@@ -153,17 +153,29 @@ const EC_STYLE = `
   .ecw-shell { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 
   /* SIDEBAR */
-  .ecw-sidebar {
-    flex: 0 0 248px; max-width: 248px;
-    background: #fdfaf6; border-right: 1px solid #dde0d9;
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  .ecw-sidebar-top {
-    height: 54px; min-height: 54px; padding: 0 14px;
-    display: flex; align-items: center; gap: 8px;
-    border-bottom: 1px solid #dde0d9; flex-shrink: 0;
-  }
-  .ecw-sidebar-title { font-size: 14px; font-weight: 600; color: #0D3A35; flex: 1; letter-spacing: -.01em; }
+.ecw-sidebar {
+  flex: 0 0 65px; width: 65px;
+  background: #F5F0E8; border-right: 1px solid #e2ddd4;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px 0 20px; gap: 0;
+}
+.ecw-sidebar-items { display: flex; flex-direction: column; align-items: center; gap: 0; flex: 1; width: 100%; }
+.ecw-sidebar-item {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  width: 100%; padding: 11px 0;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 10px; font-weight: 500; color: #8a8a7a;
+  transition: color .12s;
+}
+.ecw-sidebar-item svg { width: 21px; height: 21px; }
+.ecw-sidebar-item:hover { color: #0D3A35; }
+.ecw-sidebar-item.active { color: #0D3A35; }
+.ecw-sidebar-account {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: #5a7a3a; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 8px;
+}
   .ecw-new-btn {
     width: 28px; height: 28px; border-radius: 8px;
     background: #eaf2ef; border: 1px solid rgba(39,97,82,0.25);
@@ -264,18 +276,15 @@ const EC_STYLE = `
   @keyframes ecwFadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
 
   /* WELCOME */
-  .ecw-welcome {
-    flex: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 24px; padding: 40px 24px; text-align: center;
-  }
-  .ecw-welcome-emblem {
-    width: 58px; height: 58px; border-radius: 17px;
-    background: linear-gradient(145deg, #0d3a35 0%, #1d6152 100%);
-    display: flex; align-items: center; justify-content: center; color: #fff;
-    box-shadow: 0 4px 24px rgba(13,58,53,0.18);
-  }
-  .ecw-welcome-title { font-size: 21px; font-weight: 700; color: #0D3A35; letter-spacing: -.03em; line-height: 1.2; }
-  .ecw-welcome-sub { font-size: 13px; color: #7a8a84; line-height: 1.65; max-width: 320px; }
+.ecw-welcome {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 14px; padding: 40px 24px; text-align: center;
+}
+.ecw-welcome-title {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 46px; font-weight: 400; color: #0D3A35; letter-spacing: -.01em;
+}
+.ecw-welcome-sub { font-size: 14px; color: #a89f8f; }
   .ecw-welcome-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
   .ecw-welcome-chip {
     padding: 7px 14px; border-radius: 20px;
@@ -414,18 +423,15 @@ const EC_STYLE = `
   .ecw-desktop-banner svg { flex-shrink: 0; width: 14px; height: 14px; }
 
   /* INPUT */
-  .ecw-input-wrap {
-    flex-shrink: 0; padding: 8px 16px 14px; background: #FBF6F0;
-    border-top: 1px solid #dde0d9;
-  }
-  .ecw-input-box {
-    max-width: 720px; margin: 0 auto;
-    background: #fafaf8; border: 1.5px solid #cdd0c9;
-    border-radius: 18px; padding: 10px 12px;
-    display: flex; flex-direction: column; gap: 8px;
-    transition: border-color .15s, box-shadow .15s;
-    box-shadow: 0 1px 6px rgba(0,0,0,.04);
-  }
+.ecw-input-wrap { flex-shrink: 0; padding: 0 24px 40px; background: #FBF6F0; }
+.ecw-input-box {
+  max-width: 760px; margin: 0 auto;
+  background: #fff; border: 1px solid #e3ddd2;
+  border-radius: 30px; padding: 14px 20px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 4px 20px rgba(13,58,53,.06);
+}
+.ecw-textarea { flex: 1; border: none; background: none; outline: none; font-family: inherit; font-size: 14.5px; color: #0D3A35; resize: none; }
   .ecw-input-box:focus-within {
     border-color: rgba(13,58,53,.35);
     box-shadow: 0 0 0 3px rgba(13,58,53,.07), 0 2px 12px rgba(0,0,0,.06);
@@ -481,20 +487,6 @@ const EC_STYLE = `
   .ecw-send:disabled { opacity: .3; cursor: default; }
   .ecw-send svg { width: 15px; height: 15px; }
   .ecw-hint { text-align: center; font-size: 11px; color: #7a8a84; margin-top: 6px; max-width: 720px; margin-left: auto; margin-right: auto; }
-
-.ecw-sidebar-nav {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 10px 8px; border-bottom: 1px solid #dde0d9;
-}
-.ecw-sidebar-nav-item {
-  display: flex; align-items: center; gap: 9px;
-  padding: 8px 10px; border-radius: 8px;
-  background: none; border: none; cursor: pointer;
-  font-family: inherit; font-size: 12.5px; font-weight: 600; color: #3a5a55;
-  transition: background .12s, color .12s;
-}
-.ecw-sidebar-nav-item:hover { background: #f0ede6; color: #0D3A35; }
-.ecw-sidebar-nav-item.active { background: #eaf2ef; color: #276152; }
 
   `;
 
@@ -926,118 +918,53 @@ Never output JSON until the user confirms. Never ask more than one question at a
       <input ref={docInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt" style={{ display:"none" }} onChange={handleDocSelect} />
 
       {/* Topbar */}
+{/* Topbar */}
 <div className="ecw-topbar">
   <div className="ecw-topbar-logo"><img src={logo} alt="Eloria" /></div>
-  <span className="ecw-topbar-title">Eloria</span>
-  <div className="ecw-topbar-center">
-    <div className="ecw-topbar-badge"><IconCode /> Eloria Code</div>
+  <div className="ecw-topbar-titles">
+    <span className="ecw-topbar-title">Eloria AI</span>
+    <span className="ecw-topbar-subtitle">By Kairox</span>
   </div>
   <div className="ecw-topbar-spacer" />
-  {onBack && (
-    <button className="ecw-back-btn" onClick={onBack}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="15 18 9 12 15 6"/>
-      </svg>
-      Back to Chat
-    </button>
-  )}
+  <div className="ecw-topbar-free">FREE</div>
+  <button className="ecw-topbar-upgrade">Upgrade</button>
 </div>
 
       <div className="ecw-shell">
         {/* Sidebar */}
         <aside className="ecw-sidebar">
-  <div className="ecw-sidebar-nav">
-    <button className="ecw-sidebar-nav-item" onClick={newChat}>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  <div className="ecw-sidebar-items">
+    <button className="ecw-sidebar-item" onClick={newChat}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
       New
     </button>
-    <button className="ecw-sidebar-nav-item active">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <button className="ecw-sidebar-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
       Chats
     </button>
     {onBack && (
-      <button className="ecw-sidebar-nav-item" onClick={onBack}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <button className="ecw-sidebar-item" onClick={onBack}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
         Back
       </button>
     )}
   </div>
-  <div className="ecw-sidebar-top">
-    <span className="ecw-sidebar-title">Chats</span>
-    <button className="ecw-new-btn" onClick={newChat} title="New chat">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-  </div>
-  <div className="ecw-chat-list">
-            {chats.length === 0
-              ? <div className="ecw-empty">No chats yet.<br/>Start one below.</div>
-              : chats.map(chat => (
-                <div
-                  key={chat.id}
-                  className={`ecw-chat-row${chat.id === activeChatId ? " active" : ""}`}
-                  onClick={() => { setActiveChatId(chat.id); setOpenMenuId(null); }}
-                >
-                  <span className="ecw-chat-row-icon"><IconCode /></span>
-                  <div className="ecw-chat-row-info">
-                    {chat.renameOpen ? (
-                      <input
-                        className="ecw-rename-input"
-                        defaultValue={chat.title}
-                        autoFocus
-                        onClick={e => e.stopPropagation()}
-                        onBlur={e => renameChat(chat.id, e.target.value.trim())}
-                        onKeyDown={e => {
-                          if (e.key === "Enter") renameChat(chat.id, e.target.value.trim());
-                          if (e.key === "Escape") setChats(prev => prev.map(c => c.id === chat.id ? { ...c, renameOpen: false } : c));
-                        }}
-                      />
-                    ) : (
-                      <div className="ecw-chat-row-title">{chat.title || "New Chat"}</div>
-                    )}
-                  </div>
-                  <button
-                    className="ecw-row-menu-btn"
-                    onClick={e => { e.stopPropagation(); setOpenMenuId(prev => prev === chat.id ? null : chat.id); }}
-                  >⋯</button>
-                  {openMenuId === chat.id && (
-                    <div className="ecw-row-dropdown" onClick={e => e.stopPropagation()}>
-                      <button onClick={e => { e.stopPropagation(); setChats(prev => prev.map(c => c.id === chat.id ? { ...c, renameOpen: true } : c)); setOpenMenuId(null); }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Rename
-                      </button>
-                      <div className="ecw-row-dropdown-div" />
-                      <button className="del" onClick={e => { e.stopPropagation(); deleteChat(chat.id); }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))
-            }
-          </div>
-        </aside>
+  <div className="ecw-sidebar-account">R</div>
+</aside>
 
         {/* Main */}
         <main className="ecw-main">
-          <div className="ecw-chat-header">
-            <div className="ecw-header-icon"><IconCode /></div>
-            <div>
-              <div className="ecw-header-title">{activeChat?.title || "Eloria Code"}</div>
-              <div className="ecw-header-sub">Code · Video · General — attach files to get started</div>
-            </div>
-          </div>
-
           <div className="ecw-body" ref={bodyRef}>
             {!activeChat || activeChat.messages.length === 0 ? (
-              <div className="ecw-welcome">
-                <div className="ecw-welcome-emblem"><IconCode /></div>
-                <div>
-                  <div className="ecw-welcome-title">$ what are we shipping today?</div>
-<div className="ecw-welcome-sub" style={{ marginTop: 8, fontFamily: "'SF Mono', Consolas, monospace" }}>
-   write code, refactor, debug, or attach a video to edit it.
-</div>
-                </div>
+<div className="ecw-welcome">
+                <div className="ecw-welcome-title">What are you working on?</div>
+                <div className="ecw-welcome-sub">I'm ready whenever you are.</div>
                 <div className="ecw-welcome-chips">
                   {WELCOME_PROMPTS.map(p => (
                     <button key={p} className="ecw-welcome-chip" onClick={() => {
