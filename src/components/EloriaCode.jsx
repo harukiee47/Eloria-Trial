@@ -508,6 +508,7 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
   const [pendingFiles, setPendingFiles] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
   const [showAttach, setShowAttach] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const bodyRef = useRef(null);
@@ -592,6 +593,7 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
     setInput(""); setPendingFiles([]);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const deleteChat = (chatId) => {
     setOpenMenuId(null);
     const remaining = chats.filter(c => c.id !== chatId);
@@ -599,6 +601,7 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
     if (activeChatId === chatId) setActiveChatId(remaining[0]?.id || null);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const renameChat = (chatId, val) => {
     setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: val || c.title, renameOpen: false } : c));
   };
@@ -892,6 +895,7 @@ Never output JSON until the user confirms. Never ask more than one question at a
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const IconCode = () => (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
