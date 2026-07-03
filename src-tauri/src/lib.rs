@@ -1,6 +1,5 @@
 use tauri::Emitter;
 use tauri::Manager;
-
 use tauri_plugin_shell::ShellExt;
 
 #[tauri::command]
@@ -10,21 +9,29 @@ async fn pick_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     .file()
     .add_filter("Video", &["mp4", "mov", "avi", "mkv", "webm", "m4v"])
     .blocking_pick_file();
-  Ok(path.map(|p| p.to_string()))
+  Ok(path.and_then(|p| p.into_path().ok()).map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+async fn pick_audio_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+  use tauri_plugin_dialog::DialogExt;
+  let path = app.dialog()
+    .file()
+    .add_filter("Audio", &["mp3", "wav", "m4a", "aac", "ogg"])
+    .blocking_pick_file();
+  Ok(path.and_then(|p| p.into_path().ok()).map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+async fn write_text_file(path: String, content: String) -> Result<(), String> {
+  std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn run_ffmpeg(app: tauri::AppHandle, args: Vec<String>) -> Result<String, String> {
-  use tauri::Manager;
   use tauri_plugin_shell::process::CommandEvent;
 
   let shell = app.shell();
-
-  // Resolve bundled ffmpeg binary path
-  let ffmpeg_path = app
-    .path()
-    .resolve("binaries/ffmpeg", tauri::path::BaseDirectory::Resource)
-    .map_err(|e| format!("Could not find bundled ffmpeg: {}", e))?;
 
   let mut final_args = vec![
     "-progress".to_string(),
@@ -34,7 +41,8 @@ async fn run_ffmpeg(app: tauri::AppHandle, args: Vec<String>) -> Result<String, 
   final_args.extend(args);
 
   let (mut rx, _child) = shell
-    .command(ffmpeg_path.to_str().unwrap_or("ffmpeg"))
+    .sidecar("ffmpeg")
+    .map_err(|_| "ffmpeg sidecar not found".to_string())?
     .args(final_args)
     .spawn()
     .map_err(|e| e.to_string())?;
@@ -67,6 +75,59 @@ async fn run_ffmpeg(app: tauri::AppHandle, args: Vec<String>) -> Result<String, 
 }
 
 #[tauri::command]
+async fn run_ytdlp(app: tauri::AppHandle, args: Vec<String>) -> Result<String, String> {
+  let shell = app.shell();
+  let output = shell
+    .sidecar("yt-dlp")
+    .map_err(|_| "yt-dlp sidecar not found".to_string())?
+    .args(args)
+    .output()
+    .await
+    .map_err(|e| e.to_string())?;
+
+  if output.status.success() {
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+  } else {
+    Err(String::from_utf8_lossy(&output.stderr).to_string())
+  }
+}
+
+#[tauri::command]
+async fn run_python(app: tauri::AppHandle, args: Vec<String>) -> Result<String, String> {
+  let shell = app.shell();
+
+  let python_path = app
+    .path()
+    .resolve("binaries/python/python.exe", tauri::path::BaseDirectory::Resource)
+    .ok()
+    .filter(|p| p.exists())
+    .map(|p| p.to_string_lossy().to_string())
+    .unwrap_or_else(|| "py".to_string());
+
+  let whisper_cache = app
+    .path()
+    .resolve("binaries/whisper-models", tauri::path::BaseDirectory::Resource)
+    .ok()
+    .map(|p| p.to_string_lossy().to_string())
+    .unwrap_or_default();
+
+  let output = shell
+    .command(&python_path)
+    .args(args)
+    .env("XDG_CACHE_HOME", &whisper_cache)
+    .env("WHISPER_CACHE", &whisper_cache)
+    .output()
+    .await
+    .map_err(|e| e.to_string())?;
+
+  if output.status.success() {
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+  } else {
+    Err(String::from_utf8_lossy(&output.stderr).to_string())
+  }
+}
+
+#[tauri::command]
 async fn run_shell_command(app: tauri::AppHandle, program: String, args: Vec<String>) -> Result<String, String> {
   let shell = app.shell();
   let output = shell
@@ -87,8 +148,16 @@ async fn run_shell_command(app: tauri::AppHandle, program: String, args: Vec<Str
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())
-    .plugin(tauri_plugin_dialog::init()) 
-    .invoke_handler(tauri::generate_handler![run_ffmpeg, run_shell_command, pick_file])
+    .plugin(tauri_plugin_dialog::init())
+    .invoke_handler(tauri::generate_handler![
+      run_ffmpeg,
+      run_ytdlp,
+      run_python,
+      run_shell_command,
+      pick_file,
+      pick_audio_file,
+      write_text_file
+    ])
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
       if let Some(window) = app.get_webview_window("main") {

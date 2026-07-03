@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { auth } from "../services/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import logo from "../assets/logo.png";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 const HF_STYLE = `
@@ -328,9 +329,7 @@ function getTimestamp() {
 // Convert local file path to Tauri asset URL for video preview
 function toAssetUrl(filePath) {
   if (!filePath) return null;
-  // Tauri v2 asset protocol
-  const encoded = encodeURIComponent(filePath).replace(/%2F/g, "/").replace(/%5C/g, "/").replace(/%3A/g, ":");
-  return `asset://localhost/${encoded}`;
+  return convertFileSrc(filePath);
 }
 
 // Extract ffmpeg args from AI response robustly
@@ -379,6 +378,8 @@ function parseProgress(line, duration) {
   return null;
 }
 
+const norm = (p) => p && p.replace(/\\/g, "/");
+
 const SUGGESTIONS = [
   "Trim to the first 30 seconds",
   "Extract audio as MP3",
@@ -414,12 +415,36 @@ export default function HyperFrame({ onBack }) {
   const [isThinking, setIsThinking] = useState(false);
   const [, setPendingArgs] = useState(null);
 
+  const [ytUrl, setYtUrl] = useState("");
+const [isDownloading, setIsDownloading] = useState(false);
+const [downloadResult, setDownloadResult] = useState(null);
+const [voiceoverPath, setVoiceoverPath] = useState(null);
+const [isTranscribing, setIsTranscribing] = useState(false);
+const [transcript, setTranscript] = useState(null);
+const [isBuildingVideo, setIsBuildingVideo] = useState(false);
+
   const videoRef = useRef(null);
   const trackRef = useRef(null);
   const chatBodyRef = useRef(null);
   const textareaRef = useRef(null);
   const abortRef = useRef(null);
   const unlistenRef = useRef(null);
+  const voiceInputRef = useRef(null);
+
+
+  const PEXELS_KEY = process.env.REACT_APP_PEXELS_KEY;
+
+async function searchPexelsVideo(query) {
+  const res = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`, {
+    headers: { Authorization: PEXELS_KEY }
+  });
+  const data = await res.json();
+  const video = data.videos?.[0];
+  if (!video) return null;
+  // Get highest quality file
+  const file = video.video_files?.sort((a, b) => b.width - a.width)[0];
+  return { url: file?.link, id: video.id };
+}
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -574,6 +599,176 @@ export default function HyperFrame({ onBack }) {
     const finalArgs = [...args.slice(0, -1), outputPath];
     await runFfmpeg(finalArgs, outputPath);
   };
+
+
+
+// Download from YouTube/TikTok via yt-dlp
+const downloadFromUrl = async () => {
+  if (!ytUrl.trim() || isDownloading) return;
+  setIsDownloading(true);
+  setDownloadResult(null);
+  try {
+    const outputDir = videoPath
+      ? videoPath.replace(/[\\/][^\\/]+$/, "")
+      : "C:/Users/Public/Videos";
+    const result = await invoke("run_ytdlp", {
+  args: [
+        ytUrl.trim(),
+        "-o", `${outputDir}/%(title)s.%(ext)s`,
+        "--merge-output-format", "mp4",
+        "--no-playlist",
+      ]
+    });
+    setDownloadResult({ ok: true, msg: "Downloaded successfully", dir: outputDir });
+  } catch (err) {
+    setDownloadResult({ ok: false, msg: String(err).slice(0, 150) });
+  } finally {
+    setIsDownloading(false);
+    setYtUrl("");
+  }
+};
+
+// Pick voiceover audio file
+const openVoiceover = async () => {
+  try {
+    const path = await invoke("pick_audio_file");
+    if (!path) return;
+    setVoiceoverPath(path);
+    setTranscript(null);
+  } catch (err) {
+    console.error("pick_audio_file error:", err);
+  }
+};
+
+// Transcribe voiceover with Whisper then build video
+const buildAiVideo = async () => {
+  if (!voiceoverPath || isBuildingVideo) return;
+  setIsBuildingVideo(true);
+  const unlisten = await listen("ffmpeg-progress", (event) => {
+  const pct = parseProgress(event.payload, null);
+  if (pct !== null) setProgress(prev => Math.max(prev, pct));
+});
+  setProgressLabel("Transcribing voiceover with Whisper…");
+  setProgress(5);
+
+  try {
+   // Step 1: Whisper transcription
+    const outputDir = norm(voiceoverPath.replace(/[\\/][^\\/]+$/, ""));
+    const escapedPath = norm(voiceoverPath).replace(/"/g, '\\"');
+    const scriptPath = `${outputDir}/whisper_run.py`;
+    const scriptContent = `import whisper, json, os
+cache_dir = os.environ.get("WHISPER_CACHE", None)
+model = whisper.load_model("base", download_root=cache_dir)
+result = model.transcribe(r"${escapedPath}", word_timestamps=True)
+segments = [{"start": s["start"], "end": s["end"], "text": s["text"].strip()} for s in result["segments"]]
+print(json.dumps(segments))
+`;
+    await invoke("write_text_file", { path: scriptPath, content: scriptContent });
+    const whisperResult = await invoke("run_python", {
+  args: [scriptPath]
+});
+
+    const segments = JSON.parse(whisperResult);
+    setTranscript(segments);
+    setProgress(20);
+    setProgressLabel(`Got ${segments.length} segments — searching Pexels for clips…`);
+
+    // Step 2: Search Pexels for each segment
+    const clipPaths = [];
+
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      const query = seg.text.replace(/[^a-zA-Z0-9 ]/g, "").trim().slice(0, 50);
+      setProgressLabel(`Searching clip ${i + 1}/${segments.length}: "${query}"`);
+      setProgress(20 + Math.round((i / segments.length) * 40));
+
+      try {
+        const pexels = await searchPexelsVideo(query);
+        if (pexels?.url) {
+          // Download clip via yt-dlp (works for direct video URLs too)
+          const clipPath = norm(`${outputDir}/clip_${i}.mp4`);
+await invoke("run_shell_command", {
+  program: "curl",
+  args: ["-L", pexels.url, "-o", clipPath, "--silent", "--fail"]
+});
+          // Trim clip to segment duration
+          const segDur = seg.end - seg.start;
+          const trimmedPath = norm(`${outputDir}/clip_trimmed_${i}.mp4`);
+          await invoke("run_ffmpeg", {
+            args: ["-i", clipPath, "-t", String(segDur), "-c:v", "libx264", "-an", trimmedPath]
+          });
+          clipPaths.push(trimmedPath);
+        }
+      } catch (e) {
+        console.warn(`Clip ${i} failed:`, e);
+      }
+    }
+
+    if (clipPaths.length === 0) {
+      throw new Error("No clips could be downloaded from Pexels.");
+    }
+
+    setProgress(65);
+    setProgressLabel("Assembling clips with voiceover…");
+
+    // Step 3: Generate SRT captions from transcript
+    const srtPath = `${outputDir}/captions.srt`;
+    const srtContent = segments.map((s, i) => {
+      const toSrtTime = (t) => {
+        const h = Math.floor(t / 3600).toString().padStart(2, "0");
+        const m = Math.floor((t % 3600) / 60).toString().padStart(2, "0");
+        const sec = Math.floor(t % 60).toString().padStart(2, "0");
+        const ms = Math.round((t % 1) * 1000).toString().padStart(3, "0");
+        return `${h}:${m}:${sec},${ms}`;
+      };
+      return `${i + 1}\n${toSrtTime(s.start)} --> ${toSrtTime(s.end)}\n${s.text}\n`;
+    }).join("\n");
+
+    await invoke("write_text_file", { path: srtPath, content: srtContent });
+
+    // Step 4: Build concat list for ffmpeg
+    const concatPath = `${outputDir}/concat.txt`;
+    const concatContent = clipPaths.map(p => `file '${p.replace(/\\/g, "/")}'`).join("\n");
+    await invoke("write_text_file", { path: concatPath, content: concatContent });
+
+    // Step 5: Concatenate clips
+    const concatVideoPath = `${outputDir}/clips_joined.mp4`;
+    await invoke("run_ffmpeg", {
+      args: ["-f", "concat", "-safe", "0", "-i", concatPath, "-c", "copy", concatVideoPath]
+    });
+
+    setProgress(80);
+    setProgressLabel("Adding voiceover and captions…");
+
+    // Step 6: Final assembly — clips + voiceover + captions + fade transitions
+    const finalPath = `${outputDir}/hyperframe_output.mp4`;
+    await invoke("run_ffmpeg", {
+      args: [
+        "-i", concatVideoPath,
+        "-i", voiceoverPath,
+        "-vf", `subtitles='${norm(srtPath).replace(/^([A-Za-z]):/, "$1\\:")}'`,
+        "-c:v", "libx264",
+        "-c:a", "aac",
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-shortest",
+        finalPath
+      ]
+    });
+
+    setProgress(100);
+    setProgressLabel("Done");
+    setLastResult({ ok: true, path: finalPath });
+
+  } catch (err) {
+    setProgressLabel("Error");
+    setLastResult({ ok: false, error: String(err) });
+  } finally {
+  setIsBuildingVideo(false);
+  unlisten();
+}
+};
+
 
   // ── AI chat ────────────────────────────────────────────────────────────────
   const sendMessage = async (text) => {
@@ -831,6 +1026,17 @@ If the user asks something that is not a video edit, answer helpfully in plain t
                   {SUGGESTIONS.map(s => (
                     <button key={s} className="hf-suggestion" onClick={() => sendMessage(s)}>{s}</button>
                   ))}
+                  <button
+                    className="hf-suggestion"
+                    style={{ background: "#fff3cd", borderColor: "#e0c068" }}
+                    onClick={() => {
+                      if (!videoPath) { alert("Open a video first"); return; }
+                      const videoName = videoPath.split(/[\\/]/).pop();
+                      runWithOutputPicker(["-i", videoName, "-t", "5", "-c", "copy", "test_trim_output.mp4"]);
+                    }}
+                  >
+                    🧪 TEST: Trim first 5 sec (no AI)
+                  </button>
                 </div>
               </div>
             ) : (
@@ -880,6 +1086,58 @@ If the user asks something that is not a video edit, answer helpfully in plain t
               </>
             )}
           </div>
+
+          {/* YouTube/TikTok downloader */}
+<div style={{ padding: "10px 14px", borderTop: "1px solid #dde0d9", background: "#fdfaf6" }}>
+  <div style={{ fontSize: 11, fontWeight: 600, color: "#7a8a84", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Download from URL</div>
+  <div style={{ display: "flex", gap: 6 }}>
+    <input
+      value={ytUrl}
+      onChange={e => setYtUrl(e.target.value)}
+      placeholder="YouTube or TikTok URL…"
+      style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1.5px solid #cdd0c9", background: "#fff", fontSize: 12, color: "#0D3A35", outline: "none", fontFamily: "inherit" }}
+      onKeyDown={e => { if (e.key === "Enter") downloadFromUrl(); }}
+    />
+    <button
+      onClick={downloadFromUrl}
+      disabled={!ytUrl.trim() || isDownloading}
+      style={{ padding: "7px 12px", borderRadius: 8, background: "#0d3a35", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!ytUrl.trim() || isDownloading) ? .4 : 1, fontFamily: "inherit" }}
+    >
+      {isDownloading ? "…" : "Get"}
+    </button>
+  </div>
+  {downloadResult && (
+    <div style={{ marginTop: 6, fontSize: 11, color: downloadResult.ok ? "#276152" : "#c04040" }}>
+      {downloadResult.ok ? `Saved to: ${downloadResult.dir}` : downloadResult.msg}
+    </div>
+  )}
+</div>
+
+{/* AI Video Builder */}
+<div style={{ padding: "10px 14px", borderTop: "1px solid #dde0d9", background: "#fdfaf6" }}>
+  <div style={{ fontSize: 11, fontWeight: 600, color: "#7a8a84", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>AI Video from Voiceover</div>
+  <input ref={voiceInputRef} type="file" accept=".mp3,.wav,.m4a,.aac" style={{ display: "none" }} />
+  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+    <button
+      onClick={openVoiceover}
+      style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1.5px solid #cdd0c9", background: "#fff", fontSize: 12, color: voiceoverPath ? "#276152" : "#7a8a84", cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+    >
+      {voiceoverPath ? voiceoverPath.split(/[\\/]/).pop() : "Pick voiceover audio…"}
+    </button>
+    <button
+      onClick={buildAiVideo}
+      disabled={!voiceoverPath || isBuildingVideo}
+      style={{ padding: "7px 12px", borderRadius: 8, background: "#276152", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!voiceoverPath || isBuildingVideo) ? .4 : 1, fontFamily: "inherit", whiteSpace: "nowrap" }}
+    >
+      {isBuildingVideo ? "Building…" : "Build video"}
+    </button>
+  </div>
+  {transcript && (
+    <div style={{ marginTop: 6, fontSize: 11, color: "#276152" }}>
+      {transcript.length} segments transcribed
+    </div>
+  )}
+</div>
 
           <div className="hf-input-wrap">
             <div className="hf-input-box">
