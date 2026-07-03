@@ -498,28 +498,125 @@ const EC_STYLE = `
 }
 .ecw-code-badge svg { width: 13px; height: 13px; }
 
-/* Chat panel */
+/* Sliding chat panel */
 .ecw-chat-panel {
-  flex: 0 0 240px; width: 240px;
+  position: fixed; top: 0; left: 65px;
+  width: 0; height: 100vh;
   background: #fdfaf6; border-right: 1px solid #e2ddd4;
+  overflow: hidden;
+  transition: width .22s cubic-bezier(.4,0,.2,1);
+  z-index: 290; display: flex; flex-direction: column;
+}
+.ecw-chat-panel.open { width: 268px; }
+.ecw-chat-panel-inner {
+  width: 268px; height: 100%;
   display: flex; flex-direction: column; overflow: hidden;
 }
 .ecw-chat-panel-hdr {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 14px 10px; border-bottom: 1px solid #e8e4de; flex-shrink: 0;
+  padding: 20px 16px 12px; flex-shrink: 0;
+  border-bottom: 1px solid #e8e4de; margin-bottom: 2px;
 }
-.ecw-chat-panel-title { font-size: 13px; font-weight: 700; color: #0D3A35; }
-.ecw-chat-panel-new {
-  width: 26px; height: 26px; border-radius: 7px;
-  background: #eaf2ef; border: 1px solid rgba(39,97,82,.25);
-  color: #276152; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; transition: background .12s;
+.ecw-chat-panel-title {
+  font-size: 15px; font-weight: 600; color: #0D3A35; letter-spacing: -.02em;
 }
-.ecw-chat-panel-new:hover { background: #d6ebe3; }
+.ecw-chat-panel-x {
+  width: 28px; height: 28px; border: none;
+  background: none; border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #7a8a84; transition: background .12s;
+}
+.ecw-chat-panel-x:hover { background: #eeece8; color: #0D3A35; }
+.ecw-chat-panel-x svg { width: 14px; height: 14px; }
+.ecw-chat-panel-search {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 14px 6px; padding: 8px 12px;
+  background: #f0ece6; border-radius: 10px;
+  border: 1px solid transparent; flex-shrink: 0;
+  transition: border-color .13s, background .13s;
+}
+.ecw-chat-panel-search:focus-within {
+  border-color: rgba(39,97,82,.35); background: #fdfbf8;
+}
+.ecw-chat-panel-search svg { width: 13px; height: 13px; color: #7a8a84; flex-shrink: 0; }
+.ecw-chat-panel-search input {
+  border: none; background: none; outline: none;
+  font-size: 13px; color: #0D3A35; width: 100%; font-family: inherit;
+}
+.ecw-chat-panel-search input::placeholder { color: #7a8a84; }
 .ecw-chat-panel-list {
-  flex: 1; overflow-y: auto; padding: 6px 8px;
+  flex: 1; overflow-y: auto; padding: 6px 8px 16px;
   scrollbar-width: thin; scrollbar-color: #d8d4cc transparent;
 }
+.ecw-chat-panel-list::-webkit-scrollbar { width: 3px; }
+.ecw-chat-panel-list::-webkit-scrollbar-thumb { background: #d2cec8; border-radius: 2px; }
+.ecw-chat-panel-section {
+  font-size: 10px; font-weight: 700; color: #7a8a84;
+  text-transform: uppercase; letter-spacing: .07em;
+  padding: 8px 6px 4px; margin: 0 2px;
+}
+.ecw-chat-row {
+  display: flex; align-items: center;
+  padding: 2px 4px 2px 8px; border-radius: 6px; margin-bottom: 1px;
+  cursor: pointer; transition: background .12s; position: relative;
+  border-left: 2px solid transparent; gap: 4px;
+}
+.ecw-chat-row:hover { background: #f2ede7; }
+.ecw-chat-row.active { background: #eaf2ef; border-left-color: #276152; }
+.ecw-chat-row-icon {
+  width: 26px; height: 26px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; color: #7a8a84;
+}
+.ecw-chat-row-icon svg { width: 13px; height: 13px; }
+.ecw-chat-row.active .ecw-chat-row-icon { color: #276152; }
+.ecw-chat-row-label {
+  flex: 1; font-size: 13px; color: #0D3A35; cursor: pointer;
+  padding: 7px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;
+}
+.ecw-chat-row.active .ecw-chat-row-label { font-weight: 500; color: #1a4a3d; }
+.ecw-row-menu-btn {
+  background: none; border: none; cursor: pointer; color: #7a8a84;
+  font-size: 15px; padding: 3px 5px; border-radius: 4px; line-height: 1;
+  opacity: 0; transition: opacity .12s; flex-shrink: 0;
+}
+.ecw-chat-row:hover .ecw-row-menu-btn { opacity: 1; }
+.ecw-row-menu-btn:hover { background: #e8e4de; color: #0D3A35; }
+.ecw-row-dropdown {
+  position: absolute; right: 0; top: calc(100% + 2px);
+  background: #fdfaf6; border: 1px solid #cdd0c9;
+  border-radius: 10px; box-shadow: 0 8px 32px rgba(13,58,53,.14);
+  z-index: 400; min-width: 140px; padding: 4px;
+  animation: ecwDdIn .12s ease;
+}
+@keyframes ecwDdIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+.ecw-row-dropdown button {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 10px; font-size: 13px; color: #0D3A35;
+  background: none; border: none; border-radius: 6px;
+  cursor: pointer; font-family: inherit; transition: background .11s;
+}
+.ecw-row-dropdown button svg { width: 13px; height: 13px; flex-shrink: 0; color: #7a8a84; }
+.ecw-row-dropdown button:hover { background: #f0ece6; }
+.ecw-row-dropdown button.del { color: #c04040; }
+.ecw-row-dropdown button.del:hover { background: #fdf0f0; }
+.ecw-row-dropdown button.del svg { color: #c04040; }
+.ecw-row-dropdown-div { height: 1px; background: #dde0d9; margin: 3px 0; }
+.ecw-rename-input {
+  flex: 1; font-size: 13px; padding: 4px 8px;
+  border: 1.5px solid #276152; border-radius: 6px;
+  background: #fff; color: #0D3A35; outline: none; font-family: inherit; margin: 4px 0;
+}
+.ecw-panel-empty {
+  font-size: 13px; color: #7a8a84; text-align: center;
+  padding: 36px 16px 24px; line-height: 1.7;
+}
+/* overlay */
+.ecw-panel-overlay {
+  position: fixed; inset: 0; z-index: 280;
+  background: rgba(0,0,0,.14);
+  animation: ecwFadeIn .15s ease;
+}
+@keyframes ecwFadeIn { from{opacity:0} to{opacity:1} }
 
 /* Fix input row - send at end */
 .ecw-textarea-row { display: flex; align-items: flex-end; gap: 8px; width: 100%; }
@@ -584,7 +681,8 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
   const [showAttach, setShowAttach] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [showChatPanel, setShowChatPanel] = useState(false);
+ const [showChatPanel, setShowChatPanel] = useState(false);
+const [chatSearch, setChatSearch] = useState("");
 
   const bodyRef = useRef(null);
   const textareaRef = useRef(null);
@@ -1015,21 +1113,21 @@ Never output JSON until the user confirms. Never ask more than one question at a
 
       <aside className="ecw-sidebar">
   <div className="ecw-sidebar-items">
-    <button className="ecw-sidebar-item" onClick={newChat}>
+    <button className="ecw-sidebar-item" onClick={() => { newChat(); setShowChatPanel(false); }}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
       </svg>
       New
     </button>
     <button
-      className={`ecw-sidebar-item${showChatPanel ? " active" : ""}`}
-      onClick={() => setShowChatPanel(v => !v)}
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-      </svg>
-      Chats
-    </button>
+  className={`ecw-sidebar-item${showChatPanel ? " active" : ""}`}
+  onClick={() => { setShowChatPanel(v => !v); setChatSearch(""); }}
+>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+  </svg>
+  Chats
+</button>
     {onBack && (
       <button className="ecw-sidebar-item" onClick={onBack}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1041,66 +1139,93 @@ Never output JSON until the user confirms. Never ask more than one question at a
   </div>
 </aside>
 
-{/* Chat Panel */}
+{/* Chat Panel Overlay */}
 {showChatPanel && (
-  <div className="ecw-chat-panel">
+  <div className="ecw-panel-overlay" onClick={() => setShowChatPanel(false)} />
+)}
+
+{/* Sliding Chat Panel */}
+<div className={`ecw-chat-panel${showChatPanel ? " open" : ""}`}>
+  <div className="ecw-chat-panel-inner">
     <div className="ecw-chat-panel-hdr">
       <span className="ecw-chat-panel-title">Chats</span>
-      <button className="ecw-chat-panel-new" onClick={newChat} title="New chat">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      <button className="ecw-chat-panel-x" onClick={() => setShowChatPanel(false)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
     </div>
+
+    <div className="ecw-chat-panel-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        placeholder="Search chats…"
+        value={chatSearch}
+        onChange={e => setChatSearch(e.target.value)}
+      />
+    </div>
+
     <div className="ecw-chat-panel-list">
-      {chats.length === 0
-        ? <div className="ecw-empty">No chats yet.<br/>Hit New to start.</div>
-        : chats.map(chat => (
-          <div
-            key={chat.id}
-            className={`ecw-chat-row${chat.id === activeChatId ? " active" : ""}`}
-            onClick={() => { setActiveChatId(chat.id); setOpenMenuId(null); }}
-          >
-            <div className="ecw-chat-row-info">
-              {chat.renameOpen ? (
-                <input
-                  className="ecw-rename-input"
-                  defaultValue={chat.title}
-                  autoFocus
-                  onClick={e => e.stopPropagation()}
-                  onBlur={e => renameChat(chat.id, e.target.value.trim())}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") renameChat(chat.id, e.target.value.trim());
-                    if (e.key === "Escape") setChats(prev => prev.map(c => c.id === chat.id ? { ...c, renameOpen: false } : c));
-                  }}
-                />
-              ) : (
-                <div className="ecw-chat-row-title">{chat.title || "New Chat"}</div>
-              )}
+      {chats.filter(c => c.title?.toLowerCase().includes(chatSearch.toLowerCase())).length === 0
+        ? <div className="ecw-panel-empty">No chats yet.<br/>Hit New to start.</div>
+        : <>
+            <div className="ecw-chat-panel-section">
+              {chats.length} conversation{chats.length !== 1 ? "s" : ""}
             </div>
-            <button
-              className="ecw-row-menu-btn"
-              onClick={e => { e.stopPropagation(); setOpenMenuId(prev => prev === chat.id ? null : chat.id); }}
-            >⋯</button>
-            {openMenuId === chat.id && (
-              <div className="ecw-row-dropdown" onClick={e => e.stopPropagation()}>
-                <button onClick={e => { e.stopPropagation(); setChats(prev => prev.map(c => c.id === chat.id ? { ...c, renameOpen: true } : c)); setOpenMenuId(null); }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  Rename
-                </button>
-                <div className="ecw-row-dropdown-div" />
-                <button className="del" onClick={e => { e.stopPropagation(); deleteChat(chat.id); }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                  Delete
-                </button>
+            {chats
+              .filter(c => c.title?.toLowerCase().includes(chatSearch.toLowerCase()))
+              .map(chat => (
+              <div
+                key={chat.id}
+                className={`ecw-chat-row${chat.id === activeChatId ? " active" : ""}`}
+                onClick={() => { setActiveChatId(chat.id); setOpenMenuId(null); }}
+              >
+                <span className="ecw-chat-row-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                  </svg>
+                </span>
+                {chat.renameOpen ? (
+                  <input
+                    className="ecw-rename-input"
+                    defaultValue={chat.title}
+                    autoFocus
+                    onClick={e => e.stopPropagation()}
+                    onBlur={e => renameChat(chat.id, e.target.value.trim())}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") renameChat(chat.id, e.target.value.trim());
+                      if (e.key === "Escape") setChats(prev => prev.map(c => c.id === chat.id ? { ...c, renameOpen: false } : c));
+                    }}
+                  />
+                ) : (
+                  <span className="ecw-chat-row-label">{chat.title || "New Chat"}</span>
+                )}
+                <button
+                  className="ecw-row-menu-btn"
+                  onClick={e => { e.stopPropagation(); setOpenMenuId(prev => prev === chat.id ? null : chat.id); }}
+                >⋯</button>
+                {openMenuId === chat.id && (
+                  <div className="ecw-row-dropdown" onClick={e => e.stopPropagation()}>
+                    <button onClick={e => { e.stopPropagation(); setChats(prev => prev.map(c => c.id === chat.id ? { ...c, renameOpen: true } : c)); setOpenMenuId(null); }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Rename
+                    </button>
+                    <div className="ecw-row-dropdown-div" />
+                    <button className="del" onClick={e => { e.stopPropagation(); deleteChat(chat.id); setOpenMenuId(null); }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))
+            ))}
+          </>
       }
     </div>
   </div>
-)}
+</div>
 
         {/* Main */}
         <main className="ecw-main">
