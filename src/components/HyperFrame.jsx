@@ -844,6 +844,7 @@ useEffect(() => {
   };
   window.addEventListener("hf-build", handler);
   return () => window.removeEventListener("hf-build", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 
 

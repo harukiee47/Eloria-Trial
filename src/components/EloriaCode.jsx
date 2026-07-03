@@ -658,6 +658,7 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
   };
 
   // ── Robust ffmpeg args extractor ──────────────────────────────────────────
+  // eslint-disable-next-line no-unused-vars
   const extractFfmpegArgs = (text) => {
     // Strip all markdown fences and "Copy" artifacts first
     const clean = text
@@ -841,6 +842,7 @@ Never output JSON until the user confirms. Never ask more than one question at a
         ...c, messages: [...c.messages, { id: Date.now()+3, sender: "ai", text: `⚙️ Running edit…`, time: getTimestamp() }],
         updatedAt: new Date().toISOString(),
       }));
+      // eslint-disable-next-line no-unused-vars
       const output = await invoke("run_ffmpeg", { args: cmd.args });
       const outputPath = cmd.args[cmd.args.length - 1];
       setChats(prev => prev.map(c => c.id !== chatId ? c : {
@@ -1033,7 +1035,7 @@ Never output JSON until the user confirms. Never ask more than one question at a
                 <div>
                   <div className="ecw-welcome-title">$ what are we shipping today?</div>
 <div className="ecw-welcome-sub" style={{ marginTop: 8, fontFamily: "'SF Mono', Consolas, monospace" }}>
-  // write code, refactor, debug, or attach a video to edit it.
+   write code, refactor, debug, or attach a video to edit it.
 </div>
                 </div>
                 <div className="ecw-welcome-chips">
