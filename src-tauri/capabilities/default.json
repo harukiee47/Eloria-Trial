@@ -10,7 +10,7 @@
     {
       "identifier": "shell:allow-execute",
       "allow": [
-        { "name": "ffmpeg", "cmd": "ffmpeg", "args": true },
+        { "name": "ffmpeg", "cmd": "binaries/ffmpeg-x86_64-pc-windows-msvc", "args": true },
         { "name": "npm",    "cmd": "npm",    "args": true },
         { "name": "node",   "cmd": "node",   "args": true },
         { "name": "git",    "cmd": "git",    "args": true },

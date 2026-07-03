@@ -19,13 +19,20 @@ import { subscribeToNotifications } from "./services/notificationService";
 import NotificationsPanel from "./components/NotificationsPanel";
 import ProfileSetupModal from "./components/ProfileSetupModal";
 import AuthCallback from "./components/AuthCallback";
+import HyperFrame from "./components/HyperFrame";
 
 if (window.location.pathname === "/code") {
-  const root = document.getElementById("root");
   import("react-dom/client").then(({ createRoot }) => {
-    createRoot(root).render(
-      <EloriaCode onBack={() => { window.location.href = "/"; }} />
-    );
+    const root = createRoot(document.getElementById("root"));
+    
+    function CodeApp() {
+      const [showHF, setShowHF] = React.useState(false);
+      return showHF
+        ? <HyperFrame onBack={() => setShowHF(false)} />
+        : <EloriaCode onBack={() => { window.location.href = "/"; }} onOpenEditor={() => setShowHF(true)} />;
+    }
+
+    root.render(<CodeApp />);
   });
 }
 

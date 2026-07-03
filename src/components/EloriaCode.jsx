@@ -483,7 +483,7 @@ function getTimestamp() {
   return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-export default function EloriaCode({ onBack }) {
+export default function EloriaCode({ onBack, onOpenEditor }) {
   const [uid, setUid] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const isDesktopApp = typeof window !== "undefined" && !!window.__TAURI__;
@@ -869,8 +869,12 @@ export default function EloriaCode({ onBack }) {
         <span className="ecw-topbar-title">Eloria</span>
         <div className="ecw-topbar-sep" />
         <div className="ecw-topbar-badge"><IconCode />Code</div>
-        <div className="ecw-topbar-spacer" />
-        {onBack && (
+<div className="ecw-topbar-spacer" />
+<button className="ecw-back-btn" onClick={onOpenEditor} style={{ borderColor: "rgba(39,97,82,0.3)", color: "#276152" }}>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+  HyperFrame
+</button>
+{onBack && (
           <button className="ecw-back-btn" onClick={onBack}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"/>
