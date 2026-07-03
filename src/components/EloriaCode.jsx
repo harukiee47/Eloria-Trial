@@ -58,17 +58,6 @@ function downloadFile(filename, code) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function timeAgo(ts) {
-  if (!ts) return "";
-  const diff = Date.now() - new Date(ts).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
 function parseFilesFromAI(text) {
   const files = [];
   const seen = new Set();

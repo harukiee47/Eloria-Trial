@@ -23,10 +23,11 @@ import AuthCallback from "./components/AuthCallback";
 if (window.location.pathname === "/code") {
   const root = document.getElementById("root");
   import("react-dom/client").then(({ createRoot }) => {
-    createRoot(root).render(<EloriaCode />);
+    createRoot(root).render(
+      <EloriaCode onBack={() => { window.location.href = "/"; }} />
+    );
   });
 }
-
 
 /* ── inline styles for the group-limit popup ── */
 const limitModalStyles = `
