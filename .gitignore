@@ -25,3 +25,4 @@ yarn-error.log*
 backend/.env
 
 firebase-service-account.json
+src-tauri/binaries/

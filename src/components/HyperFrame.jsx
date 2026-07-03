@@ -412,7 +412,7 @@ export default function HyperFrame({ onBack }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  const [pendingArgs, setPendingArgs] = useState(null); // args waiting to run
+  const [, setPendingArgs] = useState(null);
 
   const videoRef = useRef(null);
   const trackRef = useRef(null);
