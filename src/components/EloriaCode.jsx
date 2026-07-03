@@ -125,14 +125,19 @@ const EC_STYLE = `
   .ecw-topbar-logo img { width: 100%; height: 100%; object-fit: contain; }
   .ecw-topbar-title { font-size: 13.5px; font-weight: 600; color: #0D3A35; letter-spacing: -.01em; }
   .ecw-topbar-sep { width: 1px; height: 16px; background: #dde0d9; }
-  .ecw-topbar-badge {
-    display: flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 20px;
-    background: #eaf2ef; border: 1px solid rgba(39,97,82,0.25);
-    font-size: 11px; font-weight: 600; color: #276152; letter-spacing: .04em;
-  }
-  .ecw-topbar-badge svg { width: 9px; height: 9px; }
-  .ecw-topbar-spacer { flex: 1; }
+.ecw-topbar { position: relative; }
+.ecw-topbar-center {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center;
+}
+.ecw-topbar-badge {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 16px; border-radius: 8px;
+  background: #0D3A35; color: #FBF6F0;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .03em;
+  box-shadow: 0 2px 10px rgba(13,58,53,0.25);
+}
+.ecw-topbar-badge svg { width: 12px; height: 12px; }
 
   .ecw-back-btn {
     display: flex; align-items: center; gap: 6px;
@@ -476,7 +481,22 @@ const EC_STYLE = `
   .ecw-send:disabled { opacity: .3; cursor: default; }
   .ecw-send svg { width: 15px; height: 15px; }
   .ecw-hint { text-align: center; font-size: 11px; color: #7a8a84; margin-top: 6px; max-width: 720px; margin-left: auto; margin-right: auto; }
-`;
+
+.ecw-sidebar-nav {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 8px; border-bottom: 1px solid #dde0d9;
+}
+.ecw-sidebar-nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: 8px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 600; color: #3a5a55;
+  transition: background .12s, color .12s;
+}
+.ecw-sidebar-nav-item:hover { background: #f0ede6; color: #0D3A35; }
+.ecw-sidebar-nav-item.active { background: #eaf2ef; color: #276152; }
+
+  `;
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 function getTimestamp() {
@@ -738,8 +758,21 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
       : (attachCtx + (userText ? `\n\n${userText}` : "")).trim();
 
     const sysCtx = videoFile
-      ? `You are Eloria Code, an AI video editing assistant. When the user describes a video edit, respond ONLY with a raw JSON object on a single line, no markdown fences, no explanation before it: {"args": ["-i", "input.mp4", ...other_args..., "output.mp4"]}. The args array contains ffmpeg arguments without the "ffmpeg" prefix. After the JSON, you may add a brief plain-text explanation.`
-      : `You are Eloria Code, an expert coding AI. When generating code files, always wrap each in a fenced block with the filename: \`\`\`lang filename.ext\n...\n\`\`\`. Be concise and generate complete, production-ready code.`;
+  ? `You are Eloria Code, an AI video editor. Your job is to gather all the info you need before doing anything.
+
+PHASE 1 — INFO GATHERING:
+If the user hasn't given you enough info, ask ONE question at a time. For video edits you need: what edit they want, input file name. For "make video from voiceover" you need: voiceover file path, clip source (stock/youtube/tiktok/mix), orientation (portrait/landscape), style (cinematic/energetic/minimal).
+
+PHASE 2 — CONFIRMATION:
+Once you have everything, summarize what you're about to do and ask: "Ready to build? Reply yes to start."
+
+PHASE 3 — EXECUTION:
+Only when the user says yes/confirm/go/start, respond with a raw JSON on one line:
+For video edits: {"type":"edit","args":["-i","input.mp4",...,"output.mp4"]}
+For AI video builds: {"type":"build","voiceover":"path/to/audio.mp3","clipSource":"pexels","orientation":"landscape","style":"cinematic"}
+
+Never output JSON until the user confirms. Never ask more than one question at a time.`
+  : `You are Eloria Code, an expert coding AI. When generating code files, always wrap each in a fenced block with the filename: \`\`\`lang filename.ext\n...\n\`\`\`. Be concise and generate complete, production-ready code.`;
 
     const apiMessages = [
       { role: "user", content: sysCtx },
@@ -797,24 +830,51 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
       }
 
       // Run ffmpeg only on desktop
-      if (videoFile && isDesktopApp) {
-        const args = extractFfmpegArgs(aiText);
-        if (args && Array.isArray(args)) {
-          try {
-            const output = await invoke("run_ffmpeg", { args });
-            const outputPath = args[args.length - 1];
-            setChats(prev => prev.map(c => c.id !== chatId ? c : {
-              ...c, messages: [...c.messages, { id: Date.now()+3, sender: "ai", text: `✓ Done! Output saved to:\n\`\`\`\n${outputPath || output}\n\`\`\``, time: getTimestamp() }],
-              updatedAt: new Date().toISOString(),
-            }));
-          } catch (ffErr) {
-            setChats(prev => prev.map(c => c.id !== chatId ? c : {
-              ...c, messages: [...c.messages, { id: Date.now()+3, sender: "ai", text: `ffmpeg error: ${ffErr}`, time: getTimestamp() }],
-              updatedAt: new Date().toISOString(),
-            }));
-          }
-        }
-      }
+     if (isDesktopApp) {
+  // Detect edit command
+  const editMatch = aiText.match(/\{"type"\s*:\s*"edit"[\s\S]*?\}/);
+  if (editMatch) {
+    try {
+      const cmd = JSON.parse(editMatch[0]);
+      onOpenEditor && onOpenEditor();
+      setChats(prev => prev.map(c => c.id !== chatId ? c : {
+        ...c, messages: [...c.messages, { id: Date.now()+3, sender: "ai", text: `⚙️ Running edit…`, time: getTimestamp() }],
+        updatedAt: new Date().toISOString(),
+      }));
+      const output = await invoke("run_ffmpeg", { args: cmd.args });
+      const outputPath = cmd.args[cmd.args.length - 1];
+      setChats(prev => prev.map(c => c.id !== chatId ? c : {
+        ...c, messages: [...c.messages, { id: Date.now()+4, sender: "ai", text: `✅ Done! Saved to:\n\`${outputPath}\``, time: getTimestamp() }],
+        updatedAt: new Date().toISOString(),
+      }));
+    } catch (err) {
+      setChats(prev => prev.map(c => c.id !== chatId ? c : {
+        ...c, messages: [...c.messages, { id: Date.now()+4, sender: "ai", text: `❌ Error: ${err}`, time: getTimestamp() }],
+        updatedAt: new Date().toISOString(),
+      }));
+    }
+  }
+
+  // Detect AI build command (voiceover → auto video)
+  const buildMatch = aiText.match(/\{"type"\s*:\s*"build"[\s\S]*?\}/);
+  if (buildMatch) {
+    try {
+      const cmd = JSON.parse(buildMatch[0]);
+      onOpenEditor && onOpenEditor();
+      setChats(prev => prev.map(c => c.id !== chatId ? c : {
+        ...c, messages: [...c.messages, { id: Date.now()+3, sender: "ai", text: `🎬 Starting AI video build… this will take a few minutes.`, time: getTimestamp() }],
+        updatedAt: new Date().toISOString(),
+      }));
+      // Fire build event that HyperFrame picks up
+      window.dispatchEvent(new CustomEvent("hf-build", { detail: cmd }));
+    } catch (err) {
+      setChats(prev => prev.map(c => c.id !== chatId ? c : {
+        ...c, messages: [...c.messages, { id: Date.now()+4, sender: "ai", text: `❌ Build error: ${err}`, time: getTimestamp() }],
+        updatedAt: new Date().toISOString(),
+      }));
+    }
+  }
+}
 
       // Parse generated code files
       const parsedFiles = parseFilesFromAI(aiText);
@@ -864,36 +924,49 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
       <input ref={docInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt" style={{ display:"none" }} onChange={handleDocSelect} />
 
       {/* Topbar */}
-      <div className="ecw-topbar">
-        <div className="ecw-topbar-logo"><img src={logo} alt="Eloria" /></div>
-        <span className="ecw-topbar-title">Eloria</span>
-        <div className="ecw-topbar-sep" />
-        <div className="ecw-topbar-badge"><IconCode />Code</div>
-<div className="ecw-topbar-spacer" />
-<button className="ecw-back-btn" onClick={onOpenEditor} style={{ borderColor: "rgba(39,97,82,0.3)", color: "#276152" }}>
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-  HyperFrame
-</button>
-{onBack && (
-          <button className="ecw-back-btn" onClick={onBack}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-            Back to Chat
-          </button>
-        )}
-      </div>
+<div className="ecw-topbar">
+  <div className="ecw-topbar-logo"><img src={logo} alt="Eloria" /></div>
+  <span className="ecw-topbar-title">Eloria</span>
+  <div className="ecw-topbar-center">
+    <div className="ecw-topbar-badge"><IconCode /> Eloria Code</div>
+  </div>
+  <div className="ecw-topbar-spacer" />
+  {onBack && (
+    <button className="ecw-back-btn" onClick={onBack}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Back to Chat
+    </button>
+  )}
+</div>
 
       <div className="ecw-shell">
         {/* Sidebar */}
         <aside className="ecw-sidebar">
-          <div className="ecw-sidebar-top">
-            <span className="ecw-sidebar-title">Chats</span>
-            <button className="ecw-new-btn" onClick={newChat} title="New chat">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-          </div>
-          <div className="ecw-chat-list">
+  <div className="ecw-sidebar-nav">
+    <button className="ecw-sidebar-nav-item" onClick={newChat}>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New
+    </button>
+    <button className="ecw-sidebar-nav-item active">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Chats
+    </button>
+    {onBack && (
+      <button className="ecw-sidebar-nav-item" onClick={onBack}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+    )}
+  </div>
+  <div className="ecw-sidebar-top">
+    <span className="ecw-sidebar-title">Chats</span>
+    <button className="ecw-new-btn" onClick={newChat} title="New chat">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+  <div className="ecw-chat-list">
             {chats.length === 0
               ? <div className="ecw-empty">No chats yet.<br/>Start one below.</div>
               : chats.map(chat => (
@@ -958,10 +1031,10 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
               <div className="ecw-welcome">
                 <div className="ecw-welcome-emblem"><IconCode /></div>
                 <div>
-                  <div className="ecw-welcome-title">What are we building?</div>
-                  <div className="ecw-welcome-sub" style={{ marginTop: 8 }}>
-                    Ask anything, generate code, or attach a video to edit it. One window, everything.
-                  </div>
+                  <div className="ecw-welcome-title">$ what are we shipping today?</div>
+<div className="ecw-welcome-sub" style={{ marginTop: 8, fontFamily: "'SF Mono', Consolas, monospace" }}>
+  // write code, refactor, debug, or attach a video to edit it.
+</div>
                 </div>
                 <div className="ecw-welcome-chips">
                   {WELCOME_PROMPTS.map(p => (

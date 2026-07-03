@@ -431,7 +431,7 @@ const [isBuildingVideo, setIsBuildingVideo] = useState(false);
   const voiceInputRef = useRef(null);
 
 
-  const PEXELS_KEY = process.env.REACT_APP_PEXELS_KEY;
+  const PEXELS_KEY = import.meta.env.VITE_PEXELS_KEY;
 
 async function searchPexelsVideo(query) {
   const res = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`, {
@@ -609,7 +609,7 @@ const downloadFromUrl = async () => {
   try {
     const outputDir = videoPath
       ? videoPath.replace(/[\\/][^\\/]+$/, "")
-      : "C:/Users/Public/Videos";
+      : ".";
     await invoke("run_ytdlp", {
   args: [
         ytUrl.trim(),
@@ -630,7 +630,7 @@ const downloadFromUrl = async () => {
 // Pick voiceover audio file
 const openVoiceover = async () => {
   try {
-    const path = await invoke("pick_audio_file");
+    const path = await invoke("pick_file");
     if (!path) return;
     setVoiceoverPath(path);
     setTranscript(null);
@@ -640,8 +640,9 @@ const openVoiceover = async () => {
 };
 
 // Transcribe voiceover with Whisper then build video
-const buildAiVideo = async () => {
-  if (!voiceoverPath || isBuildingVideo) return;
+const buildAiVideo = async (overridePath) => {
+  const activePath = overridePath || voiceoverPath;
+  if (!activePath || isBuildingVideo) return;
   setIsBuildingVideo(true);
   const unlisten = await listen("ffmpeg-progress", (event) => {
   const pct = parseProgress(event.payload, null);
@@ -652,13 +653,14 @@ const buildAiVideo = async () => {
 
   try {
    // Step 1: Whisper transcription
-    const outputDir = norm(voiceoverPath.replace(/[\\/][^\\/]+$/, ""));
-    const escapedPath = norm(voiceoverPath).replace(/"/g, '\\"');
+    const outputDir = norm(activePath.replace(/[\\/][^\\/]+$/, ""));
+    const finalPath = `${outputDir}/hyperframe_output.mp4`;
+    const escapedPath = norm(activePath).replace(/\\/g, "/").replace(/"/g, '\\"');
     const scriptPath = `${outputDir}/whisper_run.py`;
     const scriptContent = `import whisper, json, os
 cache_dir = os.environ.get("WHISPER_CACHE", None)
 model = whisper.load_model("base", download_root=cache_dir)
-result = model.transcribe(r"${escapedPath}", word_timestamps=True)
+result = model.transcribe("${escapedPath}", word_timestamps=True)
 segments = [{"start": s["start"], "end": s["end"], "text": s["text"].strip()} for s in result["segments"]]
 print(json.dumps(segments))
 `;
@@ -677,26 +679,82 @@ print(json.dumps(segments))
 
     for (let i = 0; i < segments.length; i++) {
       const seg = segments[i];
-      const query = seg.text.replace(/[^a-zA-Z0-9 ]/g, "").trim().slice(0, 50);
-      setProgressLabel(`Searching clip ${i + 1}/${segments.length}: "${query}"`);
       setProgress(20 + Math.round((i / segments.length) * 40));
-
       try {
-        const pexels = await searchPexelsVideo(query);
-        if (pexels?.url) {
-          // Download clip via yt-dlp (works for direct video URLs too)
+        if (true) {
           const clipPath = norm(`${outputDir}/clip_${i}.mp4`);
-await invoke("run_shell_command", {
-  program: "curl",
-  args: ["-L", pexels.url, "-o", clipPath, "--silent", "--fail"]
+const trimmedPath = norm(`${outputDir}/clip_trimmed_${i}.mp4`);
+const segDur = seg.end - seg.start;
+
+// Get smart visual query from Claude
+const token = await auth.currentUser.getIdToken();
+const queryResponse = await fetch("https://eloria-trial.onrender.com/api/chat", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    messages: [{
+      role: "user",
+      content: `Convert this voiceover into a 3-5 word YouTube/stock search query for background footage. No faces, no talking heads, B-roll only. Return ONLY the search query.\n\nVoiceover: "${seg.text}"`
+    }]
+  })
 });
-          // Trim clip to segment duration
-          const segDur = seg.end - seg.start;
-          const trimmedPath = norm(`${outputDir}/clip_trimmed_${i}.mp4`);
-          await invoke("run_ffmpeg", {
-            args: ["-i", clipPath, "-t", String(segDur), "-c:v", "libx264", "-an", trimmedPath]
-          });
-          clipPaths.push(trimmedPath);
+const queryData = await queryResponse.json();
+const smartQuery = (queryData.content?.[0]?.text || queryData.text || "").trim();
+setProgressLabel(`Searching YouTube: "${smartQuery}"`);
+
+let clipDownloaded = false;
+
+// Try YouTube first
+try {
+  await invoke("run_ytdlp", {
+    args: [
+      `ytsearch3:${smartQuery} broll no face footage`,
+      "--match-filter", "duration < 60",
+      "--format", "bestvideo[height<=1080][ext=mp4]/bestvideo[height<=1080]/best[ext=mp4]",
+      "-o", clipPath,
+      "--no-playlist",
+      "--max-downloads", "1",
+    ]
+  });
+  clipDownloaded = true;
+} catch (ytErr) {
+  console.warn(`YouTube failed for clip ${i}:`, ytErr);
+}
+
+// Fall back to Pexels if YouTube failed
+if (!clipDownloaded) {
+  try {
+    const pexels = await searchPexelsVideo(smartQuery);
+    if (pexels?.url) {
+      await invoke("run_shell_command", {
+        program: "curl",
+        args: ["-L", pexels.url, "-o", clipPath, "--silent", "--fail", "--max-time", "30"]
+      });
+      clipDownloaded = true;
+    }
+  } catch (pexErr) {
+    console.warn(`Pexels also failed for clip ${i}:`, pexErr);
+  }
+}
+
+if (clipDownloaded) {
+  await invoke("run_ffmpeg", {
+    args: [
+      "-i", clipPath,
+      "-t", String(segDur),
+      "-c:v", "libx264",
+      "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
+      "-crf", "18",
+      "-preset", "fast",
+      "-an",
+      trimmedPath
+    ]
+  });
+  clipPaths.push(trimmedPath);
+}
         }
       } catch (e) {
         console.warn(`Clip ${i} failed:`, e);
@@ -704,7 +762,7 @@ await invoke("run_shell_command", {
     }
 
     if (clipPaths.length === 0) {
-      throw new Error("No clips could be downloaded from Pexels.");
+      throw new Error("No clips could be downloaded from YouTube or Pexels.");
     }
 
     setProgress(65);
@@ -730,31 +788,39 @@ await invoke("run_shell_command", {
     const concatContent = clipPaths.map(p => `file '${p.replace(/\\/g, "/")}'`).join("\n");
     await invoke("write_text_file", { path: concatPath, content: concatContent });
 
-    // Step 5: Concatenate clips
-    const concatVideoPath = `${outputDir}/clips_joined.mp4`;
-    await invoke("run_ffmpeg", {
-      args: ["-f", "concat", "-safe", "0", "-i", concatPath, "-c", "copy", concatVideoPath]
-    });
+    setProgress(65);
+setProgressLabel("Rendering with Remotion…");
 
-    setProgress(80);
-    setProgressLabel("Adding voiceover and captions…");
+// Write a small Node runner script that calls renderWithRemotion
+const renderScriptPath = norm(`${outputDir}/remotion_render.mjs`);
+const renderScript = `
+import path from "path";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { renderWithRemotion } = require(path.resolve("src/remotion/renderVideo.cjs"));
+const segments = ${JSON.stringify(segments)};
+const clipPaths = ${JSON.stringify(clipPaths)};
+const outputPath = ${JSON.stringify(norm(finalPath))};
+const voiceoverPath = ${JSON.stringify(norm(activePath))};
+await renderWithRemotion({ segments, clipPaths, voiceoverPath, outputPath, onProgress: (p) => console.log("progress:" + p) });
+console.log("done:" + outputPath);
+`;
 
-    // Step 6: Final assembly — clips + voiceover + captions + fade transitions
-    const finalPath = `${outputDir}/hyperframe_output.mp4`;
-    await invoke("run_ffmpeg", {
-      args: [
-        "-i", concatVideoPath,
-        "-i", voiceoverPath,
-        "-vf", `subtitles='${norm(srtPath).replace(/^([A-Za-z]):/, "$1\\:")}'`,
-        "-c:v", "libx264",
-        "-c:a", "aac",
-        "-map", "0:v:0",
-        "-map", "1:a:0",
-        "-shortest",
-        finalPath
-      ]
-    });
+await invoke("write_text_file", { path: renderScriptPath, content: renderScript });
+const renderResult = await invoke("run_node_script", { args: [renderScriptPath] });
 
+// Parse progress lines
+const lines = renderResult.split("\n");
+for (const line of lines) {
+  if (line.startsWith("progress:")) {
+    setProgress(65 + Math.round(parseInt(line.replace("progress:", "")) * 0.34));
+  }
+}
+
+  const didRender = lines.some(l => l.startsWith("done:"));
+    if (!didRender) {
+      throw new Error("Remotion render completed but output file was not confirmed.");
+    }
     setProgress(100);
     setProgressLabel("Done");
     setLastResult({ ok: true, path: finalPath });
@@ -767,6 +833,18 @@ await invoke("run_shell_command", {
   unlisten();
 }
 };
+
+useEffect(() => {
+  const handler = (e) => {
+    const { voiceover } = e.detail;
+    if (voiceover) {
+      setVoiceoverPath(voiceover);
+      buildAiVideo(voiceover);
+    }
+  };
+  window.addEventListener("hf-build", handler);
+  return () => window.removeEventListener("hf-build", handler);
+}, []);
 
 
   // ── AI chat ────────────────────────────────────────────────────────────────
@@ -1025,17 +1103,6 @@ If the user asks something that is not a video edit, answer helpfully in plain t
                   {SUGGESTIONS.map(s => (
                     <button key={s} className="hf-suggestion" onClick={() => sendMessage(s)}>{s}</button>
                   ))}
-                  <button
-                    className="hf-suggestion"
-                    style={{ background: "#fff3cd", borderColor: "#e0c068" }}
-                    onClick={() => {
-                      if (!videoPath) { alert("Open a video first"); return; }
-                      const videoName = videoPath.split(/[\\/]/).pop();
-                      runWithOutputPicker(["-i", videoName, "-t", "5", "-c", "copy", "test_trim_output.mp4"]);
-                    }}
-                  >
-                    🧪 TEST: Trim first 5 sec (no AI)
-                  </button>
                 </div>
               </div>
             ) : (

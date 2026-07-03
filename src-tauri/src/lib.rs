@@ -1,6 +1,52 @@
 use tauri::Emitter;
 use tauri::Manager;
 use tauri_plugin_shell::ShellExt;
+use std::path::PathBuf;
+use std::fs;
+
+// Extracts a bundled zip resource into app_data_dir if not already extracted.
+// Returns the path to the extracted folder.
+fn ensure_extracted(app: &tauri::AppHandle, zip_resource_name: &str, extracted_folder_name: &str) -> Result<PathBuf, String> {
+  let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+  let dest_dir = app_data.join(extracted_folder_name);
+
+  // Marker file to know extraction already completed
+  let marker = dest_dir.join(".extracted_ok");
+  if marker.exists() {
+    return Ok(dest_dir);
+  }
+
+  fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+
+  let zip_path = app
+    .path()
+    .resolve(zip_resource_name, tauri::path::BaseDirectory::Resource)
+    .map_err(|e| e.to_string())?;
+
+  let file = fs::File::open(&zip_path).map_err(|e| format!("open zip failed: {}", e))?;
+  let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("zip read failed: {}", e))?;
+
+  for i in 0..archive.len() {
+    let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
+    let outpath = match entry.enclosed_name() {
+      Some(p) => dest_dir.join(p),
+      None => continue,
+    };
+
+    if entry.is_dir() {
+      fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+    } else {
+      if let Some(parent) = outpath.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+      }
+      let mut outfile = fs::File::create(&outpath).map_err(|e| e.to_string())?;
+      std::io::copy(&mut entry, &mut outfile).map_err(|e| e.to_string())?;
+    }
+  }
+
+  fs::write(&marker, b"ok").map_err(|e| e.to_string())?;
+  Ok(dest_dir)
+}
 
 #[tauri::command]
 async fn pick_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
@@ -96,20 +142,18 @@ async fn run_ytdlp(app: tauri::AppHandle, args: Vec<String>) -> Result<String, S
 async fn run_python(app: tauri::AppHandle, args: Vec<String>) -> Result<String, String> {
   let shell = app.shell();
 
-  let python_path = app
-    .path()
-    .resolve("binaries/python/python.exe", tauri::path::BaseDirectory::Resource)
-    .ok()
-    .filter(|p| p.exists())
-    .map(|p| p.to_string_lossy().to_string())
-    .unwrap_or_else(|| "py".to_string());
+  // Ensure python and whisper-models are extracted to app_data_dir
+  let python_dir = ensure_extracted(&app, "binaries/python-bundle.zip", "python")?;
+  let whisper_dir = ensure_extracted(&app, "binaries/whisper-models-bundle.zip", "whisper-models")?;
 
-  let whisper_cache = app
-    .path()
-    .resolve("binaries/whisper-models", tauri::path::BaseDirectory::Resource)
-    .ok()
-    .map(|p| p.to_string_lossy().to_string())
-    .unwrap_or_default();
+  let python_path = python_dir.join("python.exe");
+  let python_path = if python_path.exists() {
+    python_path.to_string_lossy().to_string()
+  } else {
+    "py".to_string()
+  };
+
+  let whisper_cache = whisper_dir.to_string_lossy().to_string();
 
   let output = shell
     .command(&python_path)
@@ -120,6 +164,19 @@ async fn run_python(app: tauri::AppHandle, args: Vec<String>) -> Result<String, 
     .await
     .map_err(|e| e.to_string())?;
 
+  if output.status.success() {
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+  } else {
+    Err(String::from_utf8_lossy(&output.stderr).to_string())
+  }
+}
+
+#[tauri::command]
+async fn run_node_script(args: Vec<String>) -> Result<String, String> {
+  let output = std::process::Command::new("node")
+    .args(&args)
+    .output()
+    .map_err(|e| e.to_string())?;
   if output.status.success() {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
   } else {
@@ -150,14 +207,15 @@ pub fn run() {
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_dialog::init())
     .invoke_handler(tauri::generate_handler![
-      run_ffmpeg,
-      run_ytdlp,
-      run_python,
-      run_shell_command,
-      pick_file,
-      pick_audio_file,
-      write_text_file
-    ])
+  run_ffmpeg,
+  run_ytdlp,
+  run_python,
+  run_shell_command,
+  run_node_script,
+  pick_file,
+  pick_audio_file,
+  write_text_file
+])
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
       if let Some(window) = app.get_webview_window("main") {

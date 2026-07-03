@@ -52,9 +52,9 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "binaries/python/**",
-  "binaries/whisper-models/**"
-    ],
+  "binaries/python-bundle.zip",
+  "binaries/whisper-models-bundle.zip"
+],
     "android": {
       "debugApplicationIdSuffix": ".debug"
     },

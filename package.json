@@ -4,6 +4,10 @@
   "private": true,
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
+    "@remotion/bundler": "^4.0.484",
+    "@remotion/player": "^4.0.484",
+    "@remotion/renderer": "^4.0.484",
+    "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-shell": "^2.3.5",
@@ -21,6 +25,7 @@
     "react-scripts": "5.0.1",
     "react-syntax-highlighter": "^16.1.1",
     "remark-gfm": "^4.0.1",
+    "remotion": "^4.0.484",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
