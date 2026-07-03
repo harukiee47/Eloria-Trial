@@ -419,7 +419,6 @@ export default function HyperFrame({ onBack }) {
 const [isDownloading, setIsDownloading] = useState(false);
 const [downloadResult, setDownloadResult] = useState(null);
 const [voiceoverPath, setVoiceoverPath] = useState(null);
-const [isTranscribing, setIsTranscribing] = useState(false);
 const [transcript, setTranscript] = useState(null);
 const [isBuildingVideo, setIsBuildingVideo] = useState(false);
 
@@ -611,7 +610,7 @@ const downloadFromUrl = async () => {
     const outputDir = videoPath
       ? videoPath.replace(/[\\/][^\\/]+$/, "")
       : "C:/Users/Public/Videos";
-    const result = await invoke("run_ytdlp", {
+    await invoke("run_ytdlp", {
   args: [
         ytUrl.trim(),
         "-o", `${outputDir}/%(title)s.%(ext)s`,
