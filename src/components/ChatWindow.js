@@ -201,121 +201,6 @@ function TrailBadge({ label, type }) {
   );
 }
 
-function ActivityBar({ step, steps }) {
-  if (!steps || steps.length === 0) return (
-    <div className="cw-activity-bar">
-      <span className="cw-activity-icon">✦</span>
-      <span className="cw-activity-text">Thinking…</span>
-      <div className="cw-activity-dots"><span/><span/><span/></div>
-    </div>
-  );
-
-  const current = steps[Math.min(step, steps.length - 1)];
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      {steps.slice(0, step).map((s, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(34,134,58,0.08)", border: "0.5px solid rgba(34,134,58,0.2)",
-          }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#22863a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="11" height="11">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </div>
-          <span style={{ fontSize: 12, color: "var(--t3)", fontFamily: "var(--font)" }}>{s.text}</span>
-          {s.badge && <TrailBadge label={s.badge} type={s.badgeType} />}
-        </div>
-      ))}
-      {current && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: step > 0 ? 2 : 0 }}>
-          <div style={{
-            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "#faf8f4", border: "1px solid rgba(193,127,42,.25)",
-          }}>
-            <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-              {[0,1,2].map(i => (
-                <span key={i} style={{
-                  width: 3, height: 3, borderRadius: "50%", display: "inline-block",
-                  background: "var(--accent)", opacity: 0.6,
-                  animation: `cwDot 1.2s ease-in-out ${i * 0.2}s infinite`,
-                }}/>
-              ))}
-            </div>
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)", fontFamily: "var(--font)" }}>{current.text}</span>
-          {current.badge && <TrailBadge label={current.badge} type={current.badgeType} />}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ActivityTrail({ steps, isOpen, onToggle }) {
-  if (!steps || steps.length === 0) return null;
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <button
-        onClick={onToggle}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          background: "none", border: "none", cursor: "pointer",
-          padding: "4px 0", fontFamily: "var(--font)",
-          color: "var(--t3)", fontSize: 12,
-        }}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round"
-          width="13" height="13"
-          style={{ transform: isOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .2s", flexShrink: 0 }}
-        >
-          <polyline points="9 18 15 12 9 6"/>
-        </svg>
-        <span>{steps.length} reasoning {steps.length === 1 ? "step" : "steps"}</span>
-      </button>
-
-      {isOpen && (
-        <div style={{
-          marginTop: 6, paddingLeft: 2,
-          display: "flex", flexDirection: "column", gap: 0,
-        }}>
-          {steps.map((s, i) => (
-            <div key={i} style={{ display: "flex", gap: 10, position: "relative" }}>
-              {i < steps.length - 1 && (
-                <div style={{
-                  position: "absolute", left: 11, top: 26, bottom: -2,
-                  width: 1, background: "rgba(0,0,0,0.09)",
-                }} />
-              )}
-              <div style={{
-                width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 3,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(34,134,58,0.08)", border: "0.5px solid rgba(34,134,58,0.2)",
-              }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="#22863a" strokeWidth="2.5"
-                  strokeLinecap="round" strokeLinejoin="round" width="11" height="11">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-              </div>
-              <div style={{ paddingBottom: i < steps.length - 1 ? 12 : 4 }}>
-                <div style={{
-                  fontSize: 12, color: "var(--t2)",
-                  fontFamily: "var(--font)", marginBottom: s.badge ? 4 : 0,
-                }}>
-                  {s.text}
-                </div>
-                {s.badge && <TrailBadge label={s.badge} type={s.badgeType} />}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function DownloadCodeButton({ text }) {
   const blocks = detectCodeBlocks(text);
   if (blocks.length === 0) return null;
@@ -2241,7 +2126,6 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [selectionBtn,   setSelectionBtn]   = useState(null);
   const [voiceOpen,      setVoiceOpen]      = useState(false);
   const [pasteViewer,    setPasteViewer]    = useState(null);
-  const [openTrails, setOpenTrails] = useState({});
 
   const fileInputRef       = useRef(null);
   const fileAcceptRef      = useRef("");   
