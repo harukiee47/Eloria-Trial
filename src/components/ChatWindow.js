@@ -185,22 +185,6 @@ function buildActivitySteps({ text = "", hasFiles = false }) {
   return steps;
 }
 
-function TrailBadge({ label, type }) {
-  if (!label) return null;
-  const styles = {
-    code: { background: "rgba(0,0,0,0.06)", color: "#666", border: "0.5px solid rgba(0,0,0,0.12)" },
-    web:  { background: "rgba(24,95,165,0.1)", color: "#185fa5", border: "0.5px solid rgba(24,95,165,0.2)" },
-  };
-  const s = styles[type] || styles.code;
-  return (
-    <span style={{
-      display: "inline-block", fontSize: 11, fontWeight: 500,
-      padding: "2px 9px", borderRadius: 4,
-      fontFamily: "var(--font)", letterSpacing: "0.02em", ...s,
-    }}>{label}</span>
-  );
-}
-
 function DownloadCodeButton({ text }) {
   const blocks = detectCodeBlocks(text);
   if (blocks.length === 0) return null;
