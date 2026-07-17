@@ -3,6 +3,7 @@ import logo from "../assets/logo.png";
 import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
+import ActivityTimeline from "./ActivityTimeline";
 
 const GREETINGS = [
   { label: "Good to have you back.", name: true,  sub: "What can I help you with today?" },
@@ -2250,6 +2251,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const messagesEndRef     = useRef(null);
   const abortControllerRef = useRef(null);
   const activityTimerRef   = useRef(null);
+  const startTimeRef = useRef(null);
 
   const messagesRef = useRef([]);
 
@@ -2513,7 +2515,7 @@ const greeting = GREETINGS[greetingIdx];
 
     const token = await auth.currentUser.getIdToken();
     setIsThinking(true);
-
+    startTimeRef.current = Date.now();
     const urls = extractUrls(input.trim());
     const hasFiles = pendingFiles.length > 0;
 
@@ -2605,7 +2607,7 @@ const apiMessages = newMessages.map((m, idx) => {
       setChats(prev =>
         prev.map(c =>
           c.id === chat.id
-            ? { ...c, messages: [...firestoreMessages, { id: aiMsgId, sender: "ai", text: "", activityTrail: steps, time: getTimestamp() }] }
+            ? { ...c, messages: [...firestoreMessages, { id: aiMsgId, sender: "ai", text: "", activityTrail: steps, time: getTimestamp(), activityDurationMs: Date.now() - (startTimeRef.current ?? Date.now()) }] }
             : c
         )
       );
@@ -2972,14 +2974,12 @@ const apiMessages = newMessages.map((m, idx) => {
         {/* ── AI MESSAGE ── */}
         {!isUser && (
           <>
-            {msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
-  <ActivityTrail
+     {msg.activityTrail && msg.activityTrail.length > 0 && msg.text && (
+  <ActivityTimeline
     steps={msg.activityTrail}
-    isOpen={openTrails[msg.id] !== false}
-    onToggle={() => setOpenTrails(prev => ({
-      ...prev,
-      [msg.id]: prev[msg.id] === false ? true : false,
-    }))}
+    activeIndex={msg.activityTrail.length}
+    done={true}
+    durationMs={msg.activityDurationMs ?? null}
   />
 )}
 
@@ -3301,10 +3301,14 @@ const apiMessages = newMessages.map((m, idx) => {
                 <div className="cw-ai-avatar" style={{ width:28, height:28, borderRadius:8, overflow:"hidden", border:"1.5px solid rgba(193,127,42,.2)", background:"#faf8f4", flexShrink:0 }}>
                   <img src={logo} alt="Eloria" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                 </div>
-                {isThinking && (
+       {isThinking && (
   activitySteps.length === 0
     ? <span className="cw-thinking-label">Thinking…</span>
-    : <ActivityBar step={activityStep} steps={activitySteps} />
+    : <ActivityTimeline
+        steps={activitySteps}
+        activeIndex={activityStep}
+        done={false}
+      />
 )}
                 {isStreaming && <span className="cw-thinking-label">Eloria is responding…</span>}
                 <button

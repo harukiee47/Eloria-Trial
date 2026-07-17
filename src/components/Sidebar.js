@@ -150,6 +150,16 @@ const SIDEBAR_STYLE = `
   .acct-name  { font-size:13px; font-weight:600; color:var(--t1); line-height:1.3; }
   .acct-email { font-size:11px; color:var(--t3); word-break:break-all; line-height:1.3; }
   .acct-div   { height:1px; background:var(--border); margin:4px 0 8px; }
+  .acct-download {
+    width:100%; display:flex; align-items:center; gap:8px;
+    padding:7px 8px; border:none; background:none;
+    color:var(--accent); font-size:13px; font-weight:500;
+    border-radius:var(--r-sm); cursor:pointer; font-family:var(--font);
+    transition: background .12s;
+    margin-bottom: 2px;
+  }
+  .acct-download:hover { background: var(--accent-bg); }
+  .acct-download svg { width:15px; height:15px; flex-shrink:0; }
   .acct-logout {
     width:100%; display:flex; align-items:center; gap:8px;
     padding:7px 8px; border:none; background:none;
@@ -957,6 +967,9 @@ const SIDEBAR_STYLE = `
   .grp-empty p { font-size: 12px; line-height: 1.6; }
 `;
 
+// ── true when running inside the Tauri desktop wrapper ──
+const IS_TAURI = typeof window !== "undefined" && !!window.__TAURI__;
+
 export default function Sidebar({
   user, chats, setChats,
   activeChatId, setActiveChatId,
@@ -971,7 +984,7 @@ export default function Sidebar({
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showAcct, setShowAcct]     = useState(false);
   const [showLogout, setShowLogout] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, title }
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showMobileCode, setShowMobileCode] = useState(false);
 
   const [projects, setProjects]       = useState(() => {
@@ -983,9 +996,9 @@ export default function Sidebar({
   const [showNewProj, setShowNewProj] = useState(false);
   const [addChatProj, setAddChatProj] = useState(null);
 
-const [codeProjects] = useState(() => {
-  try { return JSON.parse(localStorage.getItem("eloria_code_projects") || "[]"); } catch { return []; }
-});
+  const [codeProjects] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("eloria_code_projects") || "[]"); } catch { return []; }
+  });
 
   const desktopAcctRef = useRef(null);
   const [showCodeLockModal, setShowCodeLockModal] = useState(false);
@@ -998,13 +1011,19 @@ const [codeProjects] = useState(() => {
   const isMobile = () => window.innerWidth <= 640;
 
   const [cliCopied, setCliCopied] = useState(false);
-  const [codeTab, setCodeTab] = useState("browser"); 
+  const [codeTab, setCodeTab] = useState("browser");
 
-const copyCliCommand = () => {
-  navigator.clipboard.writeText("npm install -g eloria-cli");
-  setCliCopied(true);
-  setTimeout(() => setCliCopied(false), 1800);
-};
+  const copyCliCommand = () => {
+    navigator.clipboard.writeText("npm install -g eloria-cli");
+    setCliCopied(true);
+    setTimeout(() => setCliCopied(false), 1800);
+  };
+
+  // ── open download page in a new window ──
+  const openDownloadPage = () => {
+    setShowAcct(false);
+    window.open("/download", "_blank", "noopener,noreferrer");
+  };
 
   useEffect(() => {
     if (!document.getElementById("eloria-global")) {
@@ -1143,13 +1162,13 @@ const copyCliCommand = () => {
   };
 
   const openCodeWorkspace = (projectId) => {
-  const url = projectId ? `/code?project=${projectId}` : "/code";
-  if (window.__TAURI__) {
-    window.location.href = url;
-  } else {
-    window.open(url, "_blank");
-  }
-};
+    const url = projectId ? `/code?project=${projectId}` : "/code";
+    if (window.__TAURI__) {
+      window.location.href = url;
+    } else {
+      window.open(url, "_blank");
+    }
+  };
 
   const handleCodeClick = () => {
     if (userPlan !== "pro" && userPlan !== "admin") {
@@ -1178,6 +1197,20 @@ const copyCliCommand = () => {
 
   const filtered = chats.filter(c => c.title?.toLowerCase().includes(search.toLowerCase()));
   const initials  = user?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
+
+  /* ── shared snippet: "Download desktop app" button (hidden in Tauri) ── */
+  const DownloadDesktopBtn = () => IS_TAURI ? null : (
+    <button className="acct-download" onClick={openDownloadPage}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+        <polyline points="8 11 12 15 16 11"/>
+        <line x1="12" y1="7" x2="12" y2="15"/>
+      </svg>
+      Download desktop app
+    </button>
+  );
 
   const CloseX = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1338,6 +1371,7 @@ const copyCliCommand = () => {
 
         <div className="sb-spacer" />
 
+        {/* ── DESKTOP ACCOUNT AVATAR ── */}
         <div className="sb-avatar-wrap" ref={desktopAcctRef}>
           <button className="sb-avatar" onClick={() => setShowAcct(v => !v)} title="Account">
             {initials}
@@ -1352,6 +1386,8 @@ const copyCliCommand = () => {
                 </div>
               </div>
               <div className="acct-div" />
+              {/* Download button — hidden inside Tauri */}
+              <DownloadDesktopBtn />
               <button className="acct-logout" onClick={(e) => {
                 e.stopPropagation();
                 setShowAcct(false);
@@ -1678,68 +1714,69 @@ const copyCliCommand = () => {
             </div>
           </>}
 
-     {panel === "code" && <>
-  <div className="panel-hdr">
-    <span className="panel-title">
-      <span className="panel-title-icon"><IconCode /></span>
-      Eloria Code
-    </span>
-    <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
-  </div>
+          {/* ── CODE PANEL ── */}
+          {panel === "code" && <>
+            <div className="panel-hdr">
+              <span className="panel-title">
+                <span className="panel-title-icon"><IconCode /></span>
+                Eloria Code
+              </span>
+              <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
+            </div>
 
-  <div className="code-splash">
-    <div className="code-splash-emblem"><IconCode /></div>
-    <h3>Your AI code workspace</h3>
-    <p>A full-featured development environment with AI completions, multi-file editing, and an integrated terminal.</p>
+            <div className="code-splash">
+              <div className="code-splash-emblem"><IconCode /></div>
+              <h3>Your AI code workspace</h3>
+              <p>A full-featured development environment with AI completions, multi-file editing, and an integrated terminal.</p>
 
-    <div className="code-tabs">
-      <button
-        className={`code-tab${codeTab === "browser" ? " active" : ""}`}
-        onClick={() => setCodeTab("browser")}
-      >
-        <IconExternal /> Browser
-      </button>
-      <button
-        className={`code-tab${codeTab === "terminal" ? " active" : ""}`}
-        data-tab="terminal"
-        onClick={() => setCodeTab("terminal")}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
-        </svg>
-        Terminal
-      </button>
-    </div>
+              <div className="code-tabs">
+                <button
+                  className={`code-tab${codeTab === "browser" ? " active" : ""}`}
+                  onClick={() => setCodeTab("browser")}
+                >
+                  <IconExternal /> Browser
+                </button>
+                <button
+                  className={`code-tab${codeTab === "terminal" ? " active" : ""}`}
+                  data-tab="terminal"
+                  onClick={() => setCodeTab("terminal")}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+                  </svg>
+                  Terminal
+                </button>
+              </div>
 
-    {codeTab === "browser" ? (
-      <>
-        <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
-          <IconExternal /> Open Eloria Code
-        </button>
-        <p className="code-splash-note">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          Opens in a new tab
-        </p>
-      </>
-    ) : (
-      <>
-        <div className="code-cli-cmd">
-          <code>npm install -g eloria-cli</code>
-          <button className={`code-cli-copy${cliCopied ? " copied" : ""}`} onClick={copyCliCommand} title="Copy command">
-            {cliCopied ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            )}
-          </button>
-        </div>
-        <p className="code-splash-note">Run this in your terminal to get started</p>
-      </>
-    )}
-  </div>
-</>}
+              {codeTab === "browser" ? (
+                <>
+                  <button className="code-splash-open" onClick={() => openCodeWorkspace(null)}>
+                    <IconExternal /> Open Eloria Code
+                  </button>
+                  <p className="code-splash-note">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    Opens in a new tab
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="code-cli-cmd">
+                    <code>npm install -g eloria-cli</code>
+                    <button className={`code-cli-copy${cliCopied ? " copied" : ""}`} onClick={copyCliCommand} title="Copy command">
+                      {cliCopied ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                      )}
+                    </button>
+                  </div>
+                  <p className="code-splash-note">Run this in your terminal to get started</p>
+                </>
+              )}
+            </div>
+          </>}
 
           {/* ── MOBILE ACCOUNT ── */}
           <div className="sb-mobile-acct">
@@ -1772,6 +1809,8 @@ const copyCliCommand = () => {
                     </div>
                   </div>
                   <div className="acct-div" />
+                  {/* Download button — hidden inside Tauri */}
+                  <DownloadDesktopBtn />
                   <button className="acct-logout" onClick={(e) => {
                     e.stopPropagation(); setShowAcct(false);
                     setTimeout(() => setShowLogout(true), 0);
