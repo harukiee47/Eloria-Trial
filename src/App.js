@@ -20,6 +20,7 @@ import NotificationsPanel from "./components/NotificationsPanel";
 import ProfileSetupModal from "./components/ProfileSetupModal";
 import AuthCallback from "./components/AuthCallback";
 import HyperFrame from "./components/HyperFrame";
+import DownloadPage from "./components/DownloadPage";
 
 if (window.location.pathname === "/code") {
   import("react-dom/client").then(({ createRoot }) => {
@@ -321,6 +322,10 @@ useEffect(() => {
   if (window.location.pathname === "/auth/callback") {
     return <AuthCallback />;
   }
+
+  if (window.location.pathname === "/download") {
+  return <DownloadPage />;
+}
 
   if (stage === "login") {
     return (

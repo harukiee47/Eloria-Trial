@@ -1020,10 +1020,10 @@ export default function Sidebar({
   };
 
   // ── open download page in a new window ──
-  const openDownloadPage = () => {
-    setShowAcct(false);
-    window.open("/download", "_blank", "noopener,noreferrer");
-  };
+const openDownloadPage = () => {
+  setShowAcct(false);
+  window.location.href = "/download";
+};
 
   useEffect(() => {
     if (!document.getElementById("eloria-global")) {
