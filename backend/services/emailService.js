@@ -19,7 +19,7 @@ export async function sendReminderEmail(email, endsAt) {
     console.log("Resend reminder result:", JSON.stringify(result));
     return result;
   } catch (err) {
-    console.error("Resend reminder FAILED:", err);
+    console.error("Resend reminder FAILED:", err?.message || err);
     throw err;
   }
 }
@@ -39,7 +39,7 @@ export async function sendExpiredEmail(email) {
     console.log("Resend expired result:", JSON.stringify(result));
     return result;
   } catch (err) {
-    console.error("Resend expired FAILED:", err);
+    console.error("Resend expired FAILED:", err?.message || err);
     throw err;
   }
 }
