@@ -30,11 +30,30 @@ const GLOBAL_STYLE = `
   --shadow-panel: 2px 0 24px rgba(13,58,53,0.10);
   --shadow-pop:   0 8px 32px rgba(13,58,53,0.14);
 }
+[data-theme="dark"] {
+  --bg-app:      #14201d;
+  --bg-strip:    #101a17;
+  --bg-panel:    #182521;
+  --bg-chat:     #131e1b;
+  --border:      #2a3a35;
+  --border-soft: #24322d;
+  --t1: #eef3f1;
+  --t2: #b7c7c1;
+  --t3: #7f9791;
+  --accent:      #4fae94;
+  --accent-bg:   #1f3630;
+  --accent-deep: #6cc6ab;
+  --danger:      #e07a7a;
+  --danger-bg:   #3a2222;
+  --shadow-panel: 2px 0 24px rgba(0,0,0,0.35);
+  --shadow-pop:   0 8px 32px rgba(0,0,0,0.45);
+}
   html, body, #root {
     height: 100%;
     font-family: var(--font);
     background: var(--bg-app);
     color: var(--t1);
+    transition: background .18s ease, color .18s ease;
   }
   .app-shell {
     display: flex;
@@ -984,7 +1003,7 @@ export default function Sidebar({
   user, chats, setChats,
   activeChatId, setActiveChatId,
   onLogout, sidebarOpen, setSidebarOpen,
-  userPlan, setShowPricing, setShowBilling,
+  userPlan, setShowPricing, setShowBilling, setShowSettings,
   groups = [], activeGroupId, setActiveGroupId,
   pendingInviteCount = 0, setShowGroupNotifs,
   mode, setMode, createGroup, showNotifPanel, setShowNotifPanel, totalBadgeCount,
@@ -1236,6 +1255,20 @@ const openDownloadPage = () => {
     </button>
   );
 
+  /* ── shared snippet: "Settings" button (opens Settings popup) ── */
+  const SettingsBtn = () => (
+    <button
+      className="acct-manage"
+      onClick={() => { setShowAcct(false); setShowSettings?.(true); }}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+      Settings
+    </button>
+  );
+
   const CloseX = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -1413,6 +1446,7 @@ const openDownloadPage = () => {
               {/* Download button — hidden inside Tauri */}
               <DownloadDesktopBtn />
               <ManageSubscriptionBtn />
+              <SettingsBtn />
               <button className="acct-logout" onClick={(e) => {
                 e.stopPropagation();
                 setShowAcct(false);
@@ -1837,6 +1871,7 @@ const openDownloadPage = () => {
                   {/* Download button — hidden inside Tauri */}
                   <DownloadDesktopBtn />
                   <ManageSubscriptionBtn />
+                  <SettingsBtn />
                   <button className="acct-logout" onClick={(e) => {
                     e.stopPropagation(); setShowAcct(false);
                     setTimeout(() => setShowLogout(true), 0);

@@ -22,6 +22,7 @@ import AuthCallback from "./components/AuthCallback";
 import HyperFrame from "./components/HyperFrame";
 import DownloadPage from "./components/Downloadpage";
 import Billing from "./components/Billing";
+import SettingsModal, { applyStoredTheme } from "./components/SettingsModal";
 
 if (window.location.pathname === "/code") {
   import("react-dom/client").then(({ createRoot }) => {
@@ -79,6 +80,7 @@ export default function App() {
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [showPricing, setShowPricing]   = useState(false);
   const [showBilling, setShowBilling] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [userPlan, setUserPlan]         = useState("free");
   const [sharedData, setSharedData]     = useState(null);
   const [groups, setGroups]             = useState([]);
@@ -91,6 +93,10 @@ export default function App() {
   const totalBadgeCount = pendingInviteCount + notifications.length;
   const [groupInvites, setGroupInvites] = useState([]);
   const [groupLimitModal, setGroupLimitModal] = useState(null);
+
+  useEffect(() => {
+    applyStoredTheme();
+  }, []);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -372,6 +378,8 @@ useEffect(() => {
         <div className="mobile-overlay" onClick={() => setSidebarOpen(false)} />
       )}
 
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} user={user} />
+
       <Sidebar
         user={user}
         chats={chats}
@@ -398,6 +406,7 @@ useEffect(() => {
         createGroup={handleCreateGroup}
         setShowPricing={setShowPricing}
         setShowBilling={setShowBilling}
+        setShowSettings={setShowSettings}
         createNewProject={createNewProject}
         codeProjects={codeProjects}
         activeProjectId={activeProjectId}
@@ -422,6 +431,7 @@ useEffect(() => {
             setSidebarOpen={setSidebarOpen}
             setShowPricing={setShowPricing}
             setShowBilling={setShowBilling}
+            setShowSettings={setShowSettings}
             userPlan={userPlan}
             allChats={chats}
           />

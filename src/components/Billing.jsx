@@ -4,6 +4,42 @@ import logo from "../assets/logo.png";
 
 const API_BASE = "https://eloria-trial.onrender.com";
 
+const animationCss = `
+  .bl-back-btn, .bl-cancel-btn, .bl-upgrade-btn, .bl-modal-keep-btn,
+  .bl-modal-confirm-btn, .bl-reason-row {
+    transition: transform .14s ease, box-shadow .14s ease, background .14s ease, opacity .14s ease, border-color .14s ease;
+  }
+  .bl-back-btn:hover { transform: translateX(-2px); opacity: 0.75; }
+  .bl-back-btn:active { transform: translateX(-2px) scale(0.96); }
+
+  .bl-cancel-btn:hover:not(:disabled) { background: #fdf0f0; border-color: #d97d7d; }
+  .bl-cancel-btn:active:not(:disabled) { transform: scale(0.97); }
+
+  .bl-upgrade-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(13,58,53,0.28); }
+  .bl-upgrade-btn:active { transform: translateY(0) scale(0.98); box-shadow: 0 4px 10px rgba(13,58,53,0.2); }
+
+  .bl-modal-keep-btn:hover:not(:disabled) { background: #f5f2ed; border-color: #c7bdae; }
+  .bl-modal-keep-btn:active:not(:disabled) { transform: scale(0.97); }
+
+  .bl-modal-confirm-btn:hover:not(:disabled) { background: #a83535; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(192,64,64,0.3); }
+  .bl-modal-confirm-btn:active:not(:disabled) { transform: translateY(0) scale(0.97); box-shadow: none; }
+
+  .bl-reason-row:hover { background: #f5f2ed; }
+
+  @keyframes bl-modal-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes bl-overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes bl-fade-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+`;
+
 const styles = {
   page: {
     minHeight: "100vh",
@@ -133,6 +169,7 @@ const styles = {
     display: "flex",
     gap: 10,
     alignItems: "flex-start",
+    animation: "bl-fade-in .25s ease",
   },
   successBox: {
     marginTop: 20,
@@ -146,6 +183,7 @@ const styles = {
     display: "flex",
     gap: 10,
     alignItems: "flex-start",
+    animation: "bl-fade-in .25s ease",
   },
   cancelBtn: {
     marginTop: 20,
@@ -215,32 +253,6 @@ const styles = {
     textAlign: "center",
     marginTop: 4,
   },
-  devBox: {
-    marginTop: 28,
-    padding: "12px 14px",
-    background: "#fff8ea",
-    border: "1px dashed #d9b968",
-    borderRadius: 10,
-  },
-  devLabel: {
-    fontSize: 10.5,
-    fontWeight: 700,
-    color: "#9a7a1f",
-    letterSpacing: "0.05em",
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  devBtn: {
-    padding: "8px 14px",
-    background: "#fff",
-    border: "1px solid #d9b968",
-    borderRadius: 8,
-    color: "#7a5f16",
-    fontSize: 12.5,
-    fontWeight: 600,
-    cursor: "pointer",
-    fontFamily: "inherit",
-  },
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -250,6 +262,7 @@ const styles = {
     justifyContent: "center",
     padding: 20,
     zIndex: 1000,
+    animation: "bl-overlay-in .16s ease",
   },
   modalCard: {
     width: "100%",
@@ -260,6 +273,7 @@ const styles = {
     boxShadow: "0 12px 40px rgba(13,58,53,0.22)",
     padding: "26px 26px 22px",
     fontFamily: "'DM Sans', sans-serif",
+    animation: "bl-modal-in .2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   modalTitle: {
     fontSize: 17,
@@ -446,27 +460,16 @@ export default function Billing({ onBack }) {
     }
   };
 
-  // ── TEMPORARY DEV TOOL — remove this whole function + the box that uses it
-  // once you're done testing the reminder/expiry email flow. See instructions
-  // below the component.
-  const runDevCheck = async () => {
-    const token = await auth.currentUser.getIdToken();
-    const res = await fetch(`${API_BASE}/api/membership/dev/run-check`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    alert(JSON.stringify(data));
-  };
 
   if (loading) return <div style={styles.loadingWrap}>Loading membership details…</div>;
 
   if (error && !status) {
     return (
       <div style={styles.page}>
+        <style>{animationCss}</style>
         <div style={styles.container}>
           {onBack && (
-            <button style={styles.backBtn} onClick={onBack}>
+            <button className="bl-back-btn" style={styles.backBtn} onClick={onBack}>
               ← Back to chat
             </button>
           )}
@@ -485,10 +488,11 @@ export default function Billing({ onBack }) {
 
   return (
     <div style={styles.page}>
+      <style>{animationCss}</style>
       <div style={styles.container}>
         <div style={styles.topBar}>
           {onBack ? (
-            <button style={styles.backBtn} onClick={onBack}>
+            <button className="bl-back-btn" style={styles.backBtn} onClick={onBack}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6" />
               </svg>
@@ -561,6 +565,7 @@ export default function Billing({ onBack }) {
                 ) : (
                   <>
                     <button
+                      className="bl-cancel-btn"
                       style={{ ...styles.cancelBtn, opacity: cancelling ? 0.6 : 1 }}
                       onClick={() => setShowCancelModal(true)}
                       disabled={cancelling}
@@ -588,7 +593,7 @@ export default function Billing({ onBack }) {
                   <li style={styles.featureItem}><CheckIcon /> Group chats</li>
                   <li style={styles.featureItem}><CheckIcon /> Priority response speed</li>
                 </ul>
-                <button style={styles.upgradeBtn} onClick={onBack}>
+                <button className="bl-upgrade-btn" style={styles.upgradeBtn} onClick={onBack}>
                   Upgrade to Pro
                 </button>
               </>
@@ -596,14 +601,6 @@ export default function Billing({ onBack }) {
 
             {error && <div style={styles.errorText}>{error}</div>}
           </div>
-        </div>
-
-        {/* ── TEMPORARY — remove after testing, see note below ── */}
-        <div style={styles.devBox}>
-          <div style={styles.devLabel}>Dev testing only</div>
-          <button style={styles.devBtn} onClick={runDevCheck}>
-            Run subscription check
-          </button>
         </div>
       </div>
 
@@ -618,12 +615,14 @@ export default function Billing({ onBack }) {
                 </p>
                 <div style={styles.modalBtnRow}>
                   <button
+                    className="bl-modal-keep-btn"
                     style={styles.modalKeepBtn}
                     onClick={closeCancelModal}
                   >
                     Keep my subscription
                   </button>
                   <button
+                    className="bl-modal-confirm-btn"
                     style={styles.modalConfirmBtn}
                     onClick={() => setCancelStep("reasons")}
                   >
@@ -640,7 +639,7 @@ export default function Billing({ onBack }) {
 
                 <div style={styles.reasonList}>
                   {CANCEL_REASONS.map((reason) => (
-                    <label key={reason} style={styles.reasonRow}>
+                    <label key={reason} className="bl-reason-row" style={styles.reasonRow}>
                       <input
                         type="checkbox"
                         style={styles.checkbox}
@@ -660,6 +659,7 @@ export default function Billing({ onBack }) {
 
                 <div style={styles.modalBtnRow}>
                   <button
+                    className="bl-modal-keep-btn"
                     style={styles.modalKeepBtn}
                     onClick={() => setCancelStep("confirm")}
                     disabled={cancelling}
@@ -667,6 +667,7 @@ export default function Billing({ onBack }) {
                     Back
                   </button>
                   <button
+                    className="bl-modal-confirm-btn"
                     style={{ ...styles.modalConfirmBtn, opacity: cancelling ? 0.6 : 1 }}
                     onClick={confirmCancel}
                     disabled={cancelling}

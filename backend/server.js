@@ -12,6 +12,7 @@ import fetchUrlRoutes from "./routes/fetchUrl.route.js";
 import docsRoutes from "./routes/docs.js";
 import authRoutes from "./routes/auth.js";
 import cliAuthRoutes from "./routes/cli-auth.js";
+import connectorsRoutes from "./routes/connectors.js";
 import { startSubscriptionCron } from "./services/subscriptionCron.js";
 
 const app = express();
@@ -36,6 +37,7 @@ app.use("/api/fetch-url", fetchUrlRoutes);
 app.use("/api/docs", docsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", cliAuthRoutes);
+app.use("/api/connectors", connectorsRoutes);
 
 const PORT = process.env.PORT || 5001;
 

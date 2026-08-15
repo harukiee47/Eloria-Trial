@@ -5,6 +5,7 @@ import { incrementUsage } from "../services/usageTracker.js";
 import { anthropic } from "../services/anthropic.js";
 import { MODELS } from "../config/models.js";
 import { buildAnthropicMessages } from "../utils/anthropicMessages.js"; // ← moved to shared util
+import { loadUserConnectorTools, executeConnectorTool } from "../services/connectorTools.js";
 
 const router = express.Router();
 
@@ -178,6 +179,12 @@ If your first draft exceeds these limits, shorten it before outputting.
 
 Use these formats ONLY when the user explicitly asks for a document, resume, report, letter, invoice, presentation, slides, or deck. For normal answers never use these fences.
 
+━━━ CONNECTORS ━━━
+
+* If the user has connected tools available to you (GitHub, Gmail, Google Drive, or custom connectors), use them whenever they'd help answer the request instead of asking the user to paste in information you could fetch yourself.
+* Only use a connector tool when it's actually relevant — don't call one just because it exists.
+* If a needed connector isn't connected, tell the user which one would help and suggest they connect it from the attachment menu's "Manage connectors" option.
+
 ━━━ CODING ASSISTANCE ━━━
 
 * Be an expert coding assistant.
@@ -308,48 +315,81 @@ router.post("/", verifyUser, checkMessageLimit, async (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    const anthropicMessages = buildAnthropicMessages(messages);
+    let anthropicMessages = buildAnthropicMessages(messages);
 
-    const stream = anthropic.messages.stream({
-      model: MODELS.CHAT,
-      max_tokens: 5048,
-      system: ELORIA_SYSTEM_PROMPT,
-      messages: anthropicMessages,
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-        },
-      ],
-    });
+    // Load this user's connected connectors (GitHub, Gmail, Drive, custom, …)
+    // as Anthropic tools, alongside the built-in web_search tool.
+    const { tools: connectorTools, executors } = await loadUserConnectorTools(req.user.uid);
+    const tools = [{ type: "web_search_20250305", name: "web_search" }, ...connectorTools];
 
-    stream.on("message", (msg) => {
-      console.log("FULL MESSAGE:", JSON.stringify(msg, null, 2));
-    });
-
-    stream.on("text", (text) => {
-      res.write(`data: ${JSON.stringify({ text })}\n\n`);
-    });
-
-    stream.on("end", async () => {
-      try {
-        await incrementUsage(req.user.uid, "messages");
-      } catch (err) {
-        console.error("Failed to increment usage:", err);
-      }
-      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-      res.end();
-    });
-
-    stream.on("error", (err) => {
-      console.error("Anthropic stream error:", err);
-      res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`);
-      res.end();
-    });
-
+    let aborted = false;
     req.on("close", () => {
-      stream.controller?.abort?.();
+      aborted = true;
     });
+
+    // Agentic loop: keep running while Claude wants to call a connector tool.
+    // (web_search is a server-side tool and doesn't need this loop.)
+    for (let turn = 0; turn < 8 && !aborted; turn++) {
+      const stream = anthropic.messages.stream({
+        model: MODELS.CHAT,
+        max_tokens: 5048,
+        system: ELORIA_SYSTEM_PROMPT,
+        messages: anthropicMessages,
+        tools,
+      });
+
+      stream.on("text", (text) => {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      });
+
+      stream.on("streamEvent", (event) => {
+        // Let the frontend show "Using GitHub…" / "Using Gmail…" activity chips.
+        if (
+          event.type === "content_block_start" &&
+          event.content_block?.type === "tool_use" &&
+          executors[event.content_block.name]
+        ) {
+          res.write(`data: ${JSON.stringify({ toolUse: event.content_block.name })}\n\n`);
+        }
+      });
+
+      let finalMessage;
+      try {
+        finalMessage = await stream.finalMessage();
+      } catch (err) {
+        console.error("Anthropic stream error:", err);
+        res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`);
+        return res.end();
+      }
+
+      anthropicMessages.push({ role: "assistant", content: finalMessage.content });
+
+      const toolUseBlocks = finalMessage.content.filter(
+        (b) => b.type === "tool_use" && executors[b.name]
+      );
+
+      if (finalMessage.stop_reason !== "tool_use" || toolUseBlocks.length === 0 || aborted) {
+        break;
+      }
+
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (block) => ({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: await executeConnectorTool(req.user.uid, block.name, block.input),
+        }))
+      );
+
+      anthropicMessages.push({ role: "user", content: toolResults });
+    }
+
+    try {
+      await incrementUsage(req.user.uid, "messages");
+    } catch (err) {
+      console.error("Failed to increment usage:", err);
+    }
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
   } catch (err) {
     console.error(err);
     if (!res.headersSent) {

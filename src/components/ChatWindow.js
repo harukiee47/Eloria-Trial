@@ -4,6 +4,7 @@ import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
 import ActivityTimeline from "./ActivityTimeline";
+import ConnectorsModal from "./ConnectorsModal";
 
 const GREETINGS = [
   { label: "Good to have you back.", name: true,  sub: "What can I help you with today?" },
@@ -39,6 +40,97 @@ const ATTACH_TYPES = {
     ),
   },
 };
+
+const IconConnectors = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 2v6M15 2v6M6 9h12l-1 6a5 5 0 01-10 0L6 9zM12 19v3"/>
+  </svg>
+);
+const IconChevronRight = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: "auto", width: 13, height: 13, flexShrink: 0 }}>
+    <polyline points="9 18 15 12 9 6"/>
+  </svg>
+);
+
+/**
+ * Shared list of items rendered inside the attach (+) dropdown:
+ * Image / Document pickers, plus a "Manage connectors" row that opens
+ * a hover flyout with Browse connectors / Add custom connector.
+ */
+function AttachMenuItems({ canAddMore, pendingFiles, onPickImage, onPickDocument, onOpenConnectors }) {
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!flyoutOpen) return;
+    const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setFlyoutOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [flyoutOpen]);
+
+  return (
+    <>
+      {!canAddMore && <div className="cw-attach-menu-limit">Max 2 files per message</div>}
+      {canAddMore && (
+        <>
+          <div className="cw-attach-menu-item" onClick={onPickImage}>
+            {ATTACH_TYPES.image.icon}
+            <div className="cw-attach-menu-item-label">
+              <span className="cw-attach-menu-item-title">Image</span>
+              <span className="cw-attach-menu-item-sub">jpg · png · gif</span>
+            </div>
+          </div>
+          <div className="cw-attach-menu-item" onClick={onPickDocument}>
+            {ATTACH_TYPES.document.icon}
+            <div className="cw-attach-menu-item-label">
+              <span className="cw-attach-menu-item-title">Document</span>
+              <span className="cw-attach-menu-item-sub">pdf · doc · txt</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {pendingFiles.length > 0 && canAddMore && (
+        <>
+          <div className="cw-attach-menu-sep" />
+          <div className="cw-attach-menu-limit">{pendingFiles.length}/2 attached</div>
+        </>
+      )}
+
+      <div className="cw-attach-menu-sep" />
+
+      <div className="cw-attach-connectors-wrap" ref={wrapRef}>
+        <div
+          className="cw-attach-menu-item"
+          onMouseEnter={() => setFlyoutOpen(true)}
+          onClick={() => setFlyoutOpen((v) => !v)}
+        >
+          <IconConnectors />
+          <div className="cw-attach-menu-item-label">
+            <span className="cw-attach-menu-item-title">Manage connectors</span>
+            <span className="cw-attach-menu-item-sub">GitHub · Gmail · Drive · custom</span>
+          </div>
+          <IconChevronRight />
+        </div>
+
+        {flyoutOpen && (
+          <div className="cw-attach-flyout" onMouseLeave={() => setFlyoutOpen(false)}>
+            <div className="cw-attach-menu-item" onClick={() => { setFlyoutOpen(false); onOpenConnectors("browse"); }}>
+              <IconConnectors />
+              <span className="cw-attach-menu-item-title">Browse connectors</span>
+            </div>
+            <div className="cw-attach-menu-item" onClick={() => { setFlyoutOpen(false); onOpenConnectors("custom"); }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span className="cw-attach-menu-item-title">Add custom connector</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
 
 function getAttachKind(file) {
   if (file.type.startsWith("image/")) return "image";
@@ -1688,11 +1780,11 @@ const CW_STYLE = `
     position:absolute; bottom:calc(100% + 8px); left:0;
     background:#fff; border:1px solid #e8e6e0;
     border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
-    padding:5px; min-width:160px; z-index:200;
+    padding:6px; width:220px; z-index:200;
     animation:cwMenuIn .12s ease;
   }
   @media(max-width: 640px) {
-    .cw-attach-menu { left: 0; right: auto; min-width: 150px; }
+    .cw-attach-menu { left: 0; right: auto; width: 200px; }
   }
   @keyframes cwMenuIn {
     from { opacity:0; transform:translateY(6px) scale(.97); }
@@ -1700,14 +1792,30 @@ const CW_STYLE = `
   }
   .cw-attach-menu-item {
     display:flex; align-items:center; gap:10px;
-    padding:9px 12px; font-size:13px; color:var(--t1);
+    padding:9px 10px; font-size:13px; color:var(--t1);
     border-radius:10px; cursor:pointer;
     transition:background .11s; font-family:var(--font); font-weight: 500;
   }
   .cw-attach-menu-item:hover { background:#faf7f2; color: var(--accent); }
-  .cw-attach-menu-item svg { width:15px; height:15px; flex-shrink:0; }
-  .cw-attach-menu-sep { height:1px; background:#f0ede8; margin:3px 8px; }
-  .cw-attach-menu-limit { font-size:10px; color:var(--t3); padding:4px 12px 5px; font-family:var(--font); }
+  .cw-attach-menu-item svg { width:16px; height:16px; flex-shrink:0; color:var(--t3); }
+  .cw-attach-menu-item:hover svg { color: var(--accent); }
+  .cw-attach-menu-item-label { display:flex; flex-direction:column; min-width:0; flex:1; }
+  .cw-attach-menu-item-title { line-height:1.25; }
+  .cw-attach-menu-item-sub { font-size:10.5px; color:var(--t3); font-weight:400; line-height:1.3; }
+  .cw-attach-menu-sep { height:1px; background:#f0ede8; margin:4px 6px; }
+  .cw-attach-menu-limit { font-size:10.5px; color:var(--t3); padding:5px 10px 6px; font-family:var(--font); }
+
+  .cw-attach-connectors-wrap { position:relative; }
+  .cw-attach-flyout {
+    position:absolute; left:calc(100% + 6px); top:-6px;
+    background:#fff; border:1px solid #e8e6e0;
+    border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
+    padding:6px; width:200px; z-index:210;
+    animation:cwMenuIn .12s ease;
+  }
+  @media(max-width: 640px) {
+    .cw-attach-flyout { left: 0; top: calc(100% + 4px); }
+  }
 
   /* send button */
   .cw-send {
@@ -2006,7 +2114,7 @@ function InputBox({
   input, setInput, isThinking, isStreaming, pendingFiles, setPendingFiles,
   showAttach, setShowAttach, attachRef, fileInputRef, canAddMore,
   textareaRef, voiceOpen, setVoiceOpen, sendMessage, abortControllerRef,
-  setIsThinking, setIsStreaming, isCentered, handleTextareaPaste,
+  setIsThinking, setIsStreaming, isCentered, handleTextareaPaste, onOpenConnectors,
 }) {
   return (
     <div className={`cw-input-box${isCentered ? " cw-input-box-centered" : ""}`}>
@@ -2023,40 +2131,25 @@ function InputBox({
           </button>
           {showAttach && (
             <div className="cw-attach-menu">
-              {!canAddMore && <div className="cw-attach-menu-limit">Max 2 files per message</div>}
-              {canAddMore && (
-                <>
-                  <div className="cw-attach-menu-item" onClick={() => {
-                    if (!canAddMore) return;
-                    setShowAttach(false);
-                    fileInputRef.current.value = "";
-                    fileInputRef.current.setAttribute("accept", ATTACH_TYPES.image.accept);
-                    fileInputRef.current.click();
-                  }}>
-                    {ATTACH_TYPES.image.icon}
-                    <span>Image</span>
-                    <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>jpg · png · gif</span>
-                  </div>
-                  <div className="cw-attach-menu-sep" />
-                  <div className="cw-attach-menu-item" onClick={() => {
-                    if (!canAddMore) return;
-                    setShowAttach(false);
-                    fileInputRef.current.value = "";
-                    fileInputRef.current.setAttribute("accept", ATTACH_TYPES.document.accept);
-                    fileInputRef.current.click();
-                  }}>
-                    {ATTACH_TYPES.document.icon}
-                    <span>Document</span>
-                    <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>pdf · doc · txt</span>
-                  </div>
-                </>
-              )}
-              {pendingFiles.length > 0 && canAddMore && (
-                <>
-                  <div className="cw-attach-menu-sep" />
-                  <div className="cw-attach-menu-limit">{pendingFiles.length}/2 attached</div>
-                </>
-              )}
+              <AttachMenuItems
+                canAddMore={canAddMore}
+                pendingFiles={pendingFiles}
+                onPickImage={() => {
+                  if (!canAddMore) return;
+                  setShowAttach(false);
+                  fileInputRef.current.value = "";
+                  fileInputRef.current.setAttribute("accept", ATTACH_TYPES.image.accept);
+                  fileInputRef.current.click();
+                }}
+                onPickDocument={() => {
+                  if (!canAddMore) return;
+                  setShowAttach(false);
+                  fileInputRef.current.value = "";
+                  fileInputRef.current.setAttribute("accept", ATTACH_TYPES.document.accept);
+                  fileInputRef.current.click();
+                }}
+                onOpenConnectors={(view) => { setShowAttach(false); onOpenConnectors(view); }}
+              />
             </div>
           )}
         </div>
@@ -2120,6 +2213,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [activityStep,   setActivityStep]   = useState(0);
   const [activitySteps,  setActivitySteps]  = useState([]);
   const [showAttach,     setShowAttach]     = useState(false);
+  const [connectorsModal, setConnectorsModal] = useState(null); // null | "browse" | "custom"
   const [pendingFiles,   setPendingFiles]   = useState([]);
   const [lightboxSrc,    setLightboxSrc]    = useState(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -2749,6 +2843,7 @@ const apiMessages = newMessages.map((m, idx) => {
     sendMessage, abortControllerRef,
     setIsThinking, setIsStreaming,
     handleTextareaPaste,
+    onOpenConnectors: (view) => setConnectorsModal(view),
   };
 
   const renderMessage = (msg) => {
@@ -3133,23 +3228,13 @@ const apiMessages = newMessages.map((m, idx) => {
             </button>
             {showAttach && (
               <div className="cw-attach-menu">
-                {!canAddMore && <div className="cw-attach-menu-limit">Max 2 files per message</div>}
-                {canAddMore && (
-                  <>
-                    <div className="cw-attach-menu-item" onClick={() => openFilePicker("image")}>
-                      {ATTACH_TYPES.image.icon}<span>Image</span>
-                      <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>jpg · png · gif</span>
-                    </div>
-                    <div className="cw-attach-menu-sep" />
-                    <div className="cw-attach-menu-item" onClick={() => openFilePicker("document")}>
-                      {ATTACH_TYPES.document.icon}<span>Document</span>
-                      <span style={{ marginLeft:"auto", fontSize:10, color:"var(--t3)" }}>pdf · doc · txt</span>
-                    </div>
-                  </>
-                )}
-                {pendingFiles.length > 0 && canAddMore && (
-                  <><div className="cw-attach-menu-sep" /><div className="cw-attach-menu-limit">{pendingFiles.length}/2 attached</div></>
-                )}
+                <AttachMenuItems
+                  canAddMore={canAddMore}
+                  pendingFiles={pendingFiles}
+                  onPickImage={() => openFilePicker("image")}
+                  onPickDocument={() => openFilePicker("document")}
+                  onOpenConnectors={(view) => { setShowAttach(false); setConnectorsModal(view); }}
+                />
               </div>
             )}
           </div>
@@ -3303,6 +3388,12 @@ const apiMessages = newMessages.map((m, idx) => {
           </div>
         </>
       )}
+
+      <ConnectorsModal
+        open={!!connectorsModal}
+        initialView={connectorsModal || "browse"}
+        onClose={() => setConnectorsModal(null)}
+      />
     </main>
   );
 }
