@@ -1192,7 +1192,10 @@ const CW_STYLE = `
   }
 
   .cw-plan-badge {
-    padding: 4px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 12px;
     border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
@@ -1204,6 +1207,19 @@ const CW_STYLE = `
   }
   @media(max-width: 400px) {
     .cw-plan-badge { display: none; }
+  }
+  .cw-plan-manage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(39,97,82,0.16);
+  }
+  .cw-plan-manage svg {
+    width: 10px;
+    height: 10px;
   }
 
   /* ── BODY ────────────────────────────────────────────── */
@@ -2999,6 +3015,13 @@ const apiMessages = newMessages.map((m, idx) => {
             title={userPlan === "pro" || userPlan === "admin" ? "Manage subscription" : ""}
           >
             {userPlan === "admin" ? "Admin" : userPlan === "pro" ? "Pro ✦" : "Free"}
+            {(userPlan === "pro" || userPlan === "admin") && (
+              <span className="cw-plan-manage">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </span>
+            )}
           </div>
           {userPlan !== "pro" && userPlan !== "admin" && (
             <button className="cw-upgrade" onClick={() => setShowPricing(true)}>Upgrade</button>

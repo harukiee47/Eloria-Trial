@@ -160,6 +160,16 @@ const SIDEBAR_STYLE = `
   }
   .acct-download:hover { background: var(--accent-bg); }
   .acct-download svg { width:15px; height:15px; flex-shrink:0; }
+  .acct-manage {
+    width:100%; display:flex; align-items:center; gap:8px;
+    padding:7px 8px; border:none; background:none;
+    color:var(--t1); font-size:13px; font-weight:500;
+    border-radius:var(--r-sm); cursor:pointer; font-family:var(--font);
+    transition: background .12s;
+    margin-bottom: 2px;
+  }
+  .acct-manage:hover { background: var(--accent-bg); }
+  .acct-manage svg { width:15px; height:15px; flex-shrink:0; }
   .acct-logout {
     width:100%; display:flex; align-items:center; gap:8px;
     padding:7px 8px; border:none; background:none;
@@ -974,7 +984,7 @@ export default function Sidebar({
   user, chats, setChats,
   activeChatId, setActiveChatId,
   onLogout, sidebarOpen, setSidebarOpen,
-  userPlan, setShowPricing,
+  userPlan, setShowPricing, setShowBilling,
   groups = [], activeGroupId, setActiveGroupId,
   pendingInviteCount = 0, setShowGroupNotifs,
   mode, setMode, createGroup, showNotifPanel, setShowNotifPanel, totalBadgeCount,
@@ -1212,6 +1222,20 @@ const openDownloadPage = () => {
     </button>
   );
 
+  /* ── shared snippet: "Manage subscription" button (opens Billing page) ── */
+  const ManageSubscriptionBtn = () => (
+    <button
+      className="acct-manage"
+      onClick={() => { setShowAcct(false); setShowBilling?.(true); }}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="1" y="4" width="22" height="16" rx="2"/>
+        <line x1="1" y1="10" x2="23" y2="10"/>
+      </svg>
+      Manage subscription
+    </button>
+  );
+
   const CloseX = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -1388,6 +1412,7 @@ const openDownloadPage = () => {
               <div className="acct-div" />
               {/* Download button — hidden inside Tauri */}
               <DownloadDesktopBtn />
+              <ManageSubscriptionBtn />
               <button className="acct-logout" onClick={(e) => {
                 e.stopPropagation();
                 setShowAcct(false);
@@ -1811,6 +1836,7 @@ const openDownloadPage = () => {
                   <div className="acct-div" />
                   {/* Download button — hidden inside Tauri */}
                   <DownloadDesktopBtn />
+                  <ManageSubscriptionBtn />
                   <button className="acct-logout" onClick={(e) => {
                     e.stopPropagation(); setShowAcct(false);
                     setTimeout(() => setShowLogout(true), 0);

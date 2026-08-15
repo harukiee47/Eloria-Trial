@@ -30,9 +30,21 @@ router.post("/checkout", express.json(), verifyUser, async (req, res) => {
 
 router.post("/cancel", verifyUser, async (req, res) => {
   try {
-    const userDoc = await db.collection("users").doc(req.user.uid).get();
-    const subId = userDoc.data()?.subscription?.id;
-    if (!subId) return res.status(400).json({ error: "No active subscription found." });
+    const userRef = db.collection("users").doc(req.user.uid);
+    const userDoc = await userRef.get();
+    const userData = userDoc.data() || {};
+    const sub = userData.subscription;
+    const subId = sub?.id;
+
+    if (userData.plan !== "pro" && userData.plan !== "admin") {
+      return res.status(400).json({ error: "You don't have an active Pro subscription." });
+    }
+    if (!subId) {
+      return res.status(400).json({ error: "No subscription ID on file for your account. Contact support." });
+    }
+    if (sub?.cancelled) {
+      return res.status(400).json({ error: "Auto-renew is already turned off." });
+    }
 
     const response = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subId}`, {
       method: "PATCH",
@@ -46,17 +58,29 @@ router.post("/cancel", verifyUser, async (req, res) => {
       }),
     });
 
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) {
+      const bodyText = await response.text();
+      console.error("Lemon Squeezy cancel failed:", response.status, bodyText);
 
-    await db.collection("users").doc(req.user.uid).set(
-      { subscription: { ...userDoc.data().subscription, cancelled: true } },
+      // Surface a useful, non-sensitive reason to the frontend instead of a generic 500.
+      let reason = `Lemon Squeezy rejected the cancel request (status ${response.status}).`;
+      if (response.status === 404) {
+        reason = "This subscription ID doesn't exist in Lemon Squeezy (likely test/placeholder data, not a real subscription).";
+      } else if (response.status === 401 || response.status === 403) {
+        reason = "The server isn't authorized to talk to Lemon Squeezy — check LEMONSQUEEZY_API_KEY.";
+      }
+      return res.status(502).json({ error: reason });
+    }
+
+    await userRef.set(
+      { subscription: { ...sub, cancelled: true } },
       { merge: true }
     );
 
     return res.json({ success: true });
   } catch (err) {
     console.error("Cancel subscription error:", err);
-    return res.status(500).json({ error: "Failed to cancel subscription." });
+    return res.status(500).json({ error: "Something went wrong on our end. Please try again." });
   }
 });
 
