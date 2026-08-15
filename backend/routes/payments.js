@@ -6,34 +6,21 @@ import { db } from "../config/firebaseAdmin.js";
 
 const router = express.Router();
 
-/**
- * POST /api/payments/checkout
- * Body: { plan: "pro_monthly" | "pro_yearly" }
- *
- * Creates a Lemon Squeezy checkout URL for the logged-in user
- * and returns it so the frontend can redirect to it.
- */
 router.post("/checkout", express.json(), verifyUser, async (req, res) => {
   try {
     const { plan } = req.body;
-
     const variantMap = {
       pro_monthly: process.env.LEMONSQUEEZY_VARIANT_PRO_MONTHLY,
       pro_yearly: process.env.LEMONSQUEEZY_VARIANT_PRO_YEARLY,
     };
-
     const variantId = variantMap[plan];
-
-    if (!variantId) {
-      return res.status(400).json({ error: "Invalid or unconfigured plan." });
-    }
+    if (!variantId) return res.status(400).json({ error: "Invalid or unconfigured plan." });
 
     const checkoutUrl = await createCheckout({
       variantId,
       uid: req.user.uid,
       email: req.user.email,
     });
-
     return res.json({ url: checkoutUrl });
   } catch (err) {
     console.error(err);
@@ -41,17 +28,38 @@ router.post("/checkout", express.json(), verifyUser, async (req, res) => {
   }
 });
 
-/**
- * POST /api/payments/webhook
- *
- * Lemon Squeezy webhook receiver. Verifies the X-Signature header
- * against the raw request body using the signing secret, then
- * updates the user's plan in Firestore based on subscription events.
- *
- * IMPORTANT: this route must receive the RAW request body (not JSON-parsed)
- * for signature verification to work. It's mounted with express.raw()
- * in server.js BEFORE the global express.json() middleware applies to it.
- */
+router.post("/cancel", verifyUser, async (req, res) => {
+  try {
+    const userDoc = await db.collection("users").doc(req.user.uid).get();
+    const subId = userDoc.data()?.subscription?.id;
+    if (!subId) return res.status(400).json({ error: "No active subscription found." });
+
+    const response = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subId}`, {
+      method: "PATCH",
+      headers: {
+        Accept: "application/vnd.api+json",
+        "Content-Type": "application/vnd.api+json",
+        Authorization: `Bearer ${process.env.LEMONSQUEEZY_API_KEY}`,
+      },
+      body: JSON.stringify({
+        data: { type: "subscriptions", id: subId, attributes: { cancelled: true } },
+      }),
+    });
+
+    if (!response.ok) throw new Error(await response.text());
+
+    await db.collection("users").doc(req.user.uid).set(
+      { subscription: { ...userDoc.data().subscription, cancelled: true } },
+      { merge: true }
+    );
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Cancel subscription error:", err);
+    return res.status(500).json({ error: "Failed to cancel subscription." });
+  }
+});
+
 router.post(
   "/webhook",
   express.raw({ type: "application/json" }),
@@ -59,22 +67,12 @@ router.post(
     try {
       const signature = req.headers["x-signature"];
       const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
-
-      if (!signature || !secret) {
-        return res.status(401).json({ error: "Missing signature." });
-      }
+      if (!signature || !secret) return res.status(401).json({ error: "Missing signature." });
 
       const hmac = crypto.createHmac("sha256", secret);
       const digest = hmac.update(req.body).digest("hex");
-
-      const isValid = crypto.timingSafeEqual(
-        Buffer.from(digest, "utf8"),
-        Buffer.from(signature, "utf8")
-      );
-
-      if (!isValid) {
-        return res.status(401).json({ error: "Invalid signature." });
-      }
+      const isValid = crypto.timingSafeEqual(Buffer.from(digest, "utf8"), Buffer.from(signature, "utf8"));
+      if (!isValid) return res.status(401).json({ error: "Invalid signature." });
 
       const payload = JSON.parse(req.body.toString("utf8"));
       const eventName = payload.meta?.event_name;
@@ -92,8 +90,8 @@ router.post(
         case "subscription_created":
         case "subscription_updated": {
           const status = payload.data?.attributes?.status;
-          // Active or trialing -> Pro. Anything else (cancelled, expired, etc) -> Free.
           const isActive = status === "active" || status === "on_trial";
+          const isCancelled = payload.data?.attributes?.cancelled === true;
 
           await ref.set(
             {
@@ -101,15 +99,16 @@ router.post(
               subscription: {
                 id: payload.data?.id,
                 status,
+                cancelled: isCancelled,
                 renewsAt: payload.data?.attributes?.renews_at || null,
                 endsAt: payload.data?.attributes?.ends_at || null,
+                reminderSent: false,
               },
             },
             { merge: true }
           );
           break;
         }
-
         case "subscription_cancelled":
         case "subscription_expired": {
           await ref.set(
@@ -125,7 +124,6 @@ router.post(
           );
           break;
         }
-
         default:
           console.log("Unhandled Lemon Squeezy event:", eventName);
       }

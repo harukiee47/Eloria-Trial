@@ -15,9 +15,11 @@
     "express": "^4.18.2",
     "firebase-admin": "^13.10.0",
     "multer": "^2.2.0",
+    "node-cron": "^4.6.0",
     "openai": "^4.20.1",
     "pptx-automizer": "^0.8.2",
-    "pptxgenjs": "^4.0.1"
+    "pptxgenjs": "^4.0.1",
+    "resend": "^6.20.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

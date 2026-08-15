@@ -12,6 +12,7 @@ import fetchUrlRoutes from "./routes/fetchUrl.route.js";
 import docsRoutes from "./routes/docs.js";
 import authRoutes from "./routes/auth.js";
 import cliAuthRoutes from "./routes/cli-auth.js";
+import { startSubscriptionCron } from "./services/subscriptionCron.js";
 
 const app = express();
 
@@ -40,4 +41,5 @@ const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
   console.log(`🔥 Eloria AI running on http://localhost:${PORT}`);
+  startSubscriptionCron();
 });

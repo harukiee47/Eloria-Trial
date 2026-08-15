@@ -2097,7 +2097,7 @@ function InputBox({
 }
 
 
-export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, userPlan, setShowNotifPanel, totalBadgeCount, allChats }) {
+export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, setShowBilling, userPlan, setShowNotifPanel, totalBadgeCount, allChats }) {
   const [input,          setInput]          = useState("");
   const [isThinking,     setIsThinking]     = useState(false);
   const [isStreaming,    setIsStreaming]     = useState(false);
@@ -2986,14 +2986,17 @@ const apiMessages = newMessages.map((m, idx) => {
             <sub>By Kairox</sub>
           </div>
         </div>
-        <div className="cw-header-right">
+<div className="cw-header-right">
           <div
             className="cw-plan-badge"
+            onClick={() => { if (userPlan === "pro" || userPlan === "admin") setShowBilling(true); }}
             style={{
               background: userPlan === "pro" || userPlan === "admin" ? "rgba(39,97,82,0.12)" : "rgba(193,127,42,.1)",
               color: "var(--accent)",
               border: userPlan === "pro" || userPlan === "admin" ? "1px solid rgba(39,97,82,.25)" : "1px solid rgba(193,127,42,.25)",
+              cursor: userPlan === "pro" || userPlan === "admin" ? "pointer" : "default",
             }}
+            title={userPlan === "pro" || userPlan === "admin" ? "Manage subscription" : ""}
           >
             {userPlan === "admin" ? "Admin" : userPlan === "pro" ? "Pro ✦" : "Free"}
           </div>

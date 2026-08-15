@@ -21,6 +21,7 @@ import ProfileSetupModal from "./components/ProfileSetupModal";
 import AuthCallback from "./components/AuthCallback";
 import HyperFrame from "./components/HyperFrame";
 import DownloadPage from "./components/Downloadpage";
+import Billing from "./components/Billing";
 
 if (window.location.pathname === "/code") {
   import("react-dom/client").then(({ createRoot }) => {
@@ -77,6 +78,7 @@ export default function App() {
   const [codeProjects, setCodeProjects]     = useState([]);
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [showPricing, setShowPricing]   = useState(false);
+  const [showBilling, setShowBilling] = useState(false);
   const [userPlan, setUserPlan]         = useState("free");
   const [sharedData, setSharedData]     = useState(null);
   const [groups, setGroups]             = useState([]);
@@ -360,6 +362,10 @@ useEffect(() => {
     return <Pricing onBack={() => setShowPricing(false)} />;
   }
 
+  if (showBilling) {
+  return <Billing onBack={() => setShowBilling(false)} />;
+}
+
   return (
     <div className="app-shell">
       {sidebarOpen && (
@@ -391,6 +397,7 @@ useEffect(() => {
         setMode={setMode}
         createGroup={handleCreateGroup}
         setShowPricing={setShowPricing}
+        setShowBilling={setShowBilling}
         createNewProject={createNewProject}
         codeProjects={codeProjects}
         activeProjectId={activeProjectId}
@@ -408,12 +415,13 @@ useEffect(() => {
             onBack={() => { setMode("chat"); setActiveGroupId(null); }}
           />
         ) : (
-          <ChatWindow
+       <ChatWindow
             user={user}
             chat={activeChat}
             setChats={setChats}
             setSidebarOpen={setSidebarOpen}
             setShowPricing={setShowPricing}
+            setShowBilling={setShowBilling}
             userPlan={userPlan}
             allChats={chats}
           />
