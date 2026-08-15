@@ -65,6 +65,43 @@ export async function sendReminderEmail(email, endsAt) {
   }
 }
 
+export async function sendCancellationFeedbackEmail({ userEmail, uid, reasons, otherText }) {
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+  if (!ADMIN_EMAIL) {
+    console.warn("ADMIN_EMAIL not set — skipping cancellation feedback email.");
+    return null;
+  }
+
+  const reasonListHtml = reasons?.length
+    ? `<ul style="margin:0 0 12px; padding-left:18px;">${reasons.map(r => `<li>${r}</li>`).join("")}</ul>`
+    : `<p style="margin:0 0 12px; color:#7a8a84;">No reasons selected.</p>`;
+
+  const html = emailShell({
+    heading: "A user turned off auto-renew",
+    bodyHtml: `
+      <p style="margin:0 0 12px;"><strong style="color:#0d3a35;">${userEmail || "Unknown email"}</strong> (uid: ${uid}) cancelled auto-renew.</p>
+      <p style="margin:0 0 8px; font-weight:600; color:#0d3a35;">Reasons given:</p>
+      ${reasonListHtml}
+      ${otherText ? `<p style="margin:0 0 4px; font-weight:600; color:#0d3a35;">Additional comments:</p><p style="margin:0; white-space:pre-wrap;">${otherText}</p>` : ""}
+    `,
+  });
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: ADMIN_EMAIL,
+      subject: `Cancellation feedback — ${userEmail || uid}`,
+      html,
+    });
+    console.log("Resend cancellation-feedback result:", JSON.stringify(result));
+    return result;
+  } catch (err) {
+    console.error("Resend cancellation-feedback FAILED:", err?.message || err);
+    // Don't throw — feedback email failing shouldn't block the cancel itself.
+    return null;
+  }
+}
+
 export async function sendExpiredEmail(email) {
   const html = emailShell({
     heading: "Your Pro membership has ended",

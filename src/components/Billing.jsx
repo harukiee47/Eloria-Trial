@@ -241,7 +241,114 @@ const styles = {
     cursor: "pointer",
     fontFamily: "inherit",
   },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(13,58,53,0.35)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    zIndex: 1000,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 440,
+    background: "#fdfaf6",
+    borderRadius: 18,
+    border: "1px solid #e4ddd5",
+    boxShadow: "0 12px 40px rgba(13,58,53,0.22)",
+    padding: "26px 26px 22px",
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: 700,
+    color: "#0d3a35",
+    margin: "0 0 6px",
+  },
+  modalSub: {
+    fontSize: 13,
+    color: "#7a8a84",
+    lineHeight: 1.5,
+    margin: "0 0 18px",
+  },
+  reasonList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    marginBottom: 14,
+  },
+  reasonRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "8px 6px",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontSize: 13.5,
+    color: "#3a5a55",
+  },
+  checkbox: {
+    width: 16,
+    height: 16,
+    accentColor: "#276152",
+    cursor: "pointer",
+    flexShrink: 0,
+  },
+  textarea: {
+    width: "100%",
+    minHeight: 64,
+    marginTop: 4,
+    marginBottom: 18,
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid #e4ddd5",
+    fontFamily: "inherit",
+    fontSize: 13,
+    color: "#0d3a35",
+    resize: "vertical",
+    boxSizing: "border-box",
+    background: "#fff",
+  },
+  modalBtnRow: {
+    display: "flex",
+    gap: 10,
+  },
+  modalKeepBtn: {
+    flex: 1,
+    padding: "11px",
+    borderRadius: 10,
+    border: "1.5px solid #d8d0c6",
+    background: "none",
+    color: "#3a5a55",
+    fontSize: 13.5,
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    padding: "11px",
+    borderRadius: 10,
+    border: "none",
+    background: "#c04040",
+    color: "#fff",
+    fontSize: 13.5,
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  },
 };
+
+const CANCEL_REASONS = [
+  "Too expensive",
+  "Not using it enough",
+  "Missing a feature I need",
+  "Switching to another tool",
+  "Ran into bugs or issues",
+  "Just trying it out / temporary",
+];
 
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#276152" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -276,6 +383,9 @@ export default function Billing({ onBack }) {
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState(null);
   const [cancelSuccess, setCancelSuccess] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedReasons, setSelectedReasons] = useState([]);
+  const [otherText, setOtherText] = useState("");
 
   const fetchStatus = async () => {
     try {
@@ -295,8 +405,13 @@ export default function Billing({ onBack }) {
 
   useEffect(() => { fetchStatus(); }, []);
 
-  const handleCancel = async () => {
-    if (!window.confirm("Turn off auto-renew? You'll keep Pro access until your current period ends, then your account moves to the Free plan.")) return;
+  const toggleReason = (reason) => {
+    setSelectedReasons((prev) =>
+      prev.includes(reason) ? prev.filter((r) => r !== reason) : [...prev, reason]
+    );
+  };
+
+  const confirmCancel = async () => {
     setCancelling(true);
     setError(null);
     setCancelSuccess(false);
@@ -304,14 +419,22 @@ export default function Billing({ onBack }) {
       const token = await auth.currentUser.getIdToken();
       const res = await fetch(`${API_BASE}/api/payments/cancel`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reasons: selectedReasons, otherText: otherText.trim() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Failed to cancel subscription.");
       setCancelSuccess(true);
+      setShowCancelModal(false);
+      setSelectedReasons([]);
+      setOtherText("");
       await fetchStatus();
     } catch (err) {
       setError(err.message || "Failed to cancel subscription. Please try again.");
+      setShowCancelModal(false);
     } finally {
       setCancelling(false);
     }
@@ -433,7 +556,7 @@ export default function Billing({ onBack }) {
                   <>
                     <button
                       style={{ ...styles.cancelBtn, opacity: cancelling ? 0.6 : 1 }}
-                      onClick={handleCancel}
+                      onClick={() => setShowCancelModal(true)}
                       disabled={cancelling}
                     >
                       {cancelling ? "Cancelling…" : "Turn off auto-renew"}
@@ -477,6 +600,57 @@ export default function Billing({ onBack }) {
           </button>
         </div>
       </div>
+
+      {showCancelModal && (
+        <div style={styles.modalOverlay} onClick={() => !cancelling && setShowCancelModal(false)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Turn off auto-renew?</h3>
+            <p style={styles.modalSub}>
+              You'll keep Pro access until {endsAt ? new Date(endsAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "your period ends"}, then your account moves to Free. This won't cancel your access right away.
+            </p>
+
+            <p style={{ ...styles.modalSub, margin: "0 0 8px", fontWeight: 600, color: "#0d3a35" }}>
+              Mind telling us why? (optional)
+            </p>
+            <div style={styles.reasonList}>
+              {CANCEL_REASONS.map((reason) => (
+                <label key={reason} style={styles.reasonRow}>
+                  <input
+                    type="checkbox"
+                    style={styles.checkbox}
+                    checked={selectedReasons.includes(reason)}
+                    onChange={() => toggleReason(reason)}
+                  />
+                  {reason}
+                </label>
+              ))}
+            </div>
+            <textarea
+              style={styles.textarea}
+              placeholder="Anything else you'd like to add? (optional)"
+              value={otherText}
+              onChange={(e) => setOtherText(e.target.value)}
+            />
+
+            <div style={styles.modalBtnRow}>
+              <button
+                style={styles.modalKeepBtn}
+                onClick={() => setShowCancelModal(false)}
+                disabled={cancelling}
+              >
+                Keep my subscription
+              </button>
+              <button
+                style={{ ...styles.modalConfirmBtn, opacity: cancelling ? 0.6 : 1 }}
+                onClick={confirmCancel}
+                disabled={cancelling}
+              >
+                {cancelling ? "Cancelling…" : "Turn off auto-renew"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

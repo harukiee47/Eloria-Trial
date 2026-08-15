@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { verifyUser } from "../middleware/auth.js";
 import { createCheckout } from "../services/lemonsqueezy.js";
 import { db } from "../config/firebaseAdmin.js";
+import { sendCancellationFeedbackEmail } from "../services/emailService.js";
 
 const router = express.Router();
 
@@ -28,8 +29,9 @@ router.post("/checkout", express.json(), verifyUser, async (req, res) => {
   }
 });
 
-router.post("/cancel", verifyUser, async (req, res) => {
+router.post("/cancel", express.json(), verifyUser, async (req, res) => {
   try {
+    const { reasons, otherText } = req.body || {};
     const userRef = db.collection("users").doc(req.user.uid);
     const userDoc = await userRef.get();
     const userData = userDoc.data() || {};
@@ -76,6 +78,14 @@ router.post("/cancel", verifyUser, async (req, res) => {
       { subscription: { ...sub, cancelled: true } },
       { merge: true }
     );
+
+    // Fire-and-forget — don't let an email hiccup block the cancel response.
+    sendCancellationFeedbackEmail({
+      userEmail: req.user.email,
+      uid: req.user.uid,
+      reasons: Array.isArray(reasons) ? reasons : [],
+      otherText: typeof otherText === "string" ? otherText.slice(0, 1000) : "",
+    }).catch(err => console.error("Cancellation feedback email failed:", err));
 
     return res.json({ success: true });
   } catch (err) {
