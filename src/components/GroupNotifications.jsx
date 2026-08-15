@@ -26,7 +26,7 @@ const NOTIF_STYLE = `
     display: flex; align-items: center; justify-content: center;
     transition: background .12s; font-size: 14px;
   }
-  .gn-hdr-close:hover { background: #f0f0ec; color: var(--t1); }
+  .gn-hdr-close:hover { background: var(--bg-card, #f0f0ec); color: var(--t1); }
 
   .gn-invite {
     display: flex; flex-direction: column; gap: 10px;
@@ -35,7 +35,7 @@ const NOTIF_STYLE = `
   .gn-invite-top { display: flex; align-items: center; gap: 10px; }
   .gn-invite-icon {
     width: 38px; height: 38px; border-radius: 11px;
-    background: linear-gradient(135deg, var(--accent), #1a5a52);
+    background: linear-gradient(135deg, var(--accent), var(--accent, #1a5a52));
     color: #fff; font-size: 15px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
@@ -57,7 +57,7 @@ const NOTIF_STYLE = `
     color: var(--t2); font-size: 13px; cursor: pointer;
     font-family: var(--font); transition: background .12s;
   }
-  .gn-decline:hover { background: #f4f4f0; }
+  .gn-decline:hover { background: var(--bg-card, #f4f4f0); }
 
   .gn-empty {
     padding: 32px 18px; text-align: center;

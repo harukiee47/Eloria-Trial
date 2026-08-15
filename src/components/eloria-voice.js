@@ -60,10 +60,10 @@ export function initVoiceModal({
 
   // ── Colors per state ──────────────────────────────────────────────────
   const STATE = {
-    idle:       { label: "Tap to speak",  colors: ["#0d3a35","#1a5a52","#0a2e29"] },
-    listening:  { label: "Listening…",    colors: ["#0d6a5e","#00b894","#0d3a35"] },
-    processing: { label: "Thinking…",     colors: ["#2d6a4f","#74c69d","#1b4332"] },
-    speaking:   { label: "Speaking…",     colors: ["#00b894","#55efc4","#0d3a35"] },
+    idle:       { label: "Tap to speak",  colors: ["var(--t1, #0d3a35)","var(--accent, #1a5a52)","#0a2e29"] },
+    listening:  { label: "Listening…",    colors: ["var(--accent, #0d6a5e)","#00b894","var(--t1, #0d3a35)"] },
+    processing: { label: "Thinking…",     colors: ["var(--accent, #2d6a4f)","#74c69d","#1b4332"] },
+    speaking:   { label: "Speaking…",     colors: ["#00b894","#55efc4","var(--t1, #0d3a35)"] },
   };
 
   // ── Canvas resize ──────────────────────────────────────────────────────
@@ -521,7 +521,7 @@ function injectStyles() {
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%);
-      background: #0d3a35;
+      background: var(--t1, #0d3a35);
       border-radius: 40px;
       padding: 10px 18px;
       display: flex;
@@ -551,7 +551,7 @@ function injectStyles() {
     .ev-greet-screen {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      background: #f5f0e8;
+      background: var(--bg-card, #f5f0e8);
       overflow: hidden;
     }
     .ev-greet-bg {
@@ -570,14 +570,14 @@ function injectStyles() {
     }
     .ev-greet-badge {
       font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
-      text-transform: uppercase; color: #0d3a35;
+      text-transform: uppercase; color: var(--t1, #0d3a35);
       background: rgba(13,58,53,0.1);
       border: 1px solid rgba(13,58,53,0.2);
       padding: 5px 14px; border-radius: 20px;
     }
     .ev-greet-text {
       font-size: clamp(40px, 10vw, 64px);
-      font-weight: 300; color: #0d3a35;
+      font-weight: 300; color: var(--t1, #0d3a35);
       margin: 0; letter-spacing: -0.03em;
       line-height: 1.05;
       font-family: Georgia, 'Times New Roman', serif;
@@ -598,7 +598,7 @@ function injectStyles() {
       position: relative;
       display: flex; flex-direction: column; align-items: center;
       gap: 8px; padding: 18px 12px;
-      background: #fff;
+      background: var(--bg-card, #fff);
       border: 1.5px solid rgba(13,58,53,0.12);
       border-radius: 16px; cursor: pointer;
       transition: all .2s; text-align: center;
@@ -610,14 +610,14 @@ function injectStyles() {
       transform: translateY(-2px);
     }
     .ev-voice-card--selected {
-      border-color: #0d3a35 !important;
+      border-color: var(--t1, #0d3a35) !important;
       background: rgba(13,58,53,0.04) !important;
       box-shadow: 0 0 0 3px rgba(13,58,53,0.12), 0 4px 20px rgba(13,58,53,0.1) !important;
     }
     .ev-voice-card--selected::after {
       content: "✓";
       position: absolute; top: 8px; right: 10px;
-      font-size: 11px; color: #0d3a35; font-weight: 700;
+      font-size: 11px; color: var(--t1, #0d3a35); font-weight: 700;
     }
     .ev-voice-avatar {
       width: 44px; height: 44px; border-radius: 50%;
@@ -626,12 +626,12 @@ function injectStyles() {
       font-family: Georgia, serif;
     }
     .ev-voice-avatar--f { background: rgba(108,92,231,0.12); color: #6C5CE7; }
-    .ev-voice-avatar--m { background: rgba(13,58,53,0.12); color: #0d3a35; }
+    .ev-voice-avatar--m { background: rgba(13,58,53,0.12); color: var(--t1, #0d3a35); }
     .ev-voice-name { font-size: 13px; font-weight: 700; color: #1a2e20; }
     .ev-voice-desc { font-size: 10.5px; color: #8a9e8e; }
     .ev-voice-loading-dot {
       width: 6px; height: 6px; border-radius: 50%;
-      background: #0d3a35; opacity: 0;
+      background: var(--t1, #0d3a35); opacity: 0;
       transition: opacity .2s;
     }
     .ev-voice-card--loading .ev-voice-loading-dot {
@@ -641,7 +641,7 @@ function injectStyles() {
     /* ── CONTINUE BUTTON ── */
     .ev-continue-btn {
       padding: 14px 48px;
-      background: #0d3a35; color: #f5f0e8;
+      background: var(--t1, #0d3a35); color: #f5f0e8;
       border: none; border-radius: 40px;
       font-size: 15px; font-weight: 600;
       cursor: pointer; letter-spacing: 0.02em;
@@ -650,7 +650,7 @@ function injectStyles() {
       margin-top: 4px;
     }
     .ev-continue-btn:hover {
-      background: #1a5a52;
+      background: var(--accent, #1a5a52);
       box-shadow: 0 6px 28px rgba(13,58,53,0.4);
       transform: translateY(-1px);
     }
@@ -659,7 +659,7 @@ function injectStyles() {
     .ev-main-screen {
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
-      background: #f5f0e8;
+      background: var(--bg-card, #f5f0e8);
       overflow: hidden;
     }
 
@@ -669,7 +669,7 @@ function injectStyles() {
       padding: 16px 20px; flex-shrink: 0; z-index: 10;
     }
     .ev-topbar-label {
-      font-size: 13px; font-weight: 700; color: #0d3a35;
+      font-size: 13px; font-weight: 700; color: var(--t1, #0d3a35);
       letter-spacing: 0.04em; text-transform: uppercase;
     }
     .ev-topbar-actions { display: flex; gap: 8px; }
@@ -677,7 +677,7 @@ function injectStyles() {
       width: 34px; height: 34px; border-radius: 50%;
       background: rgba(13,58,53,0.08);
       border: 1px solid rgba(13,58,53,0.15);
-      color: #0d3a35; cursor: pointer;
+      color: var(--t1, #0d3a35); cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       transition: background .15s;
     }
@@ -707,8 +707,8 @@ function injectStyles() {
       transition: color .4s, opacity .3s;
     }
     .ev-status--idle       { color: rgba(13,58,53,0.4); }
-    .ev-status--listening  { color: #0d6a5e; }
-    .ev-status--processing { color: #2d6a4f; animation: evFade 1.2s ease-in-out infinite alternate; }
+    .ev-status--listening  { color: var(--accent, #0d6a5e); }
+    .ev-status--processing { color: var(--accent, #2d6a4f); animation: evFade 1.2s ease-in-out infinite alternate; }
     .ev-status--speaking   { color: #00b894; }
 
     .ev-transcript-text {

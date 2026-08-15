@@ -10,37 +10,37 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 const HF_STYLE = `
   .hf-root {
     display: flex; flex-direction: column; height: 100dvh; overflow: hidden;
-    background: #FBF6F0;
+    background: var(--bg-card, #fbf6f0);
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    color: #0D3A35; font-size: 13px;
+    color: var(--t1, #0d3a35); font-size: 13px;
   }
 
   /* TOPBAR */
   .hf-topbar {
     height: 48px; min-height: 48px;
     display: flex; align-items: center; padding: 0 16px; gap: 10px;
-    background: #FBF6F0; border-bottom: 1px solid #dde0d9;
+    background: var(--bg-card, #fbf6f0); border-bottom: 1px solid var(--border-soft, #dde0d9);
     flex-shrink: 0; z-index: 10;
   }
   .hf-topbar-logo { width: 22px; height: 22px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
   .hf-topbar-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .hf-topbar-title { font-size: 13.5px; font-weight: 600; color: #0D3A35; letter-spacing: -.01em; }
+  .hf-topbar-title { font-size: 13.5px; font-weight: 600; color: var(--t1, #0d3a35); letter-spacing: -.01em; }
   .hf-topbar-sep { width: 1px; height: 16px; background: #dde0d9; }
   .hf-topbar-badge {
     display: flex; align-items: center; gap: 5px;
     padding: 3px 10px; border-radius: 20px;
     background: #eaf2ef; border: 1px solid rgba(39,97,82,0.25);
-    font-size: 11px; font-weight: 600; color: #276152; letter-spacing: .04em;
+    font-size: 11px; font-weight: 600; color: var(--accent, #276152); letter-spacing: .04em;
   }
   .hf-topbar-spacer { flex: 1; }
   .hf-back-btn {
     display: flex; align-items: center; gap: 6px;
     padding: 5px 12px; border-radius: 8px;
-    background: none; border: 1px solid #cdd0c9;
-    font-size: 12px; font-weight: 600; color: #3a5a55;
+    background: none; border: 1px solid var(--border-soft, #cdd0c9);
+    font-size: 12px; font-weight: 600; color: var(--t2, #3a5a55);
     cursor: pointer; font-family: inherit; transition: all .13s;
   }
-  .hf-back-btn:hover { background: #eaf2ef; border-color: rgba(39,97,82,0.3); color: #276152; }
+  .hf-back-btn:hover { background: #eaf2ef; border-color: rgba(39,97,82,0.3); color: var(--accent, #276152); }
   .hf-back-btn svg { width: 13px; height: 13px; }
 
   /* BODY SHELL */
@@ -51,7 +51,7 @@ const HF_STYLE = `
   /* LEFT — preview + timeline */
   .hf-left {
     flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
-    border-right: 1px solid #dde0d9;
+    border-right: 1px solid var(--border-soft, #dde0d9);
   }
 
   /* VIDEO PREVIEW */
@@ -77,7 +77,7 @@ const HF_STYLE = `
   .hf-preview-empty-sub { font-size: 12px; color: rgba(255,255,255,0.25); line-height: 1.6; }
   .hf-open-btn {
     padding: 9px 20px; border-radius: 10px;
-    background: #276152; border: none;
+    background: var(--accent, #276152); border: none;
     font-size: 13px; font-weight: 600; color: #fff;
     cursor: pointer; font-family: inherit; transition: opacity .13s;
   }
@@ -104,22 +104,22 @@ const HF_STYLE = `
     flex: 1; height: 3px; background: rgba(255,255,255,0.2);
     border-radius: 2px; cursor: pointer; position: relative;
   }
-  .hf-vid-progress-fill { height: 100%; background: #276152; border-radius: 2px; pointer-events: none; }
+  .hf-vid-progress-fill { height: 100%; background: var(--accent, #276152); border-radius: 2px; pointer-events: none; }
 
   /* TIMELINE */
   .hf-timeline {
-    flex-shrink: 0; height: 110px; background: #fdfaf6;
-    border-top: 1px solid #dde0d9; padding: 12px 16px;
+    flex-shrink: 0; height: 110px; background: var(--bg-card, #fdfaf6);
+    border-top: 1px solid var(--border-soft, #dde0d9); padding: 12px 16px;
     display: flex; flex-direction: column; gap: 8px;
   }
   .hf-timeline-label {
-    font-size: 10.5px; font-weight: 600; color: #7a8a84; letter-spacing: .05em; text-transform: uppercase;
+    font-size: 10.5px; font-weight: 600; color: var(--t3, #7a8a84); letter-spacing: .05em; text-transform: uppercase;
     display: flex; align-items: center; justify-content: space-between;
   }
   .hf-timeline-track {
     position: relative; height: 36px; background: #f0ede8;
     border-radius: 8px; overflow: visible; cursor: pointer;
-    border: 1px solid #dde0d9;
+    border: 1px solid var(--border-soft, #dde0d9);
   }
   .hf-timeline-fill {
     position: absolute; top: 0; bottom: 0;
@@ -128,7 +128,7 @@ const HF_STYLE = `
   }
   .hf-trim-handle {
     position: absolute; top: 0; bottom: 0; width: 10px;
-    background: #276152; border-radius: 4px;
+    background: var(--accent, #276152); border-radius: 4px;
     cursor: ew-resize; z-index: 2;
     display: flex; align-items: center; justify-content: center;
   }
@@ -138,57 +138,57 @@ const HF_STYLE = `
   }
   .hf-playhead {
     position: absolute; top: -4px; bottom: -4px; width: 2px;
-    background: #c04040; border-radius: 1px; pointer-events: none; z-index: 3;
+    background: var(--danger, #c04040); border-radius: 1px; pointer-events: none; z-index: 3;
   }
   .hf-playhead::before {
     content: ''; position: absolute; top: 0; left: 50%;
     transform: translateX(-50%);
-    width: 8px; height: 8px; background: #c04040; border-radius: 50%;
+    width: 8px; height: 8px; background: var(--danger, #c04040); border-radius: 50%;
   }
   .hf-timeline-info {
     display: flex; gap: 16px; align-items: center;
   }
   .hf-timeline-chip {
-    font-size: 11px; color: #3a5a55; background: #eaf2ef;
+    font-size: 11px; color: var(--t2, #3a5a55); background: #eaf2ef;
     border: 1px solid rgba(39,97,82,0.2); border-radius: 6px;
     padding: 3px 9px; font-variant-numeric: tabular-nums;
   }
-  .hf-timeline-chip span { color: #7a8a84; margin-right: 4px; }
+  .hf-timeline-chip span { color: var(--t3, #7a8a84); margin-right: 4px; }
 
   /* PROGRESS BAR */
   .hf-progress-wrap {
-    flex-shrink: 0; padding: 0 16px 10px; background: #fdfaf6;
+    flex-shrink: 0; padding: 0 16px 10px; background: var(--bg-card, #fdfaf6);
   }
   .hf-progress-bar {
     height: 4px; background: #e8e4de; border-radius: 2px; overflow: hidden;
   }
   .hf-progress-fill {
-    height: 100%; background: #276152; border-radius: 2px;
+    height: 100%; background: var(--accent, #276152); border-radius: 2px;
     transition: width .3s ease;
   }
   .hf-progress-label {
-    font-size: 10.5px; color: #7a8a84; margin-top: 4px;
+    font-size: 10.5px; color: var(--t3, #7a8a84); margin-top: 4px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
   /* RIGHT — AI chat */
   .hf-right {
     flex: 0 0 320px; display: flex; flex-direction: column; overflow: hidden;
-    background: #FBF6F0;
+    background: var(--bg-card, #fbf6f0);
   }
   .hf-chat-header {
     height: 50px; min-height: 50px; padding: 0 16px;
     display: flex; align-items: center; gap: 8px;
-    border-bottom: 1px solid #dde0d9; flex-shrink: 0;
+    border-bottom: 1px solid var(--border-soft, #dde0d9); flex-shrink: 0;
   }
   .hf-chat-header-icon {
     width: 26px; height: 26px; border-radius: 7px;
     background: #eaf2ef; border: 1px solid rgba(39,97,82,0.2);
-    display: flex; align-items: center; justify-content: center; color: #276152;
+    display: flex; align-items: center; justify-content: center; color: var(--accent, #276152);
   }
   .hf-chat-header-icon svg { width: 13px; height: 13px; }
-  .hf-chat-header-title { font-size: 13px; font-weight: 600; color: #0D3A35; }
-  .hf-chat-header-sub { font-size: 11px; color: #7a8a84; }
+  .hf-chat-header-title { font-size: 13px; font-weight: 600; color: var(--t1, #0d3a35); }
+  .hf-chat-header-sub { font-size: 11px; color: var(--t3, #7a8a84); }
 
   .hf-chat-body {
     flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px;
@@ -201,18 +201,18 @@ const HF_STYLE = `
   .hf-chat-empty {
     flex: 1; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 10px; text-align: center; padding: 24px;
-    color: #7a8a84;
+    color: var(--t3, #7a8a84);
   }
-  .hf-chat-empty-title { font-size: 13px; font-weight: 600; color: #3a5a55; }
+  .hf-chat-empty-title { font-size: 13px; font-weight: 600; color: var(--t2, #3a5a55); }
   .hf-chat-empty-sub { font-size: 12px; line-height: 1.6; }
   .hf-suggestions { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 4px; }
   .hf-suggestion {
     padding: 8px 12px; border-radius: 8px; text-align: left;
-    background: #fff; border: 1px solid #dde0d9;
-    font-size: 12px; color: #3a5a55; cursor: pointer; font-family: inherit;
+    background: var(--bg-card, #fff); border: 1px solid var(--border-soft, #dde0d9);
+    font-size: 12px; color: var(--t2, #3a5a55); cursor: pointer; font-family: inherit;
     transition: all .12s;
   }
-  .hf-suggestion:hover { background: #eaf2ef; border-color: rgba(39,97,82,0.3); color: #276152; }
+  .hf-suggestion:hover { background: #eaf2ef; border-color: rgba(39,97,82,0.3); color: var(--accent, #276152); }
 
   @keyframes hfFadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
 
@@ -223,7 +223,7 @@ const HF_STYLE = `
 
   .hf-avatar {
     width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0; overflow: hidden;
-    border: 1.5px solid rgba(39,97,82,0.2); background: #faf8f4;
+    border: 1.5px solid rgba(39,97,82,0.2); background: var(--bg-card, #faf8f4);
   }
   .hf-avatar img { width: 100%; height: 100%; object-fit: contain; }
 
@@ -233,18 +233,18 @@ const HF_STYLE = `
     max-width: 240px;
   }
   .hf-msg-row.user .hf-bubble {
-    background: #276152; color: #fff; border-bottom-right-radius: 4px;
+    background: var(--accent, #276152); color: #fff; border-bottom-right-radius: 4px;
   }
   .hf-msg-row.ai .hf-bubble {
-    background: #fff; color: #0D3A35;
-    border: 1px solid #e8e4de; border-bottom-left-radius: 4px;
+    background: var(--bg-card, #fff); color: var(--t1, #0d3a35);
+    border: 1px solid var(--border-soft, #e8e4de); border-bottom-left-radius: 4px;
   }
-  .hf-msg-time { font-size: 10px; color: #7a8a84; margin-top: 2px; padding: 0 2px; }
+  .hf-msg-time { font-size: 10px; color: var(--t3, #7a8a84); margin-top: 2px; padding: 0 2px; }
 
   /* run button inside AI bubble */
   .hf-run-btn {
     margin-top: 8px; padding: 6px 14px; border-radius: 7px;
-    background: #0d3a35; border: none; color: #fff;
+    background: var(--t1, #0d3a35); border: none; color: #fff;
     font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
     transition: opacity .12s; display: flex; align-items: center; gap: 6px;
   }
@@ -256,7 +256,7 @@ const HF_STYLE = `
   .hf-thinking { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
   .hf-thinking-dots { display: flex; gap: 4px; }
   .hf-thinking-dots span {
-    width: 5px; height: 5px; border-radius: 50%; background: #276152;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--accent, #276152);
     opacity: .4; animation: hfDot 1.2s ease-in-out infinite;
   }
   .hf-thinking-dots span:nth-child(2) { animation-delay: .2s; }
@@ -266,10 +266,10 @@ const HF_STYLE = `
   /* INPUT */
   .hf-input-wrap {
     flex-shrink: 0; padding: 8px 14px 14px;
-    border-top: 1px solid #dde0d9; background: #FBF6F0;
+    border-top: 1px solid var(--border-soft, #dde0d9); background: var(--bg-card, #fbf6f0);
   }
   .hf-input-box {
-    background: #fafaf8; border: 1.5px solid #cdd0c9;
+    background: var(--bg-card, #fafaf8); border: 1.5px solid var(--border-soft, #cdd0c9);
     border-radius: 14px; padding: 9px 10px;
     display: flex; align-items: flex-end; gap: 8px;
     transition: border-color .15s, box-shadow .15s;
@@ -278,39 +278,39 @@ const HF_STYLE = `
   .hf-input-box:focus-within {
     border-color: rgba(13,58,53,.35);
     box-shadow: 0 0 0 3px rgba(13,58,53,.07);
-    background: #fff;
+    background: var(--bg-card, #fff);
   }
   .hf-textarea {
     flex: 1; border: none; background: none; outline: none;
-    font-family: inherit; font-size: 13px; color: #0D3A35;
+    font-family: inherit; font-size: 13px; color: var(--t1, #0d3a35);
     resize: none; min-height: 20px; max-height: 100px; line-height: 1.5;
-    overflow-y: auto; caret-color: #276152;
+    overflow-y: auto; caret-color: var(--accent, #276152);
   }
-  .hf-textarea::placeholder { color: #7a8a84; }
+  .hf-textarea::placeholder { color: var(--t3, #7a8a84); }
   .hf-send {
     width: 30px; height: 30px; border-radius: 50%;
-    background: #0d3a35; border: none; cursor: pointer;
+    background: var(--t1, #0d3a35); border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; color: #fff; transition: opacity .13s, transform .1s;
   }
   .hf-send:hover:not(:disabled) { opacity: .85; transform: scale(1.05); }
   .hf-send:disabled { opacity: .3; cursor: default; }
   .hf-send svg { width: 13px; height: 13px; }
-  .hf-hint { font-size: 10.5px; color: #7a8a84; text-align: center; margin-top: 6px; }
+  .hf-hint { font-size: 10.5px; color: var(--t3, #7a8a84); text-align: center; margin-top: 6px; }
 
   /* output result */
   .hf-result {
     margin-top: 8px; padding: 9px 12px; border-radius: 9px;
     background: #f0faf5; border: 1px solid rgba(39,97,82,0.25);
-    font-size: 12px; color: #276152; line-height: 1.5;
+    font-size: 12px; color: var(--accent, #276152); line-height: 1.5;
   }
   .hf-result.error {
-    background: #fff5f5; border-color: rgba(192,64,64,0.25); color: #c04040;
+    background: #fff5f5; border-color: rgba(192,64,64,0.25); color: var(--danger, #c04040);
   }
   .hf-result-label { font-weight: 600; margin-bottom: 3px; }
   .hf-result-path {
     font-family: 'SF Mono', Consolas, monospace; font-size: 11px;
-    word-break: break-all; color: #3a5a55;
+    word-break: break-all; color: var(--t2, #3a5a55);
   }
 `;
 
@@ -939,7 +939,7 @@ If the user asks something that is not a video edit, answer helpfully in plain t
   // ── Render ────────────────────────────────────────────────────────────────
   if (!authReady) return null;
   if (!uid) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100dvh", background: "#FBF6F0", fontSize: 13, color: "#7a8a84" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100dvh", background: "var(--bg-card, #fbf6f0)", fontSize: 13, color: "var(--t3, #7a8a84)" }}>
       Please log in to use HyperFrame.
     </div>
   );
@@ -1015,7 +1015,7 @@ If the user asks something that is not a video edit, answer helpfully in plain t
           <div className="hf-timeline">
             <div className="hf-timeline-label">
               <span>Timeline</span>
-              {videoPath && <span style={{ fontWeight: 400, color: "#7a8a84", fontSize: 10, textTransform: "none" }}>{videoPath.split(/[\\/]/).pop()}</span>}
+              {videoPath && <span style={{ fontWeight: 400, color: "var(--t3, #7a8a84)", fontSize: 10, textTransform: "none" }}>{videoPath.split(/[\\/]/).pop()}</span>}
             </div>
             <div
               className="hf-timeline-track"
@@ -1155,52 +1155,52 @@ If the user asks something that is not a video edit, answer helpfully in plain t
           </div>
 
           {/* YouTube/TikTok downloader */}
-<div style={{ padding: "10px 14px", borderTop: "1px solid #dde0d9", background: "#fdfaf6" }}>
-  <div style={{ fontSize: 11, fontWeight: 600, color: "#7a8a84", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Download from URL</div>
+<div style={{ padding: "10px 14px", borderTop: "1px solid var(--border-soft, #dde0d9)", background: "var(--bg-card, #fdfaf6)" }}>
+  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t3, #7a8a84)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Download from URL</div>
   <div style={{ display: "flex", gap: 6 }}>
     <input
       value={ytUrl}
       onChange={e => setYtUrl(e.target.value)}
       placeholder="YouTube or TikTok URL…"
-      style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1.5px solid #cdd0c9", background: "#fff", fontSize: 12, color: "#0D3A35", outline: "none", fontFamily: "inherit" }}
+      style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-soft, #cdd0c9)", background: "var(--bg-card, #fff)", fontSize: 12, color: "var(--t1, #0d3a35)", outline: "none", fontFamily: "inherit" }}
       onKeyDown={e => { if (e.key === "Enter") downloadFromUrl(); }}
     />
     <button
       onClick={downloadFromUrl}
       disabled={!ytUrl.trim() || isDownloading}
-      style={{ padding: "7px 12px", borderRadius: 8, background: "#0d3a35", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!ytUrl.trim() || isDownloading) ? .4 : 1, fontFamily: "inherit" }}
+      style={{ padding: "7px 12px", borderRadius: 8, background: "var(--t1, #0d3a35)", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!ytUrl.trim() || isDownloading) ? .4 : 1, fontFamily: "inherit" }}
     >
       {isDownloading ? "…" : "Get"}
     </button>
   </div>
   {downloadResult && (
-    <div style={{ marginTop: 6, fontSize: 11, color: downloadResult.ok ? "#276152" : "#c04040" }}>
+    <div style={{ marginTop: 6, fontSize: 11, color: downloadResult.ok ? "var(--accent, #276152)" : "var(--danger, #c04040)" }}>
       {downloadResult.ok ? `Saved to: ${downloadResult.dir}` : downloadResult.msg}
     </div>
   )}
 </div>
 
 {/* AI Video Builder */}
-<div style={{ padding: "10px 14px", borderTop: "1px solid #dde0d9", background: "#fdfaf6" }}>
-  <div style={{ fontSize: 11, fontWeight: 600, color: "#7a8a84", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>AI Video from Voiceover</div>
+<div style={{ padding: "10px 14px", borderTop: "1px solid var(--border-soft, #dde0d9)", background: "var(--bg-card, #fdfaf6)" }}>
+  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t3, #7a8a84)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>AI Video from Voiceover</div>
   <input ref={voiceInputRef} type="file" accept=".mp3,.wav,.m4a,.aac" style={{ display: "none" }} />
   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
     <button
       onClick={openVoiceover}
-      style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1.5px solid #cdd0c9", background: "#fff", fontSize: 12, color: voiceoverPath ? "#276152" : "#7a8a84", cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+      style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-soft, #cdd0c9)", background: "var(--bg-card, #fff)", fontSize: 12, color: voiceoverPath ? "var(--accent, #276152)" : "var(--t3, #7a8a84)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
     >
       {voiceoverPath ? voiceoverPath.split(/[\\/]/).pop() : "Pick voiceover audio…"}
     </button>
     <button
       onClick={buildAiVideo}
       disabled={!voiceoverPath || isBuildingVideo}
-      style={{ padding: "7px 12px", borderRadius: 8, background: "#276152", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!voiceoverPath || isBuildingVideo) ? .4 : 1, fontFamily: "inherit", whiteSpace: "nowrap" }}
+      style={{ padding: "7px 12px", borderRadius: 8, background: "var(--accent, #276152)", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!voiceoverPath || isBuildingVideo) ? .4 : 1, fontFamily: "inherit", whiteSpace: "nowrap" }}
     >
       {isBuildingVideo ? "Building…" : "Build video"}
     </button>
   </div>
   {transcript && (
-    <div style={{ marginTop: 6, fontSize: 11, color: "#276152" }}>
+    <div style={{ marginTop: 6, fontSize: 11, color: "var(--accent, #276152)" }}>
       {transcript.length} segments transcribed
     </div>
   )}

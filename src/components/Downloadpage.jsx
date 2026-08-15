@@ -9,13 +9,13 @@ const STYLE = `
     --font: 'DM Sans', system-ui, sans-serif;
     --bg:          #f5f0ea;
     --bg-card:     #fdfaf6;
-    --border:      #cdd0c9;
-    --border-soft: #dde0d9;
-    --t1: #0D3A35;
-    --t2: #3a5a55;
-    --t3: #7a8a84;
-    --green-dark:  #0d3a35;
-    --green-mid:   #1d6152;
+    --border:      var(--border-soft, #cdd0c9);
+    --border-soft: var(--border-soft, #dde0d9);
+    --t1: var(--t1, #0d3a35);
+    --t2: var(--t2, #3a5a55);
+    --t3: var(--t3, #7a8a84);
+    --green-dark:  var(--t1, #0d3a35);
+    --green-mid:   var(--accent, #1d6152);
     --r-md: 10px;
     --r-lg: 16px;
     --r-xl: 24px;
@@ -71,7 +71,7 @@ const STYLE = `
     transition: background .12s, color .12s;
     text-decoration: none;
   }
-  .dl-back:hover { background: #eeece8; color: var(--t1); }
+  .dl-back:hover { background: var(--bg-card, #eeece8); color: var(--t1); }
   .dl-back svg { width: 14px; height: 14px; }
 
   /* PAGE */

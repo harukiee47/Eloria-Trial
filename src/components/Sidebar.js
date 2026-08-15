@@ -12,6 +12,8 @@ const GLOBAL_STYLE = `
   --bg-strip:    #ede8e1;
   --bg-panel:    #fdfaf6;
   --bg-chat:     #FBF6F0;
+  --bg-card:     #ffffff;
+  --bg-card-2:   #faf7f2;
   --border:      #cdd0c9;
   --border-soft: #dde0d9;
   --t1: #0D3A35;
@@ -20,6 +22,7 @@ const GLOBAL_STYLE = `
   --accent:      #276152;
   --accent-bg:   #eaf2ef;
   --accent-deep: #1a4a3d;
+  --accent-fg:   #ffffff;
   --danger:      #c04040;
   --danger-bg:   #fdf0f0;
   --strip-w:     64px;
@@ -29,24 +32,31 @@ const GLOBAL_STYLE = `
   --r-lg: 16px;
   --shadow-panel: 2px 0 24px rgba(13,58,53,0.10);
   --shadow-pop:   0 8px 32px rgba(13,58,53,0.14);
+  color-scheme: light;
 }
+/* Dark theme: neutral black/white surfaces, green reserved for primary actions —
+   matches the Claude / ChatGPT dark-mode convention. */
 [data-theme="dark"] {
-  --bg-app:      #14201d;
-  --bg-strip:    #101a17;
-  --bg-panel:    #182521;
-  --bg-chat:     #131e1b;
-  --border:      #2a3a35;
-  --border-soft: #24322d;
-  --t1: #eef3f1;
-  --t2: #b7c7c1;
-  --t3: #7f9791;
-  --accent:      #4fae94;
-  --accent-bg:   #1f3630;
-  --accent-deep: #6cc6ab;
-  --danger:      #e07a7a;
-  --danger-bg:   #3a2222;
-  --shadow-panel: 2px 0 24px rgba(0,0,0,0.35);
-  --shadow-pop:   0 8px 32px rgba(0,0,0,0.45);
+  --bg-app:      #0e0f0e;
+  --bg-strip:    #161716;
+  --bg-panel:    #1a1b1a;
+  --bg-chat:     #0e0f0e;
+  --bg-card:     #212221;
+  --bg-card-2:   #262726;
+  --border:      #333433;
+  --border-soft: #2a2b2a;
+  --t1: #f2f2f0;
+  --t2: #c7c8c5;
+  --t3: #8c8d8a;
+  --accent:      #3fb083;
+  --accent-bg:   #17251f;
+  --accent-deep: #57c797;
+  --accent-fg:   #06110c;
+  --danger:      #e5787a;
+  --danger-bg:   #2a1717;
+  --shadow-panel: 2px 0 24px rgba(0,0,0,0.45);
+  --shadow-pop:   0 8px 32px rgba(0,0,0,0.55);
+  color-scheme: dark;
 }
   html, body, #root {
     height: 100%;

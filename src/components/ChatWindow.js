@@ -1758,7 +1758,7 @@ const CW_STYLE = `
     font-family:var(--font); font-size:14px; color:var(--t1);
     resize:none; min-height:22px; max-height:120px;
     line-height:1.55; overflow-y:auto; scrollbar-width:thin;
-    caret-color: #0d3a35;
+    caret-color: var(--accent);
   }
   .cw-textarea::placeholder { color:var(--t3); }
   @media(max-width: 640px) {
@@ -1770,48 +1770,49 @@ const CW_STYLE = `
     width:32px; height:32px; border:none; border-radius:50%;
     background: none; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
-    color:var(--t3); transition:background .12s, color .12s;
+    color:var(--t3); transition:background .14s ease, color .14s ease, transform .12s ease;
   }
-  .cw-attach-btn:hover { background:#f0ede6; color:var(--accent); }
+  .cw-attach-btn:hover { background:var(--accent-bg); color:var(--accent); }
+  .cw-attach-btn:active { transform: scale(.92); }
   .cw-attach-btn.has-files { color: var(--accent); }
   .cw-attach-btn svg  { width:17px; height:17px; }
 
   .cw-attach-menu {
-    position:absolute; bottom:calc(100% + 8px); left:0;
-    background:#fff; border:1px solid #e8e6e0;
-    border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
-    padding:6px; width:220px; z-index:200;
-    animation:cwMenuIn .12s ease;
+    position:absolute; bottom:calc(100% + 10px); left:0;
+    background:var(--bg-panel); border:1px solid var(--border-soft);
+    border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
+    padding:6px; width:228px; z-index:200;
+    animation:cwMenuIn .16s cubic-bezier(.2,.8,.2,1);
   }
   @media(max-width: 640px) {
-    .cw-attach-menu { left: 0; right: auto; width: 200px; }
+    .cw-attach-menu { left: 0; right: auto; width: 208px; }
   }
   @keyframes cwMenuIn {
-    from { opacity:0; transform:translateY(6px) scale(.97); }
+    from { opacity:0; transform:translateY(8px) scale(.96); }
     to   { opacity:1; transform:translateY(0) scale(1); }
   }
   .cw-attach-menu-item {
     display:flex; align-items:center; gap:10px;
     padding:9px 10px; font-size:13px; color:var(--t1);
-    border-radius:10px; cursor:pointer;
-    transition:background .11s; font-family:var(--font); font-weight: 500;
+    border-radius:11px; cursor:pointer;
+    transition: background .13s ease, color .13s ease; font-family:var(--font); font-weight: 500;
   }
-  .cw-attach-menu-item:hover { background:#faf7f2; color: var(--accent); }
-  .cw-attach-menu-item svg { width:16px; height:16px; flex-shrink:0; color:var(--t3); }
+  .cw-attach-menu-item:hover { background:var(--accent-bg); color: var(--accent); }
+  .cw-attach-menu-item svg { width:16px; height:16px; flex-shrink:0; color:var(--t3); transition: color .13s ease; }
   .cw-attach-menu-item:hover svg { color: var(--accent); }
   .cw-attach-menu-item-label { display:flex; flex-direction:column; min-width:0; flex:1; }
   .cw-attach-menu-item-title { line-height:1.25; }
   .cw-attach-menu-item-sub { font-size:10.5px; color:var(--t3); font-weight:400; line-height:1.3; }
-  .cw-attach-menu-sep { height:1px; background:#f0ede8; margin:4px 6px; }
+  .cw-attach-menu-sep { height:1px; background:var(--border-soft); margin:5px 6px; }
   .cw-attach-menu-limit { font-size:10.5px; color:var(--t3); padding:5px 10px 6px; font-family:var(--font); }
 
   .cw-attach-connectors-wrap { position:relative; }
   .cw-attach-flyout {
-    position:absolute; left:calc(100% + 6px); top:-6px;
-    background:#fff; border:1px solid #e8e6e0;
-    border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
-    padding:6px; width:200px; z-index:210;
-    animation:cwMenuIn .12s ease;
+    position:absolute; left:calc(100% + 8px); top:-6px;
+    background:var(--bg-panel); border:1px solid var(--border-soft);
+    border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
+    padding:6px; width:204px; z-index:210;
+    animation:cwMenuIn .16s cubic-bezier(.2,.8,.2,1);
   }
   @media(max-width: 640px) {
     .cw-attach-flyout { left: 0; top: calc(100% + 4px); }
@@ -1820,13 +1821,13 @@ const CW_STYLE = `
   /* send button */
   .cw-send {
     width:34px; height:34px; border-radius:50%;
-    background:#0d3a35; border:none; cursor:pointer;
+    background: var(--accent); border:none; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
-    flex-shrink:0; color:#fff;
-    transition:opacity .13s, box-shadow .13s, transform .1s;
+    flex-shrink:0; color: var(--accent-fg);
+    transition:opacity .13s, box-shadow .13s, transform .1s, background .14s ease;
   }
   .cw-send:hover:not(:disabled) {
-    opacity:.88; box-shadow:0 3px 14px rgba(13,58,53,.35); transform: scale(1.05);
+    background: var(--accent-deep); box-shadow:0 3px 14px rgba(39,97,82,.35); transform: scale(1.05);
   }
   .cw-send:disabled { opacity:.3; cursor:default; }
   .cw-send svg { width:15px; height:15px; }

@@ -12,19 +12,19 @@ const animationCss = `
   .bl-back-btn:hover { transform: translateX(-2px); opacity: 0.75; }
   .bl-back-btn:active { transform: translateX(-2px) scale(0.96); }
 
-  .bl-cancel-btn:hover:not(:disabled) { background: #fdf0f0; border-color: #d97d7d; }
+  .bl-cancel-btn:hover:not(:disabled) { background: var(--danger-bg, #fdf0f0); border-color: #d97d7d; }
   .bl-cancel-btn:active:not(:disabled) { transform: scale(0.97); }
 
   .bl-upgrade-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(13,58,53,0.28); }
   .bl-upgrade-btn:active { transform: translateY(0) scale(0.98); box-shadow: 0 4px 10px rgba(13,58,53,0.2); }
 
-  .bl-modal-keep-btn:hover:not(:disabled) { background: #f5f2ed; border-color: #c7bdae; }
+  .bl-modal-keep-btn:hover:not(:disabled) { background: var(--bg-card, #f5f2ed); border-color: #c7bdae; }
   .bl-modal-keep-btn:active:not(:disabled) { transform: scale(0.97); }
 
   .bl-modal-confirm-btn:hover:not(:disabled) { background: #a83535; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(192,64,64,0.3); }
   .bl-modal-confirm-btn:active:not(:disabled) { transform: translateY(0) scale(0.97); box-shadow: none; }
 
-  .bl-reason-row:hover { background: #f5f2ed; }
+  .bl-reason-row:hover { background: var(--bg-card, #f5f2ed); }
 
   @keyframes bl-modal-in {
     from { opacity: 0; transform: translateY(10px) scale(0.98); }
@@ -43,7 +43,7 @@ const animationCss = `
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#f5f0ea",
+    background: "var(--bg-card, #f5f0ea)",
     fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     padding: "32px 20px 60px",
   },
@@ -63,7 +63,7 @@ const styles = {
     gap: 6,
     background: "none",
     border: "none",
-    color: "#3a5a55",
+    color: "var(--t2, #3a5a55)",
     fontSize: 13,
     fontWeight: 500,
     cursor: "pointer",
@@ -81,25 +81,25 @@ const styles = {
   brandName: {
     fontSize: 12.5,
     fontWeight: 600,
-    color: "#7a8a84",
+    color: "var(--t3, #7a8a84)",
     letterSpacing: "0.01em",
   },
   pageHeading: {
     fontSize: 26,
     fontWeight: 700,
-    color: "#0d3a35",
+    color: "var(--t1, #0d3a35)",
     letterSpacing: "-0.02em",
     margin: "0 0 6px",
   },
   pageSub: {
     fontSize: 14,
-    color: "#7a8a84",
+    color: "var(--t3, #7a8a84)",
     margin: "0 0 28px",
     lineHeight: 1.5,
   },
   card: {
-    background: "#fdfaf6",
-    border: "1px solid #e4ddd5",
+    background: "var(--bg-card, #fdfaf6)",
+    border: "1px solid var(--border-soft, #e4ddd5)",
     borderRadius: 18,
     overflow: "hidden",
     boxShadow: "0 2px 20px rgba(13,58,53,0.06)",
@@ -107,7 +107,7 @@ const styles = {
   },
   cardHeader: {
     padding: "22px 26px",
-    borderBottom: "1px solid #ede8e1",
+    borderBottom: "1px solid var(--border-soft, #ede8e1)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -125,7 +125,7 @@ const styles = {
   cardTitle: {
     fontSize: 16,
     fontWeight: 700,
-    color: "#0d3a35",
+    color: "var(--t1, #0d3a35)",
     margin: 0,
   },
   cardSubtitle: {
@@ -141,7 +141,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "13px 0",
-    borderBottom: "1px solid #ede8e1",
+    borderBottom: "1px solid var(--border-soft, #ede8e1)",
   },
   rowLast: {
     display: "flex",
@@ -151,20 +151,20 @@ const styles = {
   },
   label: {
     fontSize: 13,
-    color: "#7a8a84",
+    color: "var(--t3, #7a8a84)",
   },
   value: {
     fontSize: 13.5,
-    color: "#0d3a35",
+    color: "var(--t1, #0d3a35)",
     fontWeight: 600,
   },
   infoBox: {
     marginTop: 20,
     padding: "14px 16px",
-    background: "#f5f2ed",
+    background: "var(--bg-card, #f5f2ed)",
     borderRadius: 12,
     fontSize: 13,
-    color: "#3a5a55",
+    color: "var(--t2, #3a5a55)",
     lineHeight: 1.6,
     display: "flex",
     gap: 10,
@@ -178,7 +178,7 @@ const styles = {
     border: "1px solid rgba(39,97,82,.2)",
     borderRadius: 12,
     fontSize: 13,
-    color: "#276152",
+    color: "var(--accent, #276152)",
     lineHeight: 1.6,
     display: "flex",
     gap: 10,
@@ -192,7 +192,7 @@ const styles = {
     background: "none",
     border: "1.5px solid #e0a0a0",
     borderRadius: 12,
-    color: "#c04040",
+    color: "var(--danger, #c04040)",
     fontSize: 13.5,
     fontWeight: 600,
     cursor: "pointer",
@@ -203,7 +203,7 @@ const styles = {
     marginTop: 4,
     width: "100%",
     padding: "13px",
-    background: "linear-gradient(135deg, #0d3a35, #1a5a52)",
+    background: "linear-gradient(135deg, var(--t1, #0d3a35), var(--accent, #1a5a52))",
     border: "none",
     borderRadius: 12,
     color: "#fff",
@@ -225,12 +225,12 @@ const styles = {
     alignItems: "center",
     gap: 10,
     fontSize: 13.5,
-    color: "#3a5a55",
+    color: "var(--t2, #3a5a55)",
   },
   errorText: {
-    color: "#c04040",
+    color: "var(--danger, #c04040)",
     fontSize: 13,
-    background: "#fdf0f0",
+    background: "var(--danger-bg, #fdf0f0)",
     border: "1px solid #f5cece",
     borderRadius: 12,
     padding: "12px 14px",
@@ -239,12 +239,12 @@ const styles = {
   },
   loadingWrap: {
     minHeight: "100vh",
-    background: "#f5f0ea",
+    background: "var(--bg-card, #f5f0ea)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontFamily: "'DM Sans', sans-serif",
-    color: "#7a8a84",
+    color: "var(--t3, #7a8a84)",
     fontSize: 14,
   },
   helpText: {
@@ -267,9 +267,9 @@ const styles = {
   modalCard: {
     width: "100%",
     maxWidth: 440,
-    background: "#fdfaf6",
+    background: "var(--bg-card, #fdfaf6)",
     borderRadius: 18,
-    border: "1px solid #e4ddd5",
+    border: "1px solid var(--border-soft, #e4ddd5)",
     boxShadow: "0 12px 40px rgba(13,58,53,0.22)",
     padding: "26px 26px 22px",
     fontFamily: "'DM Sans', sans-serif",
@@ -278,12 +278,12 @@ const styles = {
   modalTitle: {
     fontSize: 17,
     fontWeight: 700,
-    color: "#0d3a35",
+    color: "var(--t1, #0d3a35)",
     margin: "0 0 6px",
   },
   modalSub: {
     fontSize: 13,
-    color: "#7a8a84",
+    color: "var(--t3, #7a8a84)",
     lineHeight: 1.5,
     margin: "0 0 18px",
   },
@@ -301,12 +301,12 @@ const styles = {
     borderRadius: 8,
     cursor: "pointer",
     fontSize: 13.5,
-    color: "#3a5a55",
+    color: "var(--t2, #3a5a55)",
   },
   checkbox: {
     width: 16,
     height: 16,
-    accentColor: "#276152",
+    accentColor: "var(--accent, #276152)",
     cursor: "pointer",
     flexShrink: 0,
   },
@@ -317,13 +317,13 @@ const styles = {
     marginBottom: 18,
     padding: "10px 12px",
     borderRadius: 10,
-    border: "1px solid #e4ddd5",
+    border: "1px solid var(--border-soft, #e4ddd5)",
     fontFamily: "inherit",
     fontSize: 13,
-    color: "#0d3a35",
+    color: "var(--t1, #0d3a35)",
     resize: "vertical",
     boxSizing: "border-box",
-    background: "#fff",
+    background: "var(--bg-card, #fff)",
   },
   modalBtnRow: {
     display: "flex",
@@ -335,7 +335,7 @@ const styles = {
     borderRadius: 10,
     border: "1.5px solid #d8d0c6",
     background: "none",
-    color: "#3a5a55",
+    color: "var(--t2, #3a5a55)",
     fontSize: 13.5,
     fontWeight: 600,
     cursor: "pointer",
@@ -346,7 +346,7 @@ const styles = {
     padding: "11px",
     borderRadius: 10,
     border: "none",
-    background: "#c04040",
+    background: "var(--danger, #c04040)",
     color: "#fff",
     fontSize: 13.5,
     fontWeight: 600,
@@ -365,13 +365,13 @@ const CANCEL_REASONS = [
 ];
 
 const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#276152" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent, #276152)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
 const InfoIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3a5a55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t2, #3a5a55)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
     <circle cx="12" cy="12" r="10" />
     <line x1="12" y1="16" x2="12" y2="12" />
     <line x1="12" y1="8" x2="12.01" y2="8" />
@@ -379,13 +379,13 @@ const InfoIcon = () => (
 );
 
 const CheckCircleIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#276152" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent, #276152)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
     <polyline points="22 4 12 14.01 9 11.01" />
   </svg>
 );
 
-const CrownIcon = ({ color = "#276152" }) => (
+const CrownIcon = ({ color = "var(--accent, #276152)" }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M2 18h20l-2-9-5 4-3-7-3 7-5-4-2 9z" />
   </svg>
@@ -515,7 +515,7 @@ export default function Billing({ onBack }) {
                 ...styles.planIconWrap,
                 background: isPro ? "rgba(39,97,82,0.12)" : "rgba(193,127,42,.1)",
               }}>
-                <CrownIcon color={isPro ? "#276152" : "#c17f2a"} />
+                <CrownIcon color={isPro ? "var(--accent, #276152)" : "#c17f2a"} />
               </div>
               <div>
                 <h2 style={styles.cardTitle}>

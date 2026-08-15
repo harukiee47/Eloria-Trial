@@ -46,11 +46,11 @@ const GC_STYLE = `
     color: var(--t3); padding: 4px; border-radius: 6px;
     display: flex; align-items: center; transition: color .12s, background .12s;
   }
-  .gc-header-back:hover { color: var(--t1); background: #f0f0ec; }
+  .gc-header-back:hover { color: var(--t1); background: var(--bg-card, #f0f0ec); }
   .gc-header-back svg { width: 18px; height: 18px; }
   .gc-header-avatar {
     width: 34px; height: 34px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), #276152);
+    background: linear-gradient(135deg, var(--accent), var(--accent, #276152));
     color: #fff; font-size: 13px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; letter-spacing: -.01em;
@@ -68,7 +68,7 @@ const GC_STYLE = `
     display: flex; align-items: center; justify-content: center;
     transition: color .12s, background .12s;
   }
-  .gc-icon-btn:hover { color: var(--t1); background: #f0f0ec; }
+  .gc-icon-btn:hover { color: var(--t1); background: var(--bg-card, #f0f0ec); }
   .gc-icon-btn svg { width: 17px; height: 17px; }
 
   /* ── MESSAGES ────────────────────────────────────────────── */
@@ -133,7 +133,7 @@ const GC_STYLE = `
     flex-shrink: 0; margin-bottom: 2px;
   }
   .gc-msg-avatar.eloria-av {
-    background: linear-gradient(135deg, var(--accent), #1a5a52);
+    background: linear-gradient(135deg, var(--accent), var(--accent, #1a5a52));
   }
   .gc-msg-avatar.placeholder { background: transparent; }
 
@@ -155,7 +155,7 @@ const GC_STYLE = `
     cursor: default;
   }
   .gc-bubble.other .gc-reply-quote {
-    background: #f0f0ec;
+    background: var(--bg-card, #f0f0ec);
     border-left-color: var(--accent);
   }
   .gc-reply-quote-name {
@@ -182,7 +182,7 @@ const GC_STYLE = `
     transition: opacity .12s, transform .12s;
   }
   .gc-bubble.other {
-    background: #fff;
+    background: var(--bg-card, #fff);
     border: 1px solid var(--border-soft);
     border-bottom-left-radius: 5px;
   }
@@ -192,7 +192,7 @@ const GC_STYLE = `
     border-bottom-right-radius: 5px;
   }
   .gc-bubble.eloria {
-    background: linear-gradient(135deg, #0d3a35 0%, #1a5a52 100%);
+    background: linear-gradient(135deg, var(--t1, #0d3a35) 0%, var(--accent, #1a5a52) 100%);
     color: #fff;
     border-bottom-left-radius: 5px;
     border: none;
@@ -245,7 +245,7 @@ const GC_STYLE = `
   transition: opacity .12s;
 }
 .gc-bubble.other .gc-msg-doc-chip {
-  background: #faf9f6;
+  background: var(--bg-card, #faf9f6);
   border: 1.5px solid #ececea;
   box-shadow: 0 1px 6px rgba(0,0,0,.06);
 }
@@ -315,7 +315,7 @@ const GC_STYLE = `
     cursor: pointer; font-family: var(--font);
     text-align: left; transition: background .11s;
   }
-  .gc-ctx-item:hover { background: #f4f4f0; }
+  .gc-ctx-item:hover { background: var(--bg-card, #f4f4f0); }
   .gc-ctx-item.danger { color: var(--danger); }
   .gc-ctx-item.danger:hover { background: var(--danger-bg); }
   .gc-ctx-item svg { width: 14px; height: 14px; flex-shrink: 0; }
@@ -371,7 +371,7 @@ const GC_STYLE = `
   .gc-file-chip {
     display: flex; align-items: center; gap: 6px;
     padding: 5px 9px 5px 7px;
-    background: #faf8f3;
+    background: var(--bg-card, #faf8f3);
     border: 1.5px solid rgba(13,58,53,.18);
     border-radius: 10px; max-width: 180px;
     font-size: 11.5px; font-family: var(--font);
@@ -397,7 +397,7 @@ const GC_STYLE = `
     flex-shrink: 0; transition: color .1s;
     display: flex; align-items: center;
   }
-  .gc-file-chip-remove:hover { color: #e05252; }
+  .gc-file-chip-remove:hover { color: var(--danger, #e05252); }
 
   /* ── INPUT AREA ──────────────────────────────────────────── */
   .gc-input-area {
@@ -427,7 +427,7 @@ const GC_STYLE = `
 
   /* FIX DESKTOP: rounded card wrapping the whole composer */
   .gc-input-card {
-    background: #fafaf8;
+    background: var(--bg-card, #fafaf8);
     border: 1.5px solid rgba(13,58,53,.15);
     border-radius: 18px;
     padding: 8px 10px;
@@ -437,7 +437,7 @@ const GC_STYLE = `
   .gc-input-card:focus-within {
     border-color: rgba(13,58,53,.32);
     box-shadow: 0 0 0 3px rgba(13,58,53,.07), 0 2px 10px rgba(0,0,0,.06);
-    background: #fff;
+    background: var(--bg-card, #fff);
   }
 
   .gc-input-row {
@@ -452,12 +452,12 @@ const GC_STYLE = `
     display: flex; align-items: center; justify-content: center;
     color: var(--t3); transition: background .12s, color .12s;
   }
-  .gc-attach-btn:hover { background: #f0ede6; color: var(--accent); }
+  .gc-attach-btn:hover { background: var(--bg-card, #f0ede6); color: var(--accent); }
   .gc-attach-btn.has-files { color: var(--accent); }
   .gc-attach-btn svg { width: 17px; height: 17px; }
   .gc-attach-menu {
     position: absolute; bottom: calc(100% + 8px); left: 0;
-    background: #fff; border: 1px solid #e8e6e0;
+    background: var(--bg-card, #fff); border: 1px solid var(--border-soft, #e8e6e0);
     border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.12);
     padding: 5px; min-width: 160px; z-index: 200;
     animation: ctxIn .12s ease;
@@ -468,7 +468,7 @@ const GC_STYLE = `
     border-radius: 10px; cursor: pointer;
     transition: background .11s; font-family: var(--font); font-weight: 500;
   }
-  .gc-attach-menu-item:hover { background: #faf7f2; color: var(--accent); }
+  .gc-attach-menu-item:hover { background: var(--bg-card, #faf7f2); color: var(--accent); }
   .gc-attach-menu-item svg { width: 15px; height: 15px; flex-shrink: 0; }
   .gc-attach-menu-sep { height: 1px; background: #f0ede8; margin: 3px 8px; }
 
@@ -480,7 +480,7 @@ const GC_STYLE = `
     min-height: 22px; max-height: 140px;
     line-height: 1.5;
     scrollbar-width: thin;
-    caret-color: #0d3a35;
+    caret-color: var(--t1, #0d3a35);
   }
   .gc-textarea::placeholder { color: var(--t3); }
 
@@ -626,7 +626,7 @@ const GC_STYLE = `
     cursor: pointer; font-family: var(--font);
     transition: background .12s;
   }
-  .gc-confirm-cancel:hover { background: #f0f0ec; }
+  .gc-confirm-cancel:hover { background: var(--bg-card, #f0f0ec); }
   .gc-confirm-ok {
     padding: 8px 16px;
     background: var(--danger); border: none;
@@ -662,7 +662,7 @@ const GC_STYLE = `
     display: flex; align-items: center; justify-content: center;
     transition: background .12s; font-size: 14px;
   }
-  .gc-info-close:hover { background: #f0f0ec; color: var(--t1); }
+  .gc-info-close:hover { background: var(--bg-card, #f0f0ec); color: var(--t1); }
   .gc-info-section { padding: 14px 18px; }
   .gc-info-section + .gc-info-section { border-top: 1px solid var(--border-soft); }
   .gc-info-label {
@@ -673,7 +673,7 @@ const GC_STYLE = `
   .gc-rename-input {
     flex: 1; padding: 7px 10px; border: 1.5px solid var(--accent);
     border-radius: var(--r-sm); font-size: 13px; font-family: var(--font);
-    color: var(--t1); outline: none; background: #fff;
+    color: var(--t1); outline: none; background: var(--bg-card, #fff);
   }
   .gc-rename-save {
     padding: 7px 14px; background: var(--accent); border: none;
@@ -695,7 +695,7 @@ const GC_STYLE = `
   .gc-member-name { flex: 1; font-size: 13px; color: var(--t1); }
   .gc-member-tag {
     font-size: 10px; font-weight: 600; color: var(--t3);
-    background: #f0f0ec; border-radius: 4px; padding: 2px 6px;
+    background: var(--bg-card, #f0f0ec); border-radius: 4px; padding: 2px 6px;
   }
   .gc-kick-btn {
     background: none; border: none; cursor: pointer; color: var(--t3);
@@ -707,7 +707,7 @@ const GC_STYLE = `
   .gc-invite-input {
     flex: 1; padding: 7px 10px; border: 1.5px solid var(--border);
     border-radius: var(--r-sm); font-size: 13px; font-family: var(--font);
-    color: var(--t1); outline: none; background: #fff;
+    color: var(--t1); outline: none; background: var(--bg-card, #fff);
     transition: border-color .13s;
   }
   .gc-invite-input:focus { border-color: var(--accent); }
@@ -871,7 +871,7 @@ function getExt(name) {
 
 function docIconStyle(ext) {
   const map = {
-    PDF:  { bg: "#fff1f1", color: "#e53e3e" },
+    PDF:  { bg: "var(--danger-bg, #fff1f1)", color: "var(--danger, #e53e3e)" },
     TXT:  { bg: "#f0f4ff", color: "#4a6cf7" },
     DOC:  { bg: "#eff6ff", color: "#2563eb" },
     DOCX: { bg: "#eff6ff", color: "#2563eb" },

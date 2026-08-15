@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import ConnectorsModal from "./ConnectorsModal";
 
 const THEME_KEY = "eloria-theme";
+const DEFAULT_THEME = "light"; // Eloria defaults to light regardless of OS preference
 
 export function applyStoredTheme() {
-  const saved = localStorage.getItem(THEME_KEY) || "system";
+  const saved = localStorage.getItem(THEME_KEY) || DEFAULT_THEME;
   const resolved =
     saved === "system"
       ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
@@ -14,7 +15,7 @@ export function applyStoredTheme() {
 
 export default function SettingsModal({ open, onClose, user }) {
   const [tab, setTab] = useState("appearance");
-  const [theme, setTheme] = useState(localStorage.getItem(THEME_KEY) || "system");
+  const [theme, setTheme] = useState(localStorage.getItem(THEME_KEY) || DEFAULT_THEME);
   const [connectorsOpen, setConnectorsOpen] = useState(false);
 
   useEffect(() => {
@@ -130,41 +131,62 @@ function IconUser() {
 
 const CSS = `
 .stg-overlay {
-  position: fixed; inset: 0; background: rgba(13,58,53,.35);
-  backdrop-filter: blur(3px);
+  position: fixed; inset: 0; background: rgba(6,14,12,.45);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   display:flex; align-items:center; justify-content:center;
-  z-index: 850; animation: stgFadeIn .15s ease;
+  z-index: 850; animation: stgFadeIn .18s ease;
 }
 @keyframes stgFadeIn { from { opacity:0; } to { opacity:1; } }
 .stg-modal {
-  width: min(620px, 92vw); height: min(460px, 80vh); display:flex;
-  background: var(--bg-panel, #fdfaf6); border-radius: 20px; overflow:hidden;
-  box-shadow: 0 24px 70px rgba(13,58,53,.28); font-family: var(--font);
-  animation: stgPopIn .16s ease;
+  width: min(660px, 92vw); height: min(480px, 82vh); display:flex;
+  background: var(--bg-panel); border-radius: 20px; overflow:hidden;
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 30px 80px rgba(0,0,0,.30), 0 2px 8px rgba(0,0,0,.10);
+  font-family: var(--font);
+  animation: stgPopIn .22s cubic-bezier(.2,.8,.2,1);
 }
-@keyframes stgPopIn { from { opacity:0; transform: translateY(10px) scale(.97); } to { opacity:1; transform: translateY(0) scale(1); } }
-.stg-sidebar { width: 170px; flex-shrink:0; background: var(--accent-bg,#eaf2ef); padding: 18px 10px; display:flex; flex-direction:column; gap:2px; }
-.stg-title { font-size: 13px; font-weight:700; color: var(--t1,#0D3A35); padding: 4px 10px 14px; }
-.stg-navitem { display:flex; align-items:center; gap:9px; border:none; background:none; text-align:left; padding:9px 10px; border-radius:10px; font-size:13px; font-weight:600; color: var(--t2,#3a5a55); cursor:pointer; transition: background .12s, color .12s; }
-.stg-navitem svg { width:15px; height:15px; flex-shrink:0; }
-.stg-navitem:hover { background: rgba(255,255,255,.5); }
-.stg-navitem.active { background:#fff; color: var(--accent,#276152); box-shadow: 0 1px 4px rgba(13,58,53,.10); }
-.stg-panel { flex:1; padding: 24px 26px; position:relative; overflow-y:auto; }
-.stg-close { position:absolute; top:14px; right:14px; border:none; background:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color: var(--t3,#7a8a84); cursor:pointer; }
-.stg-close:hover { background: var(--accent-bg,#eaf2ef); color: var(--accent,#276152); }
+@keyframes stgPopIn { from { opacity:0; transform: translateY(14px) scale(.96); } to { opacity:1; transform: translateY(0) scale(1); } }
+
+.stg-sidebar { width: 178px; flex-shrink:0; background: var(--bg-card-2); border-right: 1px solid var(--border-soft); padding: 18px 10px; display:flex; flex-direction:column; gap:2px; }
+.stg-title { font-size: 13px; font-weight:700; color: var(--t1); padding: 4px 10px 16px; letter-spacing:.01em; }
+.stg-navitem {
+  display:flex; align-items:center; gap:9px; border:none; background:none; text-align:left;
+  padding:9px 10px; border-radius:10px; font-size:13px; font-weight:600; color: var(--t2);
+  cursor:pointer; transition: background .16s ease, color .16s ease, transform .12s ease;
+}
+.stg-navitem svg { width:15px; height:15px; flex-shrink:0; transition: transform .16s ease; }
+.stg-navitem:hover { background: var(--accent-bg); color: var(--t1); }
+.stg-navitem:hover svg { transform: scale(1.08); }
+.stg-navitem.active { background: var(--bg-card); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,.08), inset 0 0 0 1px var(--border-soft); }
+.stg-navitem.active svg { color: var(--accent); }
+
+.stg-panel { flex:1; padding: 26px 28px; position:relative; overflow-y:auto; animation: stgTabIn .18s ease; }
+@keyframes stgTabIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: translateY(0); } }
+.stg-close { position:absolute; top:14px; right:14px; border:none; background:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color: var(--t3); cursor:pointer; transition: background .14s, color .14s, transform .12s; }
+.stg-close:hover { background: var(--accent-bg); color: var(--accent); transform: rotate(90deg); }
 .stg-close svg { width:15px; height:15px; }
-.stg-h { font-size:16px; font-weight:700; color: var(--t1,#0D3A35); margin-bottom:4px; }
-.stg-sub { font-size:12.5px; color: var(--t3,#7a8a84); margin-bottom:18px; }
+.stg-h { font-size:16.5px; font-weight:700; color: var(--t1); margin-bottom:4px; letter-spacing:-.01em; }
+.stg-sub { font-size:12.5px; color: var(--t3); margin-bottom:20px; line-height:1.5; }
+
 .stg-theme-row { display:flex; gap:10px; }
-.stg-theme-card { display:flex; flex-direction:column; align-items:center; gap:8px; border:1.5px solid var(--border,#cdd0c9); background:#fff; padding:12px 16px; border-radius:14px; cursor:pointer; font-size:12px; font-weight:600; color: var(--t2,#3a5a55); }
-.stg-theme-card.active { border-color: var(--accent,#276152); color: var(--accent,#276152); }
-.stg-swatch { width:44px; height:30px; border-radius:8px; display:block; border:1px solid rgba(0,0,0,.06); }
+.stg-theme-card {
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  border:1.5px solid var(--border); background: var(--bg-card);
+  padding:12px 18px; border-radius:14px; cursor:pointer; font-size:12px; font-weight:600; color: var(--t2);
+  transition: border-color .14s ease, color .14s ease, transform .12s ease, box-shadow .14s ease;
+}
+.stg-theme-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.08); }
+.stg-theme-card.active { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+.stg-swatch { width:48px; height:32px; border-radius:8px; display:block; border:1px solid rgba(0,0,0,.08); transition: transform .12s ease; }
+.stg-theme-card:hover .stg-swatch { transform: scale(1.04); }
 .stg-swatch-light { background: linear-gradient(135deg, #fdfaf6, #eaf2ef); }
-.stg-swatch-dark { background: linear-gradient(135deg, #14201d, #1f3630); }
-.stg-swatch-system { background: linear-gradient(135deg, #fdfaf6 50%, #14201d 50%); }
-.stg-btn { border:none; background: var(--accent,#276152); color:#fff; font-family:var(--font); font-weight:600; font-size:13px; padding:9px 18px; border-radius:10px; cursor:pointer; }
-.stg-btn:hover { background: var(--accent-deep,#1a4a3d); }
-.stg-field { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border-soft,#dde0d9); font-size:13px; }
-.stg-field-label { color: var(--t3,#7a8a84); }
-.stg-field-value { color: var(--t1,#0D3A35); font-weight:600; }
+.stg-swatch-dark { background: linear-gradient(135deg, #1a1b1a, #0e0f0e); }
+.stg-swatch-system { background: linear-gradient(135deg, #fdfaf6 50%, #0e0f0e 50%); }
+
+.stg-btn { border:none; background: var(--accent); color: var(--accent-fg); font-family:var(--font); font-weight:600; font-size:13px; padding:9px 18px; border-radius:10px; cursor:pointer; transition: background .14s, transform .12s, box-shadow .14s; }
+.stg-btn:hover { background: var(--accent-deep); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+.stg-btn:active { transform: translateY(0); }
+.stg-field { display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border-soft); font-size:13px; }
+.stg-field-label { color: var(--t3); }
+.stg-field-value { color: var(--t1); font-weight:600; }
 `;

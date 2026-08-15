@@ -57,7 +57,7 @@ const STYLE = `
     display: flex; align-items: center; justify-content: center;
     font-size: 16px; flex-shrink: 0; transition: background .12s, color .12s;
   }
-  .scv-header-close:hover { background: #f0f0ec; color: var(--t1); }
+  .scv-header-close:hover { background: var(--bg-card, #f0f0ec); color: var(--t1); }
 
   .scv-messages {
     flex: 1; overflow-y: auto; padding: 16px 20px;
@@ -73,7 +73,7 @@ const STYLE = `
 
   .scv-avatar {
     width: 24px; height: 24px; border-radius: 7px; overflow: hidden;
-    flex-shrink: 0; border: 1.5px solid rgba(193,127,42,.2); background: #faf8f4;
+    flex-shrink: 0; border: 1.5px solid rgba(193,127,42,.2); background: var(--bg-card, #faf8f4);
   }
   .scv-avatar img { width: 100%; height: 100%; object-fit: contain; }
 
@@ -89,7 +89,7 @@ const STYLE = `
     border-bottom-right-radius: 4px;
   }
   .scv-msg.ai .scv-bubble {
-    background: #fff; color: var(--t1);
+    background: var(--bg-card, #fff); color: var(--t1);
     border: 1px solid #ececea; border-bottom-left-radius: 4px;
     box-shadow: 0 1px 4px rgba(0,0,0,.05);
   }
@@ -116,10 +116,10 @@ const STYLE = `
     font-size: 13px; color: var(--t2); cursor: pointer;
     font-family: var(--font); transition: background .12s; white-space: nowrap;
   }
-  .scv-btn-dismiss:hover { background: #f4f4f0; }
+  .scv-btn-dismiss:hover { background: var(--bg-card, #f4f4f0); }
   .scv-btn-save {
     padding: 9px 18px;
-    background: linear-gradient(135deg, #0d3a35, #1a5a52);
+    background: linear-gradient(135deg, var(--t1, #0d3a35), var(--accent, #1a5a52));
     border: none; border-radius: 10px;
     font-size: 13px; font-weight: 600; color: #fff;
     cursor: pointer; font-family: var(--font);

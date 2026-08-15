@@ -12,7 +12,7 @@ const PANEL_STYLE = `
     position: fixed; top: 0; right: 0;
     width: 340px; max-width: 92vw; height: 100vh;
     background: var(--bg-panel, #fdfaf6);
-    border-left: 1px solid var(--border, #cdd0c9);
+    border-left: 1px solid var(--border, var(--border-soft, #cdd0c9));
     box-shadow: -4px 0 24px rgba(0,0,0,.12);
     z-index: 701;
     display: flex; flex-direction: column;
@@ -22,13 +22,13 @@ const PANEL_STYLE = `
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 14px 10px; flex-shrink: 0;
   }
-  .np-title { font-size: 15px; font-weight: 700; color: var(--t1, #0D3A35); }
+  .np-title { font-size: 15px; font-weight: 700; color: var(--t1, var(--t1, #0d3a35)); }
   .np-close {
     width: 28px; height: 28px; border: none; background: none;
-    border-radius: 8px; cursor: pointer; color: var(--t3, #7a8a84);
+    border-radius: 8px; cursor: pointer; color: var(--t3, var(--t3, #7a8a84));
     display: flex; align-items: center; justify-content: center;
   }
-  .np-close:hover { background: #f0f0ec; }
+  .np-close:hover { background: var(--bg-card, #f0f0ec); }
   .np-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
   .np-notif-list { flex: 1; overflow-y: auto; padding: 0 10px 16px; }
   .np-notif-item {
@@ -39,19 +39,19 @@ const PANEL_STYLE = `
   .np-notif-icon {
     width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 14px;
-    background: #fff;
+    background: var(--bg-card, #fff);
   }
-  .np-notif-text { font-size: 12.5px; color: var(--t1, #0D3A35); line-height: 1.4; flex: 1; }
+  .np-notif-text { font-size: 12.5px; color: var(--t1, var(--t1, #0d3a35)); line-height: 1.4; flex: 1; }
   .np-notif-text b { font-weight: 700; }
-  .np-notif-time { font-size: 10.5px; color: var(--t3, #7a8a84); margin-top: 2px; }
+  .np-notif-time { font-size: 10.5px; color: var(--t3, var(--t3, #7a8a84)); margin-top: 2px; }
   .np-notif-actions { display: flex; gap: 5px; margin-top: 6px; }
   .np-notif-btn {
     padding: 4px 9px; font-size: 11px; font-weight: 600;
     border: none; border-radius: 6px; cursor: pointer;
     font-family: var(--font, system-ui, sans-serif);
   }
-  .np-notif-btn.accept { background: var(--accent, #276152); color: #fff; }
-  .np-notif-btn.decline { background: #ece9e3; color: var(--t2, #3a5a55); }
+  .np-notif-btn.accept { background: var(--accent, var(--accent, #276152)); color: #fff; }
+  .np-notif-btn.decline { background: #ece9e3; color: var(--t2, var(--t2, #3a5a55)); }
 
   /* ── Bell button (strip + chat header) ── */
   .nb-bell-btn {
@@ -61,19 +61,19 @@ const PANEL_STYLE = `
     cursor: pointer;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: 3px; color: var(--t2, #3a5a55);
+    gap: 3px; color: var(--t2, var(--t2, #3a5a55));
     font-family: var(--font, system-ui, sans-serif);
     transition: background .14s, color .14s;
     position: relative;
   }
-  .nb-bell-btn:hover { background: #e9e8e4; color: var(--t1, #0D3A35); }
-  .nb-bell-btn.active { background: #e3e2de; color: var(--t1, #0D3A35); }
+  .nb-bell-btn:hover { background: #e9e8e4; color: var(--t1, var(--t1, #0d3a35)); }
+  .nb-bell-btn.active { background: #e3e2de; color: var(--t1, var(--t1, #0d3a35)); }
   .nb-bell-btn svg { width: 19px; height: 19px; flex-shrink: 0; }
   .nb-bell-label { font-size: 9px; font-weight: 500; letter-spacing: .02em; line-height: 1; }
   .nb-bell-badge {
     position: absolute; top: 4px; right: 6px;
     min-width: 16px; height: 16px; border-radius: 8px;
-    background: #e05050; color: #fff;
+    background: var(--danger, #e05050); color: #fff;
     font-size: 9.5px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
     padding: 0 4px; border: 1.5px solid var(--bg-strip, #ede8e1);
@@ -83,7 +83,7 @@ const PANEL_STYLE = `
   .nb-floating {
     position: fixed; bottom: 20px; right: 20px; z-index: 600;
     width: 48px; height: 48px; border-radius: 50%;
-    background: var(--accent, #276152); color: #fff;
+    background: var(--accent, var(--accent, #276152)); color: #fff;
     border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 8px 24px rgba(0,0,0,.2);
@@ -91,7 +91,7 @@ const PANEL_STYLE = `
   .nb-floating-badge {
     position: absolute; top: -4px; right: -4px;
     min-width: 20px; height: 20px; border-radius: 10px;
-    background: #e05050; color: #fff;
+    background: var(--danger, #e05050); color: #fff;
     font-size: 10px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; padding: 0 5px;
     border: 2px solid var(--bg-app, #f5f0ea);

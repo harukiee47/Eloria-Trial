@@ -11,30 +11,30 @@ const STYLE = `
     display: flex; align-items: center; justify-content: center;
   }
   .psm-modal {
-    background: #fdfaf6; border-radius: 18px;
+    background: var(--bg-card, #fdfaf6); border-radius: 18px;
     width: 340px; margin: 0 16px;
     padding: 28px 26px 24px;
     box-shadow: 0 24px 60px rgba(0,0,0,.22);
     font-family: var(--font, system-ui, sans-serif);
   }
-  .psm-title { font-size: 18px; font-weight: 700; color: #0D3A35; margin-bottom: 6px; }
+  .psm-title { font-size: 18px; font-weight: 700; color: var(--t1, #0d3a35); margin-bottom: 6px; }
   .psm-sub   { font-size: 13px; color: #5a6b66; margin-bottom: 20px; line-height: 1.5; }
-  .psm-label { font-size: 12px; font-weight: 600; color: #3a5a55; margin-bottom: 6px; display: block; }
+  .psm-label { font-size: 12px; font-weight: 600; color: var(--t2, #3a5a55); margin-bottom: 6px; display: block; }
   .psm-input {
     width: 100%; padding: 10px 12px; font-size: 14px;
-    border: 1.5px solid #cdd0c9; border-radius: 10px;
-    outline: none; font-family: inherit; color: #0D3A35;
-    margin-bottom: 4px; background: #fff;
+    border: 1.5px solid var(--border-soft, #cdd0c9); border-radius: 10px;
+    outline: none; font-family: inherit; color: var(--t1, #0d3a35);
+    margin-bottom: 4px; background: var(--bg-card, #fff);
     transition: border-color .12s;
   }
-  .psm-input:focus { border-color: #276152; }
-  .psm-input.error { border-color: #c04040; }
+  .psm-input:focus { border-color: var(--accent, #276152); }
+  .psm-input.error { border-color: var(--danger, #c04040); }
   .psm-field { margin-bottom: 16px; }
-  .psm-error { font-size: 11.5px; color: #c04040; margin-top: 4px; min-height: 14px; }
-  .psm-hint  { font-size: 11px; color: #7a8a84; margin-top: 4px; }
+  .psm-error { font-size: 11.5px; color: var(--danger, #c04040); margin-top: 4px; min-height: 14px; }
+  .psm-hint  { font-size: 11px; color: var(--t3, #7a8a84); margin-top: 4px; }
   .psm-submit {
     width: 100%; padding: 11px; margin-top: 6px;
-    background: #276152; border: none; border-radius: 10px;
+    background: var(--accent, #276152); border: none; border-radius: 10px;
     color: #fff; font-size: 14px; font-weight: 600;
     cursor: pointer; transition: opacity .12s;
   }

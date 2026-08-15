@@ -36,7 +36,7 @@ const S = {
     height: 14,
     borderRadius: "50%",
     border: "1.5px solid rgba(0,0,0,0.12)",
-    borderTopColor: "#0d3a35",
+    borderTopColor: "var(--t1, #0d3a35)",
     animation: "at_spin .65s linear infinite",
     flexShrink: 0,
   },
