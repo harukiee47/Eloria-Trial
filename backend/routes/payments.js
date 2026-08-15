@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { verifyUser } from "../middleware/auth.js";
 import { createCheckout } from "../services/lemonsqueezy.js";
 import { db } from "../config/firebaseAdmin.js";
-import { sendCancellationFeedbackEmail } from "../services/emailService.js";
+import { sendCancellationFeedbackEmail, sendWelcomeEmail, sendRenewalEmail } from "../services/emailService.js";
 
 const router = express.Router();
 
@@ -120,22 +120,58 @@ router.post(
 
       const ref = db.collection("users").doc(uid);
 
+      // A subscription's `status` flips to "cancelled" the moment auto-renew is
+      // turned off — but the user should keep Pro access until `ends_at`. Only
+      // "expired" (or an ends_at that has actually passed) means downgrade now.
+      const resolvePlan = (status, endsAt) => {
+        if (status === "expired") return "free";
+        if (endsAt && new Date(endsAt) < new Date()) return "free";
+        if (status === "active" || status === "on_trial" || status === "cancelled" || status === "past_due") return "pro";
+        return "free";
+      };
+
       switch (eventName) {
-        case "subscription_created":
-        case "subscription_updated": {
+        case "subscription_created": {
           const status = payload.data?.attributes?.status;
-          const isActive = status === "active" || status === "on_trial";
+          const endsAt = payload.data?.attributes?.ends_at || null;
           const isCancelled = payload.data?.attributes?.cancelled === true;
+          const userEmail = payload.data?.attributes?.user_email || customData?.email || null;
 
           await ref.set(
             {
-              plan: isActive ? "pro" : "free",
+              plan: resolvePlan(status, endsAt),
+              email: userEmail || undefined,
               subscription: {
                 id: payload.data?.id,
                 status,
                 cancelled: isCancelled,
                 renewsAt: payload.data?.attributes?.renews_at || null,
-                endsAt: payload.data?.attributes?.ends_at || null,
+                endsAt,
+                reminderSent: false,
+              },
+            },
+            { merge: true }
+          );
+
+          if (userEmail) {
+            sendWelcomeEmail(userEmail).catch(err => console.error("Welcome email failed:", err));
+          }
+          break;
+        }
+        case "subscription_updated": {
+          const status = payload.data?.attributes?.status;
+          const endsAt = payload.data?.attributes?.ends_at || null;
+          const isCancelled = payload.data?.attributes?.cancelled === true;
+
+          await ref.set(
+            {
+              plan: resolvePlan(status, endsAt),
+              subscription: {
+                id: payload.data?.id,
+                status,
+                cancelled: isCancelled,
+                renewsAt: payload.data?.attributes?.renews_at || null,
+                endsAt,
                 reminderSent: false,
               },
             },
@@ -143,7 +179,40 @@ router.post(
           );
           break;
         }
-        case "subscription_cancelled":
+        case "subscription_payment_success": {
+          // Fired for every successful invoice, including the very first one
+          // (which subscription_created already sends a welcome email for).
+          // billing_reason distinguishes "initial" from "renewal" payments.
+          const billingReason = payload.data?.attributes?.billing_reason;
+          if (billingReason && billingReason !== "initial") {
+            const userSnap = await ref.get();
+            const userEmail = userSnap.data()?.email;
+            const renewsAt = payload.data?.attributes?.renews_at || null;
+            if (userEmail) {
+              sendRenewalEmail(userEmail, renewsAt).catch(err => console.error("Renewal email failed:", err));
+            }
+          }
+          break;
+        }
+        case "subscription_cancelled": {
+          // Auto-renew turned off — user keeps Pro until `ends_at`. The daily
+          // cron job (subscriptionCron.js) is what actually flips plan to
+          // "free" once ends_at passes.
+          const endsAt = payload.data?.attributes?.ends_at || null;
+          await ref.set(
+            {
+              plan: resolvePlan("cancelled", endsAt),
+              subscription: {
+                id: payload.data?.id,
+                status: payload.data?.attributes?.status,
+                cancelled: true,
+                endsAt,
+              },
+            },
+            { merge: true }
+          );
+          break;
+        }
         case "subscription_expired": {
           await ref.set(
             {
@@ -151,6 +220,7 @@ router.post(
               subscription: {
                 id: payload.data?.id,
                 status: payload.data?.attributes?.status,
+                cancelled: true,
                 endsAt: payload.data?.attributes?.ends_at || null,
               },
             },

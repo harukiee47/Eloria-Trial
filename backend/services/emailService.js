@@ -65,6 +65,64 @@ export async function sendReminderEmail(email, endsAt) {
   }
 }
 
+export async function sendWelcomeEmail(email) {
+  const html = emailShell({
+    heading: "Welcome to Eloria Pro",
+    bodyHtml: `
+      <p style="margin:0 0 12px;">Hey there,</p>
+      <p style="margin:0 0 12px;">You're officially on <strong style="color:#0d3a35;">Eloria Pro</strong>. Higher limits, Eloria Code, Groups, and priority responses are all unlocked now.</p>
+      <p style="margin:0;">Thanks for subscribing — enjoy!</p>
+    `,
+    ctaText: "Start using Pro",
+    ctaColor: "#0d3a35",
+  });
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: "You're subscribed to Eloria Pro 🎉",
+      html,
+    });
+    console.log("Resend welcome result:", JSON.stringify(result));
+    return result;
+  } catch (err) {
+    console.error("Resend welcome FAILED:", err?.message || err);
+    return null;
+  }
+}
+
+export async function sendRenewalEmail(email, renewsAt) {
+  const dateStr = renewsAt
+    ? new Date(renewsAt).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    : null;
+
+  const html = emailShell({
+    heading: "Your Pro membership renewed",
+    bodyHtml: `
+      <p style="margin:0 0 12px;">Hey there,</p>
+      <p style="margin:0 0 12px;">Your Eloria Pro membership renewed successfully${dateStr ? ` and is now active through <strong style="color:#0d3a35;">${dateStr}</strong>` : ""}.</p>
+      <p style="margin:0;">No action needed — enjoy uninterrupted Pro access.</p>
+    `,
+    ctaText: "Open Eloria",
+    ctaColor: "#0d3a35",
+  });
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: "Your Eloria Pro membership renewed",
+      html,
+    });
+    console.log("Resend renewal result:", JSON.stringify(result));
+    return result;
+  } catch (err) {
+    console.error("Resend renewal FAILED:", err?.message || err);
+    return null;
+  }
+}
+
 export async function sendCancellationFeedbackEmail({ userEmail, uid, reasons, otherText }) {
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
   if (!ADMIN_EMAIL) {
@@ -107,8 +165,8 @@ export async function sendExpiredEmail(email) {
     heading: "Your Pro membership has ended",
     bodyHtml: `
       <p style="margin:0 0 12px;">Hey there,</p>
-      <p style="margin:0 0 12px;">Your Eloria Pro membership has expired and your account is now on the <strong style="color:#0d3a35;">Free plan</strong>.</p>
-      <p style="margin:0;">You can resubscribe anytime to get back your higher limits and Pro-only features.</p>
+      <p style="margin:0 0 12px;">Your Eloria Pro membership has ended and your account is now on the <strong style="color:#0d3a35;">Free plan</strong>.</p>
+      <p style="margin:0;">Upgrade to Pro to continue using exclusive features — higher limits, Eloria Code, Groups, and priority responses.</p>
     `,
     ctaText: "Resubscribe to Pro",
     ctaColor: "#c17f2a",

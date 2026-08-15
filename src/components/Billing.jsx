@@ -384,6 +384,7 @@ export default function Billing({ onBack }) {
   const [error, setError] = useState(null);
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelStep, setCancelStep] = useState("confirm"); // "confirm" | "reasons"
   const [selectedReasons, setSelectedReasons] = useState([]);
   const [otherText, setOtherText] = useState("");
 
@@ -411,6 +412,13 @@ export default function Billing({ onBack }) {
     );
   };
 
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setCancelStep("confirm");
+    setSelectedReasons([]);
+    setOtherText("");
+  };
+
   const confirmCancel = async () => {
     setCancelling(true);
     setError(null);
@@ -428,13 +436,11 @@ export default function Billing({ onBack }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Failed to cancel subscription.");
       setCancelSuccess(true);
-      setShowCancelModal(false);
-      setSelectedReasons([]);
-      setOtherText("");
+      closeCancelModal();
       await fetchStatus();
     } catch (err) {
       setError(err.message || "Failed to cancel subscription. Please try again.");
-      setShowCancelModal(false);
+      closeCancelModal();
     } finally {
       setCancelling(false);
     }
@@ -602,52 +608,74 @@ export default function Billing({ onBack }) {
       </div>
 
       {showCancelModal && (
-        <div style={styles.modalOverlay} onClick={() => !cancelling && setShowCancelModal(false)}>
+        <div style={styles.modalOverlay} onClick={() => !cancelling && closeCancelModal()}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>Turn off auto-renew?</h3>
-            <p style={styles.modalSub}>
-              You'll keep Pro access until {endsAt ? new Date(endsAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "your period ends"}, then your account moves to Free. This won't cancel your access right away.
-            </p>
+            {cancelStep === "confirm" ? (
+              <>
+                <h3 style={styles.modalTitle}>Turn off auto-renew?</h3>
+                <p style={styles.modalSub}>
+                  You'll keep Pro access until {endsAt ? new Date(endsAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "your period ends"}, then your account moves to Free. This won't cancel your access right away.
+                </p>
+                <div style={styles.modalBtnRow}>
+                  <button
+                    style={styles.modalKeepBtn}
+                    onClick={closeCancelModal}
+                  >
+                    Keep my subscription
+                  </button>
+                  <button
+                    style={styles.modalConfirmBtn}
+                    onClick={() => setCancelStep("reasons")}
+                  >
+                    Yes, turn it off
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 style={styles.modalTitle}>Mind telling us why?</h3>
+                <p style={styles.modalSub}>
+                  This helps us improve Eloria. Totally optional.
+                </p>
 
-            <p style={{ ...styles.modalSub, margin: "0 0 8px", fontWeight: 600, color: "#0d3a35" }}>
-              Mind telling us why? (optional)
-            </p>
-            <div style={styles.reasonList}>
-              {CANCEL_REASONS.map((reason) => (
-                <label key={reason} style={styles.reasonRow}>
-                  <input
-                    type="checkbox"
-                    style={styles.checkbox}
-                    checked={selectedReasons.includes(reason)}
-                    onChange={() => toggleReason(reason)}
-                  />
-                  {reason}
-                </label>
-              ))}
-            </div>
-            <textarea
-              style={styles.textarea}
-              placeholder="Anything else you'd like to add? (optional)"
-              value={otherText}
-              onChange={(e) => setOtherText(e.target.value)}
-            />
+                <div style={styles.reasonList}>
+                  {CANCEL_REASONS.map((reason) => (
+                    <label key={reason} style={styles.reasonRow}>
+                      <input
+                        type="checkbox"
+                        style={styles.checkbox}
+                        checked={selectedReasons.includes(reason)}
+                        onChange={() => toggleReason(reason)}
+                      />
+                      {reason}
+                    </label>
+                  ))}
+                </div>
+                <textarea
+                  style={styles.textarea}
+                  placeholder="Something else? Tell us more (optional)"
+                  value={otherText}
+                  onChange={(e) => setOtherText(e.target.value)}
+                />
 
-            <div style={styles.modalBtnRow}>
-              <button
-                style={styles.modalKeepBtn}
-                onClick={() => setShowCancelModal(false)}
-                disabled={cancelling}
-              >
-                Keep my subscription
-              </button>
-              <button
-                style={{ ...styles.modalConfirmBtn, opacity: cancelling ? 0.6 : 1 }}
-                onClick={confirmCancel}
-                disabled={cancelling}
-              >
-                {cancelling ? "Cancelling…" : "Turn off auto-renew"}
-              </button>
-            </div>
+                <div style={styles.modalBtnRow}>
+                  <button
+                    style={styles.modalKeepBtn}
+                    onClick={() => setCancelStep("confirm")}
+                    disabled={cancelling}
+                  >
+                    Back
+                  </button>
+                  <button
+                    style={{ ...styles.modalConfirmBtn, opacity: cancelling ? 0.6 : 1 }}
+                    onClick={confirmCancel}
+                    disabled={cancelling}
+                  >
+                    {cancelling ? "Cancelling…" : "Confirm cancellation"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
