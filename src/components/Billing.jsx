@@ -58,6 +58,18 @@ export default function Billing({ onBack }) {
       <h2>Membership</h2>
       <p>Current plan: <strong>{status.plan === "pro" ? "Pro" : "Free"}</strong></p>
 
+      <button onClick={async () => {
+  const token = await auth.currentUser.getIdToken();
+  const res = await fetch("https://eloria-trial.onrender.com/api/membership/dev/run-check", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  alert(JSON.stringify(data));
+}}>
+  Run subscription check (test)
+</button>
+
       {status.plan === "pro" && endsAt && (
         <>
           <p>
