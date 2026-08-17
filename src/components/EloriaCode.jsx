@@ -86,7 +86,7 @@ function parseFilesFromAI(text) {
 
 function detectCodeBlocks(text) {
   const blocks = [];
-  const regex = /```(\w+)?(?:[ \t]+([\w.\-\/]+\.\w+))?\n([\s\S]*?)```/g;
+const regex = /```(\w+)?(?:[ \t]+([\w.\-/]+\.\w+))?\n([\s\S]*?)```/g;
   let match;
   let autoIndex = 0;
   while ((match = regex.exec(text)) !== null) {
