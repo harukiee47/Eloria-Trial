@@ -19,7 +19,7 @@ export const BUILTIN_CONNECTORS = {
     description: "Search repos, read files, list issues & PRs.",
     icon: "github",
     authType: "oauth2",
-    scopes: ["repo", "read:user"],
+    scopes: ["repo", "delete_repo", "read:user"],
     authUrl: "https://github.com/login/oauth/authorize",
     tokenUrl: "https://github.com/login/oauth/access_token",
     clientId: () => process.env.GITHUB_CLIENT_ID,

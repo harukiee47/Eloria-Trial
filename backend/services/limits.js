@@ -4,6 +4,8 @@ export const PLANS = {
     codeRequests: 10,
     imageRequests: 4,
     voiceTurns: 10,
+    githubActions: 5,
+    githubToolCallsPerTurn: 6,
     eloriaCodeAccess: false,
   },
 
@@ -12,6 +14,8 @@ export const PLANS = {
     codeRequests: 25,
     imageRequests: 12,
     voiceTurns: 30,
+    githubActions: 30,
+    githubToolCallsPerTurn: 15,
     eloriaCodeAccess: true,
   },
 
@@ -20,6 +24,8 @@ export const PLANS = {
     codeRequests: Infinity,
     imageRequests: Infinity,
     voiceTurns: Infinity,
+    githubActions: Infinity,
+    githubToolCallsPerTurn: Infinity,
     eloriaCodeAccess: true,
   },
 };

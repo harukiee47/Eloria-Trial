@@ -5,6 +5,8 @@ import { auth, db } from "../services/firebase";
 import logo from "../assets/logo.png";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
+import GithubWriteConfirmCard from "./GithubWriteConfirmCard";
+import CodeFilesPanel from "./CodeFilesPanel";
 import { invoke } from "@tauri-apps/api/core";
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -84,14 +86,19 @@ function parseFilesFromAI(text) {
 
 function detectCodeBlocks(text) {
   const blocks = [];
-  const regex = /```(\w+)?\n([\s\S]*?)```/g;
+  const regex = /```(\w+)?(?:[ \t]+([\w.\-\/]+\.\w+))?\n([\s\S]*?)```/g;
   let match;
+  let autoIndex = 0;
   while ((match = regex.exec(text)) !== null) {
     const lang = match[1] || "txt";
-    const code = match[2];
+    const filenameHint = match[2] || null;
+    const code = match[3];
     const extMap = { javascript:"js",js:"js",typescript:"ts",python:"py",py:"py",
       css:"css",html:"html",jsx:"jsx",tsx:"tsx",bash:"sh",sh:"sh" };
-    blocks.push({ lang, code, ext: extMap[lang.toLowerCase()] || "txt" });
+    const ext = extMap[lang.toLowerCase()] || "txt";
+    autoIndex++;
+    const name = filenameHint || `file${autoIndex}.${ext}`;
+    blocks.push({ lang, code, ext, name });
   }
   return blocks;
 }
@@ -683,6 +690,7 @@ export default function EloriaCode({ onBack, onOpenEditor }) {
   const [openMenuId, setOpenMenuId] = useState(null);
  const [showChatPanel, setShowChatPanel] = useState(false);
 const [chatSearch, setChatSearch] = useState("");
+const [filesPanel, setFilesPanel] = useState(null); // null | array of {name, code, ext}
 
   const bodyRef = useRef(null);
   const textareaRef = useRef(null);
@@ -859,6 +867,61 @@ const [chatSearch, setChatSearch] = useState("");
     return null;
   };
 
+  // Fired when the user rejects a proposed GitHub change/repo action inside
+  // Eloria Code: sends the model a short internal nudge (not shown as a user
+  // bubble) so it naturally asks what to change instead, with full context.
+  const triggerGithubRejectFollowUp = async (proposal) => {
+    if (!auth.currentUser || !activeChatId) return;
+    const chat = chats.find(c => c.id === activeChatId);
+    if (!chat) return;
+    const token = await auth.currentUser.getIdToken();
+    const history = chat.messages
+      .filter(m => m.text)
+      .map(m => ({ role: m.sender === "user" ? "user" : "assistant", content: m.text }));
+    const nudge = {
+      role: "user",
+      content: proposal.action === "create_repo"
+        ? `[System note — not shown to the user: they rejected your proposal to create the repo "${proposal.name}". Briefly acknowledge that and ask what they'd like different, in your own words. Don't propose a new action yet.]`
+        : proposal.action === "delete_repo"
+        ? `[System note — not shown to the user: they rejected your proposal to delete ${proposal.owner}/${proposal.repo}. Briefly acknowledge that. Don't propose it again unless they explicitly ask.]`
+        : `[System note — not shown to the user: they rejected your proposed change to ${proposal.path} in ${proposal.owner}/${proposal.repo}. Briefly acknowledge that and ask what they'd like different, in your own words. Don't propose a new change yet.]`,
+    };
+
+    const aiMsgId = Date.now() + 3;
+    setChats(prev => prev.map(c => c.id !== activeChatId ? c : {
+      ...c, messages: [...c.messages, { id: aiMsgId, sender: "ai", text: "", time: getTimestamp() }],
+    }));
+
+    try {
+      const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ messages: [...history, nudge] }),
+      });
+      if (!res.ok) return;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let aiText = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.startsWith("data: "));
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.text) {
+              aiText += json.text;
+              const snapshot = aiText;
+              setChats(prev => prev.map(c => c.id !== activeChatId ? c : {
+                ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, text: snapshot } : m),
+              }));
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+  };
+
   const sendMessage = async () => {
     const hasText = input.trim().length > 0;
     if (!hasText && pendingFiles.length === 0) return;
@@ -987,6 +1050,12 @@ Never output JSON until the user confirms. Never ask more than one question at a
           try {
             const json = JSON.parse(line.slice(6));
             if (json.done || json.error) break;
+            if (json.pendingGithubWrite) {
+              const pw = json.pendingGithubWrite;
+              setChats(prev => prev.map(c => c.id !== chatId ? c : {
+                ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, pendingGithubWrite: pw } : m),
+              }));
+            }
             if (json.text) {
               aiText += json.text;
               const snap = aiText;
@@ -1272,6 +1341,19 @@ Never output JSON until the user confirms. Never ask more than one question at a
                         <div className="ecw-avatar"><img src={logo} alt="Eloria" /></div>
                         <div className="ecw-bubble-stack ai">
                           <div className="ecw-bubble"><MarkdownMessage content={msg.text || ""} /></div>
+                          {msg.pendingGithubWrite && (
+                            <GithubWriteConfirmCard
+                              proposal={msg.pendingGithubWrite}
+                              onResolved={(status) => {
+                                setChats(prev => prev.map(c => c.id !== activeChatId ? c : {
+                                  ...c, messages: c.messages.map(m => m.id === msg.id ? { ...m, pendingGithubWrite: { ...m.pendingGithubWrite, resolved: status } } : m),
+                                }));
+                                if (status === "rejected") {
+                                  triggerGithubRejectFollowUp(msg.pendingGithubWrite);
+                                }
+                              }}
+                            />
+                          )}
                           {msg.generatedFiles?.map((file, fi) => (
                             <div key={fi} className="ecw-file-card">
                               <div className="ecw-file-card-icon">{getFileIcon(file.name)}</div>
@@ -1299,6 +1381,26 @@ Never output JSON until the user confirms. Never ask more than one question at a
                               </button>
                             </div>
                           ))}
+                          {!msg.generatedFiles?.length && blocks.length > 0 && (
+                            <button onClick={() => setFilesPanel(blocks)}
+                              style={{ display:"flex", alignItems:"center", gap:6, marginTop:6, padding:"5px 12px", background:"none", border:"1px solid var(--border-soft, #cdd0c9)", borderRadius:8, fontSize:11.5, fontWeight:600, cursor:"pointer", color:"var(--t3, #7a8a84)", fontFamily:"inherit" }}>
+                              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                              </svg>
+                              {blocks.length > 1 ? `View ${blocks.length} files` : "View file"}
+                            </button>
+                          )}
+                          {msg.generatedFiles?.length > 0 && (
+                            <button onClick={() => setFilesPanel(msg.generatedFiles.map(f => ({ name: f.name, code: f.code, ext: getExt(f.name) })))}
+                              style={{ display:"flex", alignItems:"center", gap:6, marginTop:6, padding:"5px 12px", background:"none", border:"1px solid var(--border-soft, #cdd0c9)", borderRadius:8, fontSize:11.5, fontWeight:600, cursor:"pointer", color:"var(--t3, #7a8a84)", fontFamily:"inherit" }}>
+                              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                              </svg>
+                              {msg.generatedFiles.length > 1 ? `View ${msg.generatedFiles.length} files` : "View file"}
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="ecw-msg-divider">
@@ -1417,6 +1519,10 @@ Never output JSON until the user confirms. Never ask more than one question at a
             <p className="ecw-hint">Eloria Code · verify generated code before use</p>
           </div>
         </main>
+
+        {filesPanel && (
+          <CodeFilesPanel files={filesPanel} onClose={() => setFilesPanel(null)} />
+        )}
     </div>
   );
 }

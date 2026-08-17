@@ -319,7 +319,10 @@ router.post("/", verifyUser, checkMessageLimit, async (req, res) => {
 
     // Load this user's connected connectors (GitHub, Gmail, Drive, custom, …)
     // as Anthropic tools, alongside the built-in web_search tool.
-    const { tools: connectorTools, executors } = await loadUserConnectorTools(req.user.uid);
+    const { tools: connectorTools, executors } = await loadUserConnectorTools(
+      req.user.uid,
+      req.limits?.githubToolCallsPerTurn ?? 6
+    );
     const tools = [{ type: "web_search_20250305", name: "web_search" }, ...connectorTools];
 
     let aborted = false;
@@ -373,11 +376,25 @@ router.post("/", verifyUser, checkMessageLimit, async (req, res) => {
       }
 
       const toolResults = await Promise.all(
-        toolUseBlocks.map(async (block) => ({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: await executeConnectorTool(req.user.uid, block.name, block.input),
-        }))
+        toolUseBlocks.map(async (block) => {
+          const content = await executeConnectorTool(req.user.uid, block.name, block.input);
+
+          // Surface GitHub write proposals to the frontend as their own event so it
+          // can render an Approve/Reject card, instead of the user having to parse
+          // the tool_result JSON out of the assistant's reply.
+          if (["github_write_file", "github_create_repo", "github_delete_repo"].includes(block.name)) {
+            try {
+              const parsed = JSON.parse(content);
+              if (parsed.status === "pending_confirmation") {
+                res.write(`data: ${JSON.stringify({ pendingGithubWrite: parsed })}\n\n`);
+              }
+            } catch {
+              /* not JSON, ignore */
+            }
+          }
+
+          return { type: "tool_result", tool_use_id: block.id, content };
+        })
       );
 
       anthropicMessages.push({ role: "user", content: toolResults });

@@ -4,6 +4,10 @@ import { verifyUser } from "../middleware/auth.js";
 import { db } from "../config/firebaseAdmin.js";
 import { encryptSecret } from "../utils/crypto.js";
 import { BUILTIN_CONNECTORS, listBuiltinConnectorsMeta } from "../services/connectorRegistry.js";
+import { pendingGithubWrites } from "../services/connectorTools.js";
+import { decryptSecret } from "../utils/crypto.js";
+import { getUserUsage, incrementUsage } from "../services/usageTracker.js";
+import { getLimitsForUser } from "../services/limits.js";
 
 const router = express.Router();
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -189,6 +193,133 @@ router.delete("/custom/:id", verifyUser, async (req, res) => {
     console.error("Failed to delete custom connector:", err);
     res.status(500).json({ error: "Failed to delete connector." });
   }
+});
+
+/* ── GitHub write approval flow ──────────────────────────────────
+   The AI never writes to GitHub directly — github_write_file (in
+   connectorTools.js) just queues the proposed change here. These two
+   endpoints are what the confirm/reject card in the UI calls. ── */
+
+async function getGithubToken(uid) {
+  const doc = await db.collection("users").doc(uid).collection("connectors").doc("github").get();
+  if (!doc.exists) return null;
+  const data = doc.data();
+  return data.accessTokenEnc ? decryptSecret(data.accessTokenEnc) : null;
+}
+
+// GET /api/connectors/github/pending/:id — used by the UI to re-fetch a
+// proposal (e.g. after a page refresh) before showing the confirm card.
+router.get("/github/pending/:id", verifyUser, (req, res) => {
+  const pending = pendingGithubWrites.get(req.params.id);
+  if (!pending || pending.uid !== req.user.uid) {
+    return res.status(404).json({ error: "This proposed change was not found or has expired." });
+  }
+  const { uid, ...safe } = pending;
+  res.json(safe);
+});
+
+// POST /api/connectors/github/pending/:id/approve — actually performs the queued action.
+router.post("/github/pending/:id/approve", verifyUser, async (req, res) => {
+  const pending = pendingGithubWrites.get(req.params.id);
+  if (!pending || pending.uid !== req.user.uid) {
+    return res.status(404).json({ error: "This proposed change was not found or has expired." });
+  }
+
+  // Quota check happens here — at the moment of actually doing the GitHub
+  // action — not when the AI merely proposes it. Rejected proposals never
+  // cost quota; only real writes/creates/deletes do.
+  const user = await getUserUsage(req.user.uid);
+  const limits = getLimitsForUser(user);
+  const used = user.usage.githubActions || 0;
+  if (used >= limits.githubActions) {
+    return res.status(429).json({
+      error: `Daily GitHub action limit reached (${limits.githubActions}/day on your plan). Upgrade to Pro for more.`,
+      limitReached: true,
+    });
+  }
+
+  try {
+    const token = await getGithubToken(req.user.uid);
+    if (!token) return res.status(400).json({ error: "GitHub is not connected." });
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    };
+
+    if (pending.type === "create_repo") {
+      const putRes = await fetch("https://api.github.com/user/repos", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          name: pending.name,
+          description: pending.description || undefined,
+          private: !!pending.private,
+          auto_init: pending.autoInit !== false,
+        }),
+      });
+      const data = await putRes.json();
+      if (!putRes.ok) return res.status(putRes.status).json({ error: data.message || "GitHub repo creation failed." });
+      pendingGithubWrites.delete(req.params.id);
+      await incrementUsage(req.user.uid, "githubActions");
+      return res.json({ ok: true, repoUrl: data.html_url, fullName: data.full_name });
+    }
+
+    if (pending.type === "delete_repo") {
+      const { owner, repo } = pending;
+      const delRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { method: "DELETE", headers });
+      if (delRes.status !== 204) {
+        const data = await delRes.json().catch(() => ({}));
+        return res.status(delRes.status).json({ error: data.message || "GitHub repo deletion failed. (Deleting a repo requires the 'delete_repo' OAuth scope.)" });
+      }
+      pendingGithubWrites.delete(req.params.id);
+      await incrementUsage(req.user.uid, "githubActions");
+      return res.json({ ok: true, owner, repo });
+    }
+
+    // default: write_file
+    const { owner, repo, path, branch, content, commitMessage } = pending;
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+    let sha;
+    const existing = await fetch(`${url}${branch ? `?ref=${branch}` : ""}`, { headers });
+    if (existing.ok) {
+      const existingData = await existing.json();
+      sha = existingData.sha;
+    }
+
+    const putRes = await fetch(url, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        message: commitMessage,
+        content: Buffer.from(content, "utf8").toString("base64"),
+        branch: branch || undefined,
+        sha, // omitted (undefined) when creating a new file
+      }),
+    });
+    const putData = await putRes.json();
+    if (!putRes.ok) {
+      return res.status(putRes.status).json({ error: putData.message || "GitHub commit failed." });
+    }
+
+    pendingGithubWrites.delete(req.params.id);
+    await incrementUsage(req.user.uid, "githubActions");
+    res.json({ ok: true, commitUrl: putData.commit?.html_url, path });
+  } catch (err) {
+    console.error("Failed to approve GitHub action:", err);
+    res.status(500).json({ error: "Failed to perform the GitHub action." });
+  }
+});
+
+// POST /api/connectors/github/pending/:id/reject — discards the proposal.
+router.post("/github/pending/:id/reject", verifyUser, (req, res) => {
+  const pending = pendingGithubWrites.get(req.params.id);
+  if (!pending || pending.uid !== req.user.uid) {
+    return res.status(404).json({ error: "This proposed change was not found or has expired." });
+  }
+  pendingGithubWrites.delete(req.params.id);
+  res.json({ ok: true });
 });
 
 export default router;

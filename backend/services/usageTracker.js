@@ -10,7 +10,8 @@ function freshUsage() {
     messages: 0,
     codeRequests: 0,
     imageRequests: 0,
-    voiceTurns: 0,        // ← added
+    voiceTurns: 0,
+    githubActions: 0,     // ← added: counts approved write/create/delete actions
   };
 }
 

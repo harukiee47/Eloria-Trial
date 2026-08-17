@@ -3,6 +3,8 @@ import logo from "../assets/logo.png";
 import { auth } from "../services/firebase";
 import MarkdownMessage from "./MarkdownMessage";
 import "./MarkdownMessage.css";
+import GithubWriteConfirmCard from "./GithubWriteConfirmCard";
+import CodeFilesPanel from "./CodeFilesPanel";
 import ActivityTimeline from "./ActivityTimeline";
 import ConnectorsModal from "./ConnectorsModal";
 
@@ -160,7 +162,7 @@ function formatBytes(bytes) {
 
 function docIcon(ext) {
   const map = {
-    PDF:  { bg: "#fff1f1", color: "#e53e3e", char: "PDF" },
+    PDF:  { bg: "var(--danger-bg, #fff1f1)", color: "var(--danger, #e53e3e)", char: "PDF" },
     TXT:  { bg: "#f0f4ff", color: "#4a6cf7", char: "TXT" },
     DOC:  { bg: "#eff6ff", color: "#2563eb", char: "DOC" },
     DOCX: { bg: "#eff6ff", color: "#2563eb", char: "DOC" },
@@ -177,11 +179,13 @@ function extractUrls(text) {
 
 function detectCodeBlocks(text) {
   const blocks = [];
-  const regex = /```(\w+)?\n([\s\S]*?)```/g;
+  const regex = /```(\w+)?(?:[ \t]+([\w.\-\/]+\.\w+))?\n([\s\S]*?)```/g;
   let match;
+  let autoIndex = 0;
   while ((match = regex.exec(text)) !== null) {
     const lang = match[1] || "txt";
-    const code = match[2];
+    const filenameHint = match[2] || null;
+    const code = match[3];
     if (code.trim().length > 50) {
       const extMap = {
         javascript: "js", js: "js", typescript: "ts", ts: "ts",
@@ -189,7 +193,10 @@ function detectCodeBlocks(text) {
         jsx: "jsx", tsx: "tsx", json: "json", bash: "sh",
         sh: "sh", sql: "sql", java: "java", cpp: "cpp", c: "c",
       };
-      blocks.push({ lang, code, ext: extMap[lang.toLowerCase()] || "txt" });
+      const ext = extMap[lang.toLowerCase()] || "txt";
+      autoIndex++;
+      const name = filenameHint || `file${autoIndex}.${ext}`;
+      blocks.push({ lang, code, ext, name });
     }
   }
   return blocks;
@@ -275,6 +282,20 @@ function buildActivitySteps({ text = "", hasFiles = false }) {
   if (isLong) steps.push({ icon: "list", text: "Breaking down your question", badge: null, badgeType: null });
   steps.push({ icon: "sparkles", text: "Writing response", badge: null, badgeType: null });
   return steps;
+}
+
+function OpenFilesButton({ text, onOpen }) {
+  const blocks = detectCodeBlocks(text);
+  if (blocks.length === 0) return null;
+  return (
+    <button className="cw-download-btn" onClick={() => onOpen(blocks)} title="View files">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <span className="cw-download-text">{blocks.length > 1 ? `View ${blocks.length} files` : "View file"}</span>
+    </button>
+  );
 }
 
 function DownloadCodeButton({ text }) {
@@ -427,10 +448,10 @@ function hexRgba(hex, a) {
 }
 
 const WAVE_COLORS = {
-    idle:       ["#0d3a35","#1a5a52","#0a2e29"],
-    listening:  ["#0d6a5e","#00b894","#055a52"],
-    processing: ["#2d6a4f","#52b788","#1b4332"],
-    speaking:   ["#00b894","#55efc4","#0d6a5e"],
+    idle:       ["var(--t1, #0d3a35)","var(--accent, #1a5a52)","#0a2e29"],
+    listening:  ["var(--accent, #0d6a5e)","#00b894","#055a52"],
+    processing: ["var(--accent, #2d6a4f)","#52b788","#1b4332"],
+    speaking:   ["#00b894","#55efc4","var(--accent, #0d6a5e)"],
   };
 
 
@@ -965,7 +986,7 @@ const endCall = useCallback(() => {
     return (
       <div style={{
         position:"fixed", inset:0, zIndex:9999,
-        background:"#f5f0e8",
+        background:"var(--bg-card, #f5f0e8)",
         display:"flex", alignItems:"center", justifyContent:"center",
         fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         overflow:"hidden",
@@ -988,7 +1009,7 @@ const endCall = useCallback(() => {
 
           {/* Big greeting */}
           <div style={{ textAlign:"center" }}>
-            <div style={{ fontFamily:"Georgia, 'Times New Roman', serif", fontSize:"clamp(44px,10vw,68px)", fontWeight:300, color:"#0d3a35", letterSpacing:"-0.03em", lineHeight:1.05 }}>
+            <div style={{ fontFamily:"Georgia, 'Times New Roman', serif", fontSize:"clamp(44px,10vw,68px)", fontWeight:300, color:"var(--t1, #0d3a35)", letterSpacing:"-0.03em", lineHeight:1.05 }}>
               Hello!
             </div>
             <div style={{ fontSize:14, color:"#7a9e8a", marginTop:8 }}>Choose a voice to get started</div>
@@ -1005,13 +1026,13 @@ const endCall = useCallback(() => {
                   display:"flex", flexDirection:"column", alignItems:"center", gap:8,
                   padding:"18px 12px", cursor:"pointer", textAlign:"center",
                   background: selectedVoice === v.id ? "rgba(13,58,53,0.06)" : "#fff",
-                  border: selectedVoice === v.id ? "2px solid #0d3a35" : "1.5px solid rgba(13,58,53,0.12)",
+                  border: selectedVoice === v.id ? "2px solid var(--t1, #0d3a35)" : "1.5px solid rgba(13,58,53,0.12)",
                   borderRadius:16, transition:"all .2s", position:"relative",
                   boxShadow: selectedVoice === v.id ? "0 0 0 3px rgba(13,58,53,0.1), 0 4px 16px rgba(13,58,53,0.1)" : "0 2px 10px rgba(13,58,53,0.05)",
                 }}
               >
                 {selectedVoice === v.id && (
-                  <div style={{ position:"absolute", top:8, right:10, fontSize:11, fontWeight:700, color:"#0d3a35" }}>✓</div>
+                  <div style={{ position:"absolute", top:8, right:10, fontSize:11, fontWeight:700, color:"var(--t1, #0d3a35)" }}>✓</div>
                 )}
                 {previewingId === v.id && (
                   <div style={{ position:"absolute", top:8, left:10 }}>
@@ -1022,7 +1043,7 @@ const endCall = useCallback(() => {
                   width:44, height:44, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
                   fontSize:18, fontWeight:700, fontFamily:"Georgia, serif",
                   background: v.gender === "Female" ? "rgba(108,92,231,0.1)" : "rgba(13,58,53,0.1)",
-                  color: v.gender === "Female" ? "#6C5CE7" : "#0d3a35",
+                  color: v.gender === "Female" ? "#6C5CE7" : "var(--t1, #0d3a35)",
                 }}>
                   {v.label[0]}
                 </div>
@@ -1038,13 +1059,13 @@ const endCall = useCallback(() => {
           <button
             onClick={handleContinue}
             style={{
-              padding:"14px 52px", background:"#0d3a35", color:"#f5f0e8",
+              padding:"14px 52px", background:"var(--t1, #0d3a35)", color:"#f5f0e8",
               border:"none", borderRadius:40, fontSize:15, fontWeight:600,
               cursor:"pointer", letterSpacing:"0.02em",
               boxShadow:"0 4px 20px rgba(13,58,53,0.35)", transition:"all .2s",
             }}
-            onMouseEnter={e => { e.currentTarget.style.background="#1a5a52"; e.currentTarget.style.transform="translateY(-1px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background="#0d3a35"; e.currentTarget.style.transform="translateY(0)"; }}
+            onMouseEnter={e => { e.currentTarget.style.background="var(--accent, #1a5a52)"; e.currentTarget.style.transform="translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background="var(--t1, #0d3a35)"; e.currentTarget.style.transform="translateY(0)"; }}
           >
             Continue
           </button>
@@ -1054,12 +1075,12 @@ const endCall = useCallback(() => {
   }
 
   // ── MAIN SCREEN ───────────────────────────────────────────────────────────
-  const stateColor = voiceState === "listening" ? "#0d6a5e" : voiceState === "speaking" ? "#00b894" : voiceState === "processing" ? "#2d6a4f" : "rgba(13,58,53,0.4)";
+  const stateColor = voiceState === "listening" ? "var(--accent, #0d6a5e)" : voiceState === "speaking" ? "#00b894" : voiceState === "processing" ? "var(--accent, #2d6a4f)" : "rgba(13,58,53,0.4)";
 
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:9999,
-      background:"#f5f0e8",
+      background:"var(--bg-card, #f5f0e8)",
       display:"flex", flexDirection:"column",
       fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       animation:"vmFadeScale .25s ease",
@@ -1076,14 +1097,14 @@ const endCall = useCallback(() => {
 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 20px", flexShrink:0 }}>
   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
     <div style={{ width:8, height:8, borderRadius:"50%", background:stateColor, transition:"background .4s", boxShadow: voiceState !== "idle" ? `0 0 8px ${stateColor}` : "none" }} />
-    <span style={{ fontSize:12, fontWeight:700, color:"#0d3a35", letterSpacing:"0.06em", textTransform:"uppercase" }}>Eloria Voice</span>
+    <span style={{ fontSize:12, fontWeight:700, color:"var(--t1, #0d3a35)", letterSpacing:"0.06em", textTransform:"uppercase" }}>Eloria Voice</span>
     <span style={{ fontSize:11, color:"rgba(13,58,53,0.4)", fontVariantNumeric:"tabular-nums" }}>{formatTime(timerSecs)}</span>
   </div>
   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
     <button
       onClick={() => { stopAll(); clearInterval(timerIntervalRef.current); setTimerSecs(0); setState("idle"); setScreen("greet"); }}
       title="Change voice"
-      style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 12px 5px 8px", borderRadius:20, background:"rgba(13,58,53,0.07)", border:"1px solid rgba(13,58,53,0.13)", color:"#0d3a35", cursor:"pointer", fontSize:11, fontWeight:600, transition:"all .15s" }}
+      style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 12px 5px 8px", borderRadius:20, background:"rgba(13,58,53,0.07)", border:"1px solid rgba(13,58,53,0.13)", color:"var(--t1, #0d3a35)", cursor:"pointer", fontSize:11, fontWeight:600, transition:"all .15s" }}
       onMouseEnter={e => e.currentTarget.style.background="rgba(13,58,53,0.13)"}
       onMouseLeave={e => e.currentTarget.style.background="rgba(13,58,53,0.07)"}
     >
@@ -1098,7 +1119,7 @@ const endCall = useCallback(() => {
     <button
       onClick={() => setMinimized(true)}
       title="Minimize"
-      style={{ width:32, height:32, borderRadius:"50%", background:"rgba(13,58,53,0.07)", border:"1px solid rgba(13,58,53,0.13)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}
+      style={{ width:32, height:32, borderRadius:"50%", background:"rgba(13,58,53,0.07)", border:"1px solid rgba(13,58,53,0.13)", color:"var(--t1, #0d3a35)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}
       onMouseEnter={e => e.currentTarget.style.background="rgba(13,58,53,0.13)"}
       onMouseLeave={e => e.currentTarget.style.background="rgba(13,58,53,0.07)"}
     >
@@ -1145,7 +1166,7 @@ const endCall = useCallback(() => {
             className="vm-ctrl-btn"
             onClick={() => { stopAll(); clearInterval(timerIntervalRef.current); setTimerSecs(0); setState("idle"); setScreen("greet"); }}
             title="Change voice"
-            style={{ width:52, height:52, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1.5px solid rgba(13,58,53,0.15)", color:"#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s" }}
+            style={{ width:52, height:52, borderRadius:"50%", background:"rgba(13,58,53,0.08)", border:"1.5px solid rgba(13,58,53,0.15)", color:"var(--t1, #0d3a35)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s" }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
@@ -1160,7 +1181,7 @@ const endCall = useCallback(() => {
             className="vm-end-btn"
             onClick={endCall}
             title="End"
-            style={{ width:68, height:68, borderRadius:"50%", background:"#e53e3e", border:"none", color:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 0 10px rgba(229,62,62,0.12)", transition:"all .2s" }}
+            style={{ width:68, height:68, borderRadius:"50%", background:"var(--danger, #e53e3e)", border:"none", color:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 0 10px rgba(229,62,62,0.12)", transition:"all .2s" }}
           >
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" transform="rotate(135 12 12)"/>
@@ -1172,7 +1193,7 @@ const endCall = useCallback(() => {
             className="vm-ctrl-btn"
             onClick={() => { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; } analyserRef.current = null; setState("idle"); setTimeout(startListening, 400); }}
             title="Stop & re-listen"
-            style={{ width:52, height:52, borderRadius:"50%", background: voiceState === "speaking" ? "rgba(0,184,148,0.12)" : "rgba(13,58,53,0.08)", border:`1.5px solid ${voiceState === "speaking" ? "rgba(0,184,148,0.4)" : "rgba(13,58,53,0.15)"}`, color: voiceState === "speaking" ? "#00b894" : "#0d3a35", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s" }}
+            style={{ width:52, height:52, borderRadius:"50%", background: voiceState === "speaking" ? "rgba(0,184,148,0.12)" : "rgba(13,58,53,0.08)", border:`1.5px solid ${voiceState === "speaking" ? "rgba(0,184,148,0.4)" : "rgba(13,58,53,0.15)"}`, color: voiceState === "speaking" ? "#00b894" : "var(--t1, #0d3a35)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s" }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
           </button>
@@ -1231,7 +1252,7 @@ const CW_STYLE = `
     flex-shrink: 0;
     transition: background .12s;
   }
-  .cw-hamburger:hover { background: #f0f0ec; }
+  .cw-hamburger:hover { background: var(--bg-card, #f0f0ec); }
   .cw-hamburger svg { width: 18px; height: 18px; }
 
   @media(max-width: 640px) {
@@ -1348,7 +1369,7 @@ const CW_STYLE = `
   .cw-welcome-name {
     font-size: clamp(22px, 4.5vw, 32px);
     font-weight: 700;
-    color: #0d3a35;
+    color: var(--t1, #0d3a35);
     letter-spacing: -0.03em;
     line-height: 1.15;
   }
@@ -1398,7 +1419,7 @@ const CW_STYLE = `
   .cw-ai-avatar {
     width: 28px; height: 28px; border-radius: 8px; overflow: hidden;
     flex-shrink: 0; border: 1.5px solid rgba(193,127,42,.2);
-    background: #faf8f4; margin-bottom: 2px;
+    background: var(--bg-card, #faf8f4); margin-bottom: 2px;
   }
   .cw-ai-avatar img { width:100%; height:100%; object-fit:contain; }
   @media(max-width: 640px) {
@@ -1495,7 +1516,7 @@ const CW_STYLE = `
     border-bottom-right-radius: 5px;
   }
   .cw-msg-row.ai .cw-attach-doc-bubble {
-    background: #faf9f6;
+    background: var(--bg-card, #faf9f6);
     border: 1.5px solid #ececea;
     border-bottom-left-radius: 5px;
     box-shadow: 0 1px 6px rgba(0,0,0,.06);
@@ -1528,7 +1549,7 @@ const CW_STYLE = `
   .cw-pending-chip {
     display: flex; align-items: center; gap: 7px;
     padding: 6px 10px 6px 8px;
-    background: #faf8f3;
+    background: var(--bg-card, #faf8f3);
     border: 1.5px solid rgba(193,127,42,.25);
     border-radius: 10px; max-width: 200px;
     transition: box-shadow .12s;
@@ -1555,7 +1576,7 @@ const CW_STYLE = `
     font-size: 11px; display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; transition: color .1s, background .1s; padding: 0;
   }
-  .cw-pending-remove:hover { color: #e05252; background: #fef2f2; }
+  .cw-pending-remove:hover { color: var(--danger, #e05252); background: #fef2f2; }
   .cw-pending-limit {
     font-size: 10.5px; color: var(--t3);
     padding: 0 16px 4px; max-width: 720px; margin: 0 auto; width: 100%;
@@ -1565,7 +1586,7 @@ const CW_STYLE = `
   .cw-activity-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 14px 6px 12px;
-    background: #faf8f4;
+    background: var(--bg-card, #faf8f4);
     border: 1px solid rgba(193,127,42,.18);
     border-radius: 20px;
     font-size: 12.5px; color: var(--t2);
@@ -1610,7 +1631,7 @@ const CW_STYLE = `
   }
   @keyframes cwSpin { to { transform: rotate(360deg); } }
   .cw-url-ok  { color: #22863a; font-size: 12px; }
-  .cw-url-err { color: #e05252; font-size: 12px; }
+  .cw-url-err { color: var(--danger, #e05252); font-size: 12px; }
 
   /* ── ACTIVITY TRAIL ──────────────────────────────────── */
   .cw-activity-trail {
@@ -1635,7 +1656,7 @@ const CW_STYLE = `
     gap: 8px;
     padding: 10px 16px;
     margin-top: 12px;
-    background: #0d3a35;
+    background: var(--t1, #0d3a35);
     color: #fff;
     border: none;
     border-radius: 12px;
@@ -1726,7 +1747,7 @@ const CW_STYLE = `
   /* ── INPUT BOX (shared between centered and bottom) ──── */
   .cw-input-box {
     max-width: 720px; margin: 0 auto;
-    background: #fafaf8; border: 1.5px solid var(--border);
+    background: var(--bg-card, #fafaf8); border: 1.5px solid var(--border);
     border-radius: 18px; padding: 10px 12px;
     display: flex; flex-direction: column; gap: 8px;
     transition: border-color .15s, box-shadow .15s;
@@ -1735,7 +1756,7 @@ const CW_STYLE = `
   .cw-input-box:focus-within {
     border-color: rgba(13,58,53,.35);
     box-shadow: 0 0 0 3px rgba(13,58,53,.07), 0 2px 12px rgba(0,0,0,.06);
-    background: #fff;
+    background: var(--bg-card, #fff);
   }
   @media(max-width: 640px) {
     .cw-input-box { border-radius: 16px; padding: 8px 10px; }
@@ -1845,11 +1866,11 @@ const CW_STYLE = `
   }
   .cw-mic-btn:hover {
     background: rgba(13,58,53,0.08);
-    color: #0d3a35;
+    color: var(--t1, #0d3a35);
     transform: scale(1.08);
   }
   .cw-mic-btn.active {
-    color: #0d3a35;
+    color: var(--t1, #0d3a35);
     background: rgba(13,58,53,0.1);
   }
 
@@ -1897,13 +1918,13 @@ const CW_STYLE = `
     padding: 16px;
   }
   .cw-limit-modal {
-    background: #fff; border-radius: 22px; padding: 0;
+    background: var(--bg-card, #fff); border-radius: 22px; padding: 0;
     width: 340px; max-width: 100%;
     box-shadow: 0 32px 80px rgba(13,58,53,.18), 0 2px 8px rgba(0,0,0,.06);
     animation: cwFadeUp .2s ease; overflow: hidden;
   }
   .cw-limit-modal-top {
-    background: linear-gradient(135deg, #0d3a35 0%, #1a5a52 100%);
+    background: linear-gradient(135deg, var(--t1, #0d3a35) 0%, var(--accent, #1a5a52) 100%);
     padding: 28px 24px 24px; text-align: center; position: relative;
   }
   @media(max-width: 640px) { .cw-limit-modal-top { padding: 22px 18px 20px; } }
@@ -1927,7 +1948,7 @@ const CW_STYLE = `
   .cw-limit-btn-cancel:hover { background: #f5f5f2; }
   .cw-limit-btn-upgrade {
     flex: 2; padding: 11px;
-    background: linear-gradient(135deg, #0d3a35, #1a5a52);
+    background: linear-gradient(135deg, var(--t1, #0d3a35), var(--accent, #1a5a52));
     border: none; border-radius: 11px; font-size: 13px; font-weight: 600;
     color: #fff; cursor: pointer; font-family: var(--font);
     transition: opacity .12s; letter-spacing: .01em;
@@ -1968,7 +1989,7 @@ const CW_STYLE = `
     from { opacity: 0; transform: translateX(-50%) translateY(4px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
   }
-  .cw-selection-btn:hover { background: #0d3a35; }
+  .cw-selection-btn:hover { background: var(--t1, #0d3a35); }
   .cw-selection-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
 `;
 
@@ -2013,7 +2034,7 @@ function PasteViewerModal({ data, onClose, onSave }) {
             <pre style={{
               margin:0, maxHeight:"55vh", overflow:"auto",
               fontFamily:"ui-monospace, monospace", fontSize:12.5,
-              background:"#faf9f6", border:"1px solid var(--border-soft)",
+              background:"var(--bg-card, #faf9f6)", border:"1px solid var(--border-soft)",
               borderRadius:10, padding:12, whiteSpace:"pre-wrap", wordBreak:"break-word",
               color:"var(--t1)",
             }}>{text}</pre>
@@ -2188,7 +2209,7 @@ function InputBox({
           }
           disabled={!isThinking && !isStreaming && (!input.trim() && pendingFiles.length === 0)}
           title={(isThinking || isStreaming) ? "Stop" : "Send"}
-          style={(isThinking || isStreaming) ? { background: "#0d3a35" } : {}}
+          style={(isThinking || isStreaming) ? { background: "var(--t1, #0d3a35)" } : {}}
         >
           {(isThinking || isStreaming) ? (
             <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
@@ -2221,6 +2242,7 @@ export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPric
   const [selectionBtn,   setSelectionBtn]   = useState(null);
   const [voiceOpen,      setVoiceOpen]      = useState(false);
   const [pasteViewer,    setPasteViewer]    = useState(null);
+  const [filesPanel,     setFilesPanel]     = useState(null); // null | array of {name, code, ext, lang}
 
   const fileInputRef       = useRef(null);
   const fileAcceptRef      = useRef("");   
@@ -2779,6 +2801,14 @@ const apiMessages = newMessages.map((m, idx) => {
           const json = JSON.parse(line.slice(6));
           if (json.done) break;
           if (json.error) throw new Error(json.error);
+          if (json.pendingGithubWrite) {
+            const pw = json.pendingGithubWrite;
+            setChats(prev => prev.map(c =>
+              c.id === chat.id
+                ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, pendingGithubWrite: pw } : m) }
+                : c
+            ));
+          }
           if (json.text) {
             aiText += json.text;
             const snapshot = aiText;
@@ -2834,6 +2864,63 @@ const apiMessages = newMessages.map((m, idx) => {
     ));
   };
 
+  // Fired when the user rejects a proposed GitHub change: sends the model
+  // a short internal nudge (not shown as a user bubble) so it naturally
+  // asks what to change instead, with full context of what was rejected.
+  const triggerGithubRejectFollowUp = async (proposal) => {
+    if (!auth.currentUser) return;
+    const token = await auth.currentUser.getIdToken();
+    const history = messages
+      .filter(m => m.text)
+      .map(m => ({ role: m.sender === "user" ? "user" : "assistant", content: m.text }));
+    const nudge = {
+      role: "user",
+      content: proposal.action === "create_repo"
+        ? `[System note — not shown to the user: they rejected your proposal to create the repo "${proposal.name}". Briefly acknowledge that and ask what they'd like different, in your own words. Don't propose a new action yet.]`
+        : proposal.action === "delete_repo"
+        ? `[System note — not shown to the user: they rejected your proposal to delete ${proposal.owner}/${proposal.repo}. Briefly acknowledge that. Don't propose it again unless they explicitly ask.]`
+        : `[System note — not shown to the user: they rejected your proposed change to ${proposal.path} in ${proposal.owner}/${proposal.repo}. Briefly acknowledge that and ask what they'd like different, in your own words. Don't propose a new change yet.]`,
+    };
+
+    const aiMsgId = Date.now() + 3;
+    setChats(prev => prev.map(c =>
+      c.id === chat.id
+        ? { ...c, messages: [...c.messages, { id: aiMsgId, sender: "ai", text: "", time: getTimestamp() }] }
+        : c
+    ));
+
+    try {
+      const res = await fetch("https://eloria-trial.onrender.com/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ messages: [...history, nudge] }),
+      });
+      if (!res.ok) return;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let aiText = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.startsWith("data: "));
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.text) {
+              aiText += json.text;
+              const snapshot = aiText;
+              setChats(prev => prev.map(c =>
+                c.id === chat.id
+                  ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, text: snapshot } : m) }
+                  : c
+              ));
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+  };
+
   // Shared input props object
   const inputProps = {
     input, setInput, isThinking, isStreaming,
@@ -2876,7 +2963,7 @@ const apiMessages = newMessages.map((m, idx) => {
                   style={{
                     width: "100%", padding: "10px 13px", borderRadius: 14,
                     border: "1.5px solid rgba(13,58,53,.35)", fontFamily: "var(--font)",
-                    fontSize: 13, color: "var(--t1)", background: "#fff", outline: "none",
+                    fontSize: 13, color: "var(--t1)", background: "var(--bg-card, #fff)", outline: "none",
                     resize: "none", minHeight: 72, lineHeight: 1.5, boxSizing: "border-box",
                     boxShadow: "0 0 0 3px rgba(13,58,53,.07)",
                   }}
@@ -2894,7 +2981,7 @@ const apiMessages = newMessages.map((m, idx) => {
                     onClick={() => submitEdit(msg.id)}
                     style={{
                       padding: "5px 12px", borderRadius: 8, border: "none",
-                      background: "#0d3a35", fontSize: 12, color: "#fff",
+                      background: "var(--t1, #0d3a35)", fontSize: 12, color: "#fff",
                       cursor: "pointer", fontFamily: "var(--font)", fontWeight: 600,
                     }}
                   >Send</button>
@@ -2976,6 +3063,22 @@ const apiMessages = newMessages.map((m, idx) => {
             {msg.text && <DownloadCodeButton text={msg.text} />}
             {msg.text && <DownloadDocButton text={msg.text} />}
             {msg.text && <DownloadPptxButton text={msg.text} />}
+            {msg.text && <OpenFilesButton text={msg.text} onOpen={setFilesPanel} />}
+            {msg.pendingGithubWrite && (
+              <GithubWriteConfirmCard
+                proposal={msg.pendingGithubWrite}
+                onResolved={(status) => {
+                  setChats(prev => prev.map(c =>
+                    c.id === chat.id
+                      ? { ...c, messages: c.messages.map(m => m.id === msg.id ? { ...m, pendingGithubWrite: { ...m.pendingGithubWrite, resolved: status } } : m) }
+                      : c
+                  ));
+                  if (status === "rejected") {
+                    triggerGithubRejectFollowUp(msg.pendingGithubWrite);
+                  }
+                }}
+              />
+            )}
 
             {/* Interrupted notice */}
             {msg.id === interruptedMsgId && (
@@ -2991,13 +3094,13 @@ const apiMessages = newMessages.map((m, idx) => {
                 <button
                   onClick={() => { setInterruptedMsgId(null); regenerateMessage(msg.id); }}
                   style={{
-                    fontSize: 11, fontWeight: 600, color: "#0d3a35",
-                    background: "#f0ede6", border: "1px solid rgba(13,58,53,.2)",
+                    fontSize: 11, fontWeight: 600, color: "var(--t1, #0d3a35)",
+                    background: "var(--bg-card, #f0ede6)", border: "1px solid rgba(13,58,53,.2)",
                     borderRadius: 7, padding: "3px 9px", cursor: "pointer",
                     fontFamily: "var(--font)", transition: "background .12s",
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = "#e4dfd6"}
-                  onMouseLeave={e => e.currentTarget.style.background = "#f0ede6"}
+                  onMouseLeave={e => e.currentTarget.style.background = "var(--bg-card, #f0ede6)"}
                 >Try again</button>
               </div>
             )}
@@ -3012,7 +3115,7 @@ const apiMessages = newMessages.map((m, idx) => {
                   setTimeout(() => setCopiedMsgId(null), 2000);
                 }}
                 style={{ border:"none", background:"none", color:"var(--t3)", cursor:"pointer", fontSize:10, padding:0, fontFamily:"var(--font)", transition:"color .12s", display:"flex", alignItems:"center", gap:3 }}
-                onMouseEnter={e => e.currentTarget.style.color="#0d3a35"}
+                onMouseEnter={e => e.currentTarget.style.color="var(--t1, #0d3a35)"}
                 onMouseLeave={e => e.currentTarget.style.color="var(--t3)"}
               >
                 {copiedMsgId === msg.id ? "✓ copied" : (
@@ -3028,7 +3131,7 @@ const apiMessages = newMessages.map((m, idx) => {
               <button
                 onClick={() => regenerateMessage(msg.id)}
                 style={{ border:"none", background:"none", color:"var(--t3)", cursor:"pointer", fontSize:10, padding:0, fontFamily:"var(--font)", transition:"color .12s" }}
-                onMouseEnter={e => e.target.style.color="#0d3a35"}
+                onMouseEnter={e => e.target.style.color="var(--t1, #0d3a35)"}
                 onMouseLeave={e => e.target.style.color="var(--t3)"}
               >↻ regenerate</button>
               <div style={{ flex:1, height:1, background:"linear-gradient(to left, rgba(13,58,53,.12), transparent)" }} />
@@ -3162,7 +3265,7 @@ const apiMessages = newMessages.map((m, idx) => {
         fontFamily: "'Georgia', 'Times New Roman', serif",
         fontSize: "clamp(38px, 7vw, 58px)",
         fontWeight: 400,
-        color: "#0d3a35",
+        color: "var(--t1, #0d3a35)",
         letterSpacing: "-0.02em",
         lineHeight: 1.08,
       }}>
@@ -3174,7 +3277,7 @@ const apiMessages = newMessages.map((m, idx) => {
       fontFamily: "'Georgia', 'Times New Roman', serif",
       fontSize: "clamp(32px, 5.5vw, 48px)",
       fontWeight: 400,
-      color: "#0d3a35",
+      color: "var(--t1, #0d3a35)",
       letterSpacing: "-0.02em",
       lineHeight: 1.1,
     }}>
@@ -3278,7 +3381,7 @@ const apiMessages = newMessages.map((m, idx) => {
             {messages.map(renderMessage)}
             {(isThinking || isStreaming) && (
               <div className="cw-thinking">
-                <div className="cw-ai-avatar" style={{ width:28, height:28, borderRadius:8, overflow:"hidden", border:"1.5px solid rgba(193,127,42,.2)", background:"#faf8f4", flexShrink:0 }}>
+                <div className="cw-ai-avatar" style={{ width:28, height:28, borderRadius:8, overflow:"hidden", border:"1.5px solid rgba(193,127,42,.2)", background:"var(--bg-card, #faf8f4)", flexShrink:0 }}>
                   <img src={logo} alt="Eloria" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                 </div>
        {isThinking && (
@@ -3306,15 +3409,15 @@ const apiMessages = newMessages.map((m, idx) => {
                   title="Stop"
                   style={{
                     marginLeft: "auto", padding: "4px 8px",
-                    background: "#fdf0f0", border: "1px solid rgba(224,82,82,.3)",
-                    borderRadius: 8, color: "#0d3a35", fontSize: 11,
+                    background: "var(--danger-bg, #fdf0f0)", border: "1px solid rgba(224,82,82,.3)",
+                    borderRadius: 8, color: "var(--t1, #0d3a35)", fontSize: 11,
                     fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)",
                     display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
                     transition: "background .12s",
                     whiteSpace: "nowrap",
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = "#fce8e8"}
-                  onMouseLeave={e => e.currentTarget.style.background = "#fdf0f0"}
+                  onMouseLeave={e => e.currentTarget.style.background = "var(--danger-bg, #fdf0f0)"}
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
                   Stop
@@ -3395,6 +3498,10 @@ const apiMessages = newMessages.map((m, idx) => {
         initialView={connectorsModal || "browse"}
         onClose={() => setConnectorsModal(null)}
       />
+
+      {filesPanel && (
+        <CodeFilesPanel files={filesPanel} onClose={() => setFilesPanel(null)} />
+      )}
     </main>
   );
 }
