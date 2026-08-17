@@ -23,6 +23,7 @@ import HyperFrame from "./components/HyperFrame";
 import DownloadPage from "./components/Downloadpage";
 import Billing from "./components/Billing";
 import SettingsModal, { applyStoredTheme } from "./components/SettingsModal";
+import AppSkeleton from "./components/AppSkeleton";
 
 if (window.location.pathname === "/code") {
   import("react-dom/client").then(({ createRoot }) => {
@@ -93,6 +94,8 @@ export default function App() {
   const totalBadgeCount = pendingInviteCount + notifications.length;
   const [groupInvites, setGroupInvites] = useState([]);
   const [groupLimitModal, setGroupLimitModal] = useState(null);
+  const [chatsLoading, setChatsLoading] = useState(true);
+  const [planLoading, setPlanLoading] = useState(true);
 
   useEffect(() => {
     applyStoredTheme();
@@ -187,6 +190,7 @@ useEffect(() => {
 
   useEffect(() => {
     if (!user?.uid) return;
+    setChatsLoading(true);
     const fetchChats = async () => {
       try {
         const data = await loadChats(user.uid);
@@ -204,6 +208,8 @@ useEffect(() => {
         const firstChat = { id: Date.now(), title: "New Chat", messages: [] };
         setChats([firstChat]);
         setActiveChatId(firstChat.id);
+      } finally {
+        setChatsLoading(false);
       }
     };
     fetchChats();
@@ -211,6 +217,7 @@ useEffect(() => {
 
   useEffect(() => {
     if (!user) return;
+    setPlanLoading(true);
     const fetchPlan = async () => {
       try {
         const token = await auth.currentUser.getIdToken();
@@ -221,6 +228,8 @@ useEffect(() => {
         setUserPlan(data.plan || "free");
       } catch (err) {
         console.error("Failed to fetch plan:", err);
+      } finally {
+        setPlanLoading(false);
       }
     };
     fetchPlan();
@@ -335,6 +344,10 @@ useEffect(() => {
   return <DownloadPage />;
 }
 
+  if (stage === "splash") {
+    return <AppSkeleton />;
+  }
+
   if (stage === "login") {
     return (
       <Login
@@ -371,6 +384,10 @@ useEffect(() => {
   if (showBilling) {
   return <Billing onBack={() => setShowBilling(false)} />;
 }
+
+  if (stage === "chat" && chatsLoading) {
+    return <AppSkeleton />;
+  }
 
   return (
     <div className="app-shell">
@@ -433,6 +450,7 @@ useEffect(() => {
             setShowBilling={setShowBilling}
             setShowSettings={setShowSettings}
             userPlan={userPlan}
+            planLoading={planLoading}
             allChats={chats}
           />
         )}

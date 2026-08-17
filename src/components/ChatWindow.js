@@ -1321,6 +1321,18 @@ const CW_STYLE = `
   @media(max-width: 400px) {
     .cw-plan-badge { display: none; }
   }
+  .cw-plan-spinner {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    border-top-color: var(--t3);
+    animation: cwPlanSpin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes cwPlanSpin {
+    to { transform: rotate(360deg); }
+  }
   .cw-plan-manage {
     display: flex;
     align-items: center;
@@ -2228,7 +2240,7 @@ function InputBox({
 }
 
 
-export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, setShowBilling, userPlan, setShowNotifPanel, totalBadgeCount, allChats }) {
+export default function ChatWindow({ chat, setChats, setSidebarOpen, setShowPricing, setShowBilling, userPlan, planLoading, setShowNotifPanel, totalBadgeCount, allChats }) {
   const [input,          setInput]          = useState("");
   const [isThinking,     setIsThinking]     = useState(false);
   const [isStreaming,    setIsStreaming]     = useState(false);
@@ -3202,28 +3214,48 @@ const apiMessages = newMessages.map((m, idx) => {
           </div>
         </div>
 <div className="cw-header-right">
-          <div
-            className="cw-plan-badge"
-            onClick={() => { if (userPlan === "pro" || userPlan === "admin") setShowBilling(true); }}
-            style={{
-              background: userPlan === "pro" || userPlan === "admin" ? "rgba(39,97,82,0.12)" : "rgba(193,127,42,.1)",
-              color: "var(--accent)",
-              border: userPlan === "pro" || userPlan === "admin" ? "1px solid rgba(39,97,82,.25)" : "1px solid rgba(193,127,42,.25)",
-              cursor: userPlan === "pro" || userPlan === "admin" ? "pointer" : "default",
-            }}
-            title={userPlan === "pro" || userPlan === "admin" ? "Manage subscription" : ""}
-          >
-            {userPlan === "admin" ? "Admin" : userPlan === "pro" ? "Pro ✦" : "Free"}
-            {(userPlan === "pro" || userPlan === "admin") && (
-              <span className="cw-plan-manage">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </span>
-            )}
-          </div>
-          {userPlan !== "pro" && userPlan !== "admin" && (
-            <button className="cw-upgrade" onClick={() => setShowPricing(true)}>Upgrade</button>
+          {planLoading ? (
+            <div
+              className="cw-plan-badge"
+              style={{
+                background: "var(--bg-card-2, #faf7f2)",
+                color: "var(--t3)",
+                border: "1px solid var(--border-soft)",
+                cursor: "default",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span className="cw-plan-spinner" />
+              Updating plan…
+            </div>
+          ) : (
+            <>
+              <div
+                className="cw-plan-badge"
+                onClick={() => { if (userPlan === "pro" || userPlan === "admin") setShowBilling(true); }}
+                style={{
+                  background: userPlan === "pro" || userPlan === "admin" ? "rgba(39,97,82,0.12)" : "rgba(193,127,42,.1)",
+                  color: "var(--accent)",
+                  border: userPlan === "pro" || userPlan === "admin" ? "1px solid rgba(39,97,82,.25)" : "1px solid rgba(193,127,42,.25)",
+                  cursor: userPlan === "pro" || userPlan === "admin" ? "pointer" : "default",
+                }}
+                title={userPlan === "pro" || userPlan === "admin" ? "Manage subscription" : ""}
+              >
+                {userPlan === "admin" ? "Admin" : userPlan === "pro" ? "Pro ✦" : "Free"}
+                {(userPlan === "pro" || userPlan === "admin") && (
+                  <span className="cw-plan-manage">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </span>
+                )}
+              </div>
+              {userPlan !== "pro" && userPlan !== "admin" && (
+                <button className="cw-upgrade" onClick={() => setShowPricing(true)}>Upgrade</button>
+              )}
+            </>
           )}
         </div>
       </header>
