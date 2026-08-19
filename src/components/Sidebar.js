@@ -227,33 +227,36 @@ const SIDEBAR_STYLE = `
 
   /* ── QUICK MODAL variant (desktop): Chats / Projects open as a centered
      popup in the middle of the chat window — Claude-style command palette ── */
-  @media(min-width: 641px) {
+   @media(min-width: 641px) {
     .sb-panel--quick {
-      top: 50%;
-      left: calc(50% + var(--strip-w) / 2);
-      height: auto;
-      width: 0;
-      max-height: min(80vh, 720px);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      box-shadow: 0 30px 80px rgba(13,58,53,.22), 0 4px 18px rgba(13,58,53,.10);
-      transform: translate(-50%, -46%) scale(.97);
+      top: 0;
+      left: var(--strip-w);
+      right: 0;
+      bottom: 0;
+      width: auto;
+      height: 100vh;
+      max-height: 100vh;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      background: var(--bg-panel);
+      transform: none;
       opacity: 0;
       pointer-events: none;
-      transition: transform .22s cubic-bezier(.16,1,.3,1), opacity .16s ease, width 0s linear .22s;
+      transition: opacity .28s ease;
     }
     .sb-panel--quick.open {
-      width: min(760px, 92vw);
-      transform: translate(-50%, -50%) scale(1);
       opacity: 1;
       pointer-events: auto;
-      transition: transform .24s cubic-bezier(.16,1,.3,1), opacity .18s ease;
+      transition: opacity .3s ease;
     }
     .sb-panel--quick .panel-inner {
-      width: min(760px, 92vw);
-      height: auto;
-      max-height: min(80vh, 720px);
-      border-radius: var(--r-lg);
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      height: 100%;
+      max-height: 100vh;
+      border-radius: 0;
     }
   }
   @keyframes qpIn {
@@ -262,10 +265,7 @@ const SIDEBAR_STYLE = `
   }
 
   /* ── DARKER, BLURRED BACKDROP FOR THE CENTERED QUICK MODAL ───────── */
-  .sb-overlay--quick {
-    background: rgba(9, 22, 19, 0.46);
-    backdrop-filter: blur(7px);
-  }
+.sb-overlay--quick { display: none; }
 
   /* ── STAGGERED ENTRANCE FOR LIST ROWS (chats / projects) ─────────── */
   @keyframes rowIn {
