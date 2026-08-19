@@ -448,10 +448,10 @@ function hexRgba(hex, a) {
 }
 
 const WAVE_COLORS = {
-    idle:       ["var(--t1, #0d3a35)","var(--accent, #1a5a52)","#0a2e29"],
-    listening:  ["var(--accent, #0d6a5e)","#00b894","#055a52"],
-    processing: ["var(--accent, #2d6a4f)","#52b788","#1b4332"],
-    speaking:   ["#00b894","#55efc4","var(--accent, #0d6a5e)"],
+    idle:       ["#0d3a35","#1a5a52","#0a2e29"],
+    listening:  ["#0d6a5e","#00b894","#055a52"],
+    processing: ["#2d6a4f","#52b788","#1b4332"],
+    speaking:   ["#00b894","#55efc4","#0d6a5e"],
   };
 
 
