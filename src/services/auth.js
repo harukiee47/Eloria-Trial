@@ -12,7 +12,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firest
 const FIREBASE_API_KEY = "AIzaSyDmfVTBxzZgqdshD6ld91XSTImZ-LsS39A";
 const isTauri = Boolean(window.__TAURI__);
 
-// ── Internal: create the bare Firestore profile (no username yet) ──────────
+// ── Internal: create the bare Firestore profile (no display name yet) ──────
 async function ensureUserProfile(firebaseUser) {
   const ref  = doc(db, "users", firebaseUser.uid);
   const snap = await getDoc(ref);
@@ -22,21 +22,16 @@ async function ensureUserProfile(firebaseUser) {
       uid:                   firebaseUser.uid,
       email:                 firebaseUser.email,
       displayName:           firebaseUser.displayName || "",
-      username:              null,
-      usernameSet:           false,
-      friends:               [],
-      pendingFriendRequests: [],
-      sentFriendRequests:    [],
+      usernameSet:           !!firebaseUser.displayName,
       online:                true,
       lastSeen:              serverTimestamp(),
       createdAt:             serverTimestamp(),
     });
-    return { username: null, usernameSet: false, displayName: firebaseUser.displayName || "" };
+    return { usernameSet: !!firebaseUser.displayName, displayName: firebaseUser.displayName || "" };
   } else {
     const data = snap.data();
     await updateDoc(ref, { online: true, lastSeen: serverTimestamp() });
     return {
-      username: data.username || null,
       usernameSet: !!data.usernameSet,
       displayName: data.displayName || firebaseUser.displayName || "",
     };
@@ -68,7 +63,6 @@ export const checkAuth = (setUser) => {
         setUser({
           uid:         firebaseUser.uid,
           email:       firebaseUser.email,
-          username:    data.username || null,
           usernameSet: !!data.usernameSet,
           displayName: data.displayName || firebaseUser.displayName || "",
         });
@@ -76,7 +70,6 @@ export const checkAuth = (setUser) => {
         setUser({
           uid:         firebaseUser.uid,
           email:       firebaseUser.email,
-          username:    null,
           usernameSet: false,
           displayName: firebaseUser.displayName || "",
         });
@@ -108,7 +101,6 @@ export const loginWithEmail = async (email, password) => {
     return {
       uid:         u.uid,
       email:       u.email,
-      username:    data.username || null,
       usernameSet: !!data.usernameSet,
       displayName: data.displayName || "",
     };
@@ -121,14 +113,13 @@ export const loginWithEmail = async (email, password) => {
   return {
     uid:         u.uid,
     email:       u.email,
-    username:    data.username || null,
     usernameSet: !!data.usernameSet,
     displayName: data.displayName || "",
   };
 };
 
 // ── Email + Password Signup ──────────────────────────────────────────────────
-// NOTE: no username param anymore — that's handled by ProfileSetupModal
+// NOTE: no display name param here — that's handled by ProfileSetupModal
 // after signup completes.
 export const signupWithEmail = async (email, password) => {
   if (isTauri) {
@@ -177,23 +168,18 @@ export const loginWithDeepLinkToken = async (customToken, uid, email, displayNam
       uid,
       email,
       displayName:           displayName || "",
-      username:              null,
-      usernameSet:           false,
-      friends:               [],
-      pendingFriendRequests: [],
-      sentFriendRequests:    [],
+      usernameSet:           !!displayName,
       online:                true,
       lastSeen:              serverTimestamp(),
       createdAt:             serverTimestamp(),
     });
-    return { uid, email, username: null, usernameSet: false, displayName: displayName || "" };
+    return { uid, email, usernameSet: !!displayName, displayName: displayName || "" };
   } else {
     const data = snap.data();
     await updateDoc(ref, { online: true, lastSeen: serverTimestamp() });
     return {
       uid,
       email,
-      username:    data.username || null,
       usernameSet: !!data.usernameSet,
       displayName: data.displayName || displayName || "",
     };

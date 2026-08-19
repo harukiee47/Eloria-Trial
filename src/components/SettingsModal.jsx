@@ -91,7 +91,7 @@ export default function SettingsModal({ open, onClose, user }) {
               <p className="stg-sub">Basic account info.</p>
               <div className="stg-field">
                 <span className="stg-field-label">Name</span>
-                <span className="stg-field-value">{user?.username || "—"}</span>
+                <span className="stg-field-value">{user?.displayName || "—"}</span>
               </div>
               <div className="stg-field">
                 <span className="stg-field-label">Email</span>

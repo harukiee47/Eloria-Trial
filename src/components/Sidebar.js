@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import logo from "../assets/logo.png";
 import { shareChat, shareProject } from "../services/shareService";
-import { BellButton } from "./NotificationsPanel";
 
 const GLOBAL_STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
@@ -1014,9 +1013,7 @@ export default function Sidebar({
   activeChatId, setActiveChatId,
   onLogout, sidebarOpen, setSidebarOpen,
   userPlan, setShowPricing, setShowBilling, setShowSettings,
-  groups = [], activeGroupId, setActiveGroupId,
-  pendingInviteCount = 0, setShowGroupNotifs,
-  mode, setMode, createGroup, showNotifPanel, setShowNotifPanel, totalBadgeCount,
+  mode, setMode,
 }) {
   const [panel, setPanel]           = useState(null);
   const [search, setSearch]         = useState("");
@@ -1041,11 +1038,7 @@ export default function Sidebar({
 
   const desktopAcctRef = useRef(null);
   const [showCodeLockModal, setShowCodeLockModal] = useState(false);
-  const [showGroupLockModal, setShowGroupLockModal] = useState(false);
   const [shareToast, setShareToast] = useState("");
-  const [showGroupForm, setShowGroupForm] = useState(false);
-  const [groupName, setGroupName] = useState("");
-  const [creatingGroup, setCreatingGroup] = useState(false);
 
   const isMobile = () => window.innerWidth <= 640;
 
@@ -1182,24 +1175,6 @@ const openDownloadPage = () => {
     }
   };
 
-  const handleCreateGroup = async () => {
-    if (!groupName.trim() || creatingGroup) return;
-    setCreatingGroup(true);
-    try {
-      const groupId = await createGroup(user, groupName.trim(), userPlan);
-      setGroupName("");
-      setShowGroupForm(false);
-      setActiveGroupId(groupId);
-      setMode("group");
-      setPanel(null);
-    } catch (err) {
-      setShowGroupForm(false);
-      setGroupName("");
-    } finally {
-      setCreatingGroup(false);
-    }
-  };
-
   const openCodeWorkspace = (projectId) => {
     const url = projectId ? `/code?project=${projectId}` : "/code";
     if (window.__TAURI__) {
@@ -1235,7 +1210,7 @@ const openDownloadPage = () => {
   };
 
   const filtered = chats.filter(c => c.title?.toLowerCase().includes(search.toLowerCase()));
-  const initials  = user?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
+  const initials  = user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
 
   /* ── shared snippet: "Download desktop app" button (hidden in Tauri) ── */
   const DownloadDesktopBtn = () => IS_TAURI ? null : (
@@ -1400,27 +1375,6 @@ const openDownloadPage = () => {
         </button>
 
         <button
-          className={`sb-btn${panel === "groups" ? " active" : ""}`}
-          title={userPlan === "pro" || userPlan === "admin" ? "Groups" : "Groups — Pro only"}
-          onClick={() => {
-            if (userPlan !== "pro" && userPlan !== "admin") {
-              setShowGroupLockModal(true);
-            } else {
-              togglePanel("groups");
-            }
-          }}
-          style={{ position: "relative", ...(userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}) }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-            <path d="M16 3.13a4 4 0 010 7.75"/>
-          </svg>
-          <span>Groups</span>
-        </button>
-
-        <button
           className={`sb-btn${panel === "code" ? " active" : ""}`}
           title={userPlan === "pro" || userPlan === "admin" ? "Eloria Code" : "Eloria Code — Pro only"}
           onClick={handleCodeClick}
@@ -1429,12 +1383,6 @@ const openDownloadPage = () => {
           <IconCode />
           <span>Code</span>
         </button>
-
-        <BellButton
-          count={totalBadgeCount}
-          active={showNotifPanel}
-          onClick={() => setShowNotifPanel(v => !v)}
-        />
 
         <div className="sb-spacer" />
 
@@ -1448,7 +1396,7 @@ const openDownloadPage = () => {
               <div className="acct-head">
                 <div className="acct-av">{initials}</div>
                 <div>
-                  <div className="acct-name">{user?.username || "Account"}</div>
+                  <div className="acct-name">{user?.displayName || "Account"}</div>
                   <div className="acct-email">{user?.email || "guest@eloria.ai"}</div>
                 </div>
               </div>
@@ -1490,25 +1438,6 @@ const openDownloadPage = () => {
               <IconFolder /> Projects
             </button>
             <button
-              className={`sb-mobile-nav-btn${panel === "groups" ? " active" : ""}`}
-              onClick={() => {
-                if (userPlan !== "pro" && userPlan !== "admin") {
-                  setPanel(null); setShowGroupLockModal(true);
-                } else {
-                  togglePanel("groups");
-                }
-              }}
-              style={userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-                <path d="M16 3.13a4 4 0 010 7.75"/>
-              </svg>
-              Groups
-            </button>
-            <button
               className="sb-mobile-nav-btn"
               onClick={() => {
                 if (userPlan !== "pro" && userPlan !== "admin") {
@@ -1520,25 +1449,6 @@ const openDownloadPage = () => {
               style={userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}}
             >
               <IconCode /> Eloria Code
-            </button>
-            <button
-              className={`sb-mobile-nav-btn${showNotifPanel ? " active" : ""}`}
-              onClick={() => setShowNotifPanel(v => !v)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 01-3.46 0"/>
-              </svg>
-              Notifications
-              {totalBadgeCount > 0 && (
-                <span style={{
-                  marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 9,
-                  background: "#e05050", color: "#fff", fontSize: 10, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px",
-                }}>
-                  {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
-                </span>
-              )}
             </button>
           </div>
 
@@ -1707,82 +1617,6 @@ const openDownloadPage = () => {
             </div>
           </>}
 
-          {/* ── GROUPS PANEL ── */}
-          {panel === "groups" && <>
-            <div className="panel-hdr">
-              <span className="panel-title">
-                <span className="panel-title-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, color: "var(--accent)" }}>
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 010 7.75"/>
-                  </svg>
-                </span>
-                Groups
-              </span>
-              <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
-            </div>
-            <button className="grp-new-btn" onClick={() => setShowGroupForm(v => !v)} disabled={creatingGroup}>
-              <IconPlus /> New Group
-            </button>
-            {showGroupForm && (
-              <div className="grp-form">
-                <input autoFocus placeholder="Group name…" value={groupName}
-                  onChange={e => setGroupName(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") handleCreateGroup();
-                    if (e.key === "Escape") { setShowGroupForm(false); setGroupName(""); }
-                  }} />
-                <div className="npf-actions">
-                  <button className="btn-create" onClick={handleCreateGroup}
-                    disabled={!groupName.trim() || creatingGroup}
-                    style={{ opacity: groupName.trim() && !creatingGroup ? 1 : .45 }}>
-                    {creatingGroup ? "Creating…" : "Create"}
-                  </button>
-                  <button className="btn-cancel" onClick={() => { setShowGroupForm(false); setGroupName(""); }}>Cancel</button>
-                </div>
-              </div>
-            )}
-            <div className="panel-list">
-              {groups.length === 0
-                ? <div className="grp-empty">
-                    <span className="grp-empty-icon"></span>
-                    <div className="grp-empty-title">No groups yet</div>
-                    <p>Create one above or wait for an invite from someone.</p>
-                  </div>
-                : <>
-                    <div className="grp-section-label">{groups.length} group{groups.length !== 1 ? "s" : ""}</div>
-                    {groups
-                      .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0))
-                      .map(group => {
-                        const unread = group.unreadCounts?.[user?.uid] || 0;
-                        return (
-                          <div key={group.id}
-                            className={`grp-row${activeGroupId === group.id ? " active" : ""}`}
-                            onClick={() => { setActiveGroupId(group.id); setMode("group"); setPanel(null); }}>
-                            <div className="grp-avatar">{group.name?.[0]?.toUpperCase() || "G"}</div>
-                            <div className="grp-info">
-                              <div className="grp-name">{group.name}</div>
-                              <div className="grp-preview">
-                                {group.lastMessage
-                                  ? `${group.lastMessage.senderName?.split(" ")[0]}: ${group.lastMessage.text?.slice(0, 28)}…`
-                                  : `${group.members?.length || 1} member${group.members?.length !== 1 ? "s" : ""}`}
-                              </div>
-                            </div>
-                            {unread > 0 && (
-                              <div className="grp-meta">
-                                <div className="grp-badge">{unread > 99 ? "99+" : unread}</div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </>
-              }
-            </div>
-          </>}
-
           {/* ── CODE PANEL ── */}
           {panel === "code" && <>
             <div className="panel-hdr">
@@ -1854,7 +1688,7 @@ const openDownloadPage = () => {
                 {initials}
               </button>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.username || "Account"}</div>
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.displayName || "Account"}</div>
                 <div style={{ fontSize: "11px", color: "var(--t3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email || ""}</div>
               </div>
               <button
@@ -1873,7 +1707,7 @@ const openDownloadPage = () => {
                   <div className="acct-head">
                     <div className="acct-av">{initials}</div>
                     <div>
-                      <div className="acct-name">{user?.username || "Account"}</div>
+                      <div className="acct-name">{user?.displayName || "Account"}</div>
                       <div className="acct-email">{user?.email || "guest@eloria.ai"}</div>
                     </div>
                   </div>
@@ -1923,31 +1757,6 @@ const openDownloadPage = () => {
             <div className="del-confirm-footer">
               <button className="del-confirm-cancel" onClick={() => setDeleteConfirm(null)}>Keep it</button>
               <button className="del-confirm-ok" onClick={confirmDeleteChat}>Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* GROUP LOCK MODAL */}
-      {showGroupLockModal && (
-        <div className="sb-lock-backdrop" onClick={() => setShowGroupLockModal(false)}>
-          <div className="sb-lock-modal" onClick={e => e.stopPropagation()}>
-            <div className="sb-lock-top">
-              <button className="sb-lock-close" onClick={() => setShowGroupLockModal(false)}>✕</button>
-              <div className="sb-lock-icon"></div>
-              <div className="sb-lock-title">Groups</div>
-              <div className="sb-lock-sub">Available on the Pro plan</div>
-            </div>
-            <div className="sb-lock-body">
-              <div className="sb-lock-desc">
-                Create group chats with up to 6 members and 4 groups. Upgrade to Pro to unlock Groups.
-              </div>
-              <div className="sb-lock-actions">
-                <button className="sb-lock-cancel" onClick={() => setShowGroupLockModal(false)}>Later</button>
-                <button className="sb-lock-upgrade" onClick={() => { setShowGroupLockModal(false); setPanel(null); setShowPricing(true); }}>
-                  Upgrade to Pro →
-                </button>
-              </div>
             </div>
           </div>
         </div>
