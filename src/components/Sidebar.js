@@ -246,6 +246,7 @@ const SIDEBAR_STYLE = `
       transition: opacity .28s ease;
     }
     .sb-panel--quick.open {
+      width: auto;
       opacity: 1;
       pointer-events: auto;
       transition: opacity .3s ease;
