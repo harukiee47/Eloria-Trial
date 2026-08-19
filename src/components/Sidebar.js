@@ -1724,6 +1724,16 @@ const openDownloadPage = () => {
             >
               <IconCode /> Eloria Code
             </button>
+            <button
+              className="sb-mobile-nav-btn"
+              onClick={() => {
+                setPanel(null);
+                handleWebClick();
+              }}
+              style={userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}}
+            >
+              <IconGlobe /> Eloria Web
+            </button>
           </div>
 
           {/* ── CHATS PANEL ── */}
