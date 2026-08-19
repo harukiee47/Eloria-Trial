@@ -353,7 +353,9 @@ const SIDEBAR_STYLE = `
     border-bottom: 1px solid var(--border-soft);
     position: relative; cursor: pointer;
     transition: background .12s;
+    z-index: 0;
   }
+  .cat-row.menu-open { z-index: 50; }
   .cat-row:last-child { border-bottom: none; }
   .cat-row:hover { background: #f2ede7; }
   .cat-row.selected { background: var(--accent-bg); }
@@ -488,7 +490,9 @@ const SIDEBAR_STYLE = `
     border-radius: var(--r-sm); margin-bottom: 1px;
     position: relative; transition: background .12s; gap: 4px;
     border-left: 2px solid transparent;
+    z-index: 0;
   }
+  .chat-row.menu-open { z-index: 50; }
   .chat-row:hover { background: #f2ede7; }
   .chat-row.selected {
     background: var(--accent-bg);
@@ -1744,7 +1748,7 @@ const openDownloadPage = () => {
                     Hit New above to start your first conversation.
                   </div>
                 : filtered.map(chat => (
-                      <div key={chat.id} className={`cat-row${activeChatId === chat.id ? " selected" : ""}${chat.animate ? " new-chat-anim" : ""}`}>
+                       <div key={chat.id} className={`cat-row${activeChatId === chat.id ? " selected" : ""}${chat.animate ? " new-chat-anim" : ""}${openMenuId === chat.id ? " menu-open" : ""}`}>
                         {chat.renameOpen
                           ? <input className="rename-input-row" defaultValue={chat.title} autoFocus
                               onBlur={e => renameChat(chat.id, e.target.value.trim())}
@@ -1848,7 +1852,7 @@ const openDownloadPage = () => {
                     <div className="panel-section-label">{projects.length} project{projects.length !== 1 ? "s" : ""}</div>
                     {projects.map(proj => (
                       <div key={proj.id} className="proj-block">
-                        <div className="proj-row">
+                        <div className={`proj-row${projMenuId === proj.id ? " menu-open" : ""}`}>
                           {proj.renameOpen
                             ? <input className="rename-input-row" defaultValue={proj.name} autoFocus
                                 onBlur={e => renameProject(proj.id, e.target.value.trim())}
