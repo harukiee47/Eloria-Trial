@@ -452,7 +452,7 @@ const WAVE_COLORS = {
     listening:  ["#0d6a5e","#00b894","#055a52"],
     processing: ["#2d6a4f","#52b788","#1b4332"],
     speaking:   ["#00b894","#55efc4","#0d6a5e"],
-  };
+  }; 
 
 
   function getSupportedMimeType() {

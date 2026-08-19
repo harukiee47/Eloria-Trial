@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import http from "http";
 import "dotenv/config";
 
 import chatRoutes from "./routes/chat.js";
@@ -13,7 +14,9 @@ import docsRoutes from "./routes/docs.js";
 import authRoutes from "./routes/auth.js";
 import cliAuthRoutes from "./routes/cli-auth.js";
 import connectorsRoutes from "./routes/connectors.js";
+import browserRoutes from "./routes/browser.js";
 import { startSubscriptionCron } from "./services/subscriptionCron.js";
+import { attachBrowserScreencastProxy } from "./services/browserWsProxy.js";
 
 const app = express();
 
@@ -38,10 +41,16 @@ app.use("/api/docs", docsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", cliAuthRoutes);
 app.use("/api/connectors", connectorsRoutes);
+app.use("/api/browser", browserRoutes);
 
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
+// Raw HTTP server (instead of app.listen) so we can also handle the
+// WebSocket upgrade for the live browser screencast proxy.
+const server = http.createServer(app);
+attachBrowserScreencastProxy(server);
+
+server.listen(PORT, () => {
   console.log(`🔥 Eloria AI running on http://localhost:${PORT}`);
   startSubscriptionCron();
 });

@@ -19,7 +19,8 @@
     "openai": "^4.20.1",
     "pptx-automizer": "^0.8.2",
     "pptxgenjs": "^4.0.1",
-    "resend": "^6.20.0"
+    "resend": "^6.20.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

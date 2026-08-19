@@ -50,6 +50,36 @@ export const checkVoiceLimit = makeLimitChecker(
   "Daily voice limit reached."
 );
 
+export const checkBrowsingLimit = makeLimitChecker(
+  "browsingSessions",
+  "Daily browsing session limit reached."
+);
+
+/**
+ * Blocks users without Eloria Web access (free plan) entirely.
+ * Place this BEFORE checkBrowsingLimit in the route chain.
+ */
+export async function requireEloriaWeb(req, res, next) {
+  try {
+    const user = await getUserUsage(req.user.uid);
+    const limits = getLimitsForUser(user);
+
+    if (!limits.eloriaWebAccess) {
+      return res.status(403).json({
+        error: "Upgrade to Pro to use Eloria Web.",
+      });
+    }
+
+    req.userData = user;
+    req.limits = limits;
+
+    next();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to verify membership." });
+  }
+}
+
 /**
  * Blocks free-plan users from Eloria Code entirely.
  * Place this BEFORE checkCodeLimit in the route chain.

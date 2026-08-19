@@ -7,6 +7,8 @@ export const PLANS = {
     githubActions: 5,
     githubToolCallsPerTurn: 6,
     eloriaCodeAccess: false,
+    browsingSessions: 3,
+    eloriaWebAccess: false,
   },
 
   pro: {
@@ -17,6 +19,8 @@ export const PLANS = {
     githubActions: 30,
     githubToolCallsPerTurn: 15,
     eloriaCodeAccess: true,
+    browsingSessions: 20,
+    eloriaWebAccess: true,
   },
 
   admin: {
@@ -27,6 +31,8 @@ export const PLANS = {
     githubActions: Infinity,
     githubToolCallsPerTurn: Infinity,
     eloriaCodeAccess: true,
+    browsingSessions: Infinity,
+    eloriaWebAccess: true,
   },
 };
 

@@ -12,6 +12,7 @@ function freshUsage() {
     imageRequests: 0,
     voiceTurns: 0,
     githubActions: 0,     // ← added: counts approved write/create/delete actions
+    browsingSessions: 0,  // ← added: counts Eloria Web (Playwright) sessions started
   };
 }
 
