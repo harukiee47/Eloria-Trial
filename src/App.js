@@ -3,6 +3,7 @@ import "./App.css";
 import "./mobile.css";
 
 import EloriaCode from "./components/EloriaCode";
+import EloriaWeb from "./components/EloriaWeb";
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
@@ -33,6 +34,13 @@ if (window.location.pathname === "/code") {
     }
 
     root.render(<CodeApp />);
+  });
+}
+
+if (window.location.pathname === "/web") {
+  import("react-dom/client").then(({ createRoot }) => {
+    const root = createRoot(document.getElementById("root"));
+    root.render(<EloriaWeb onBack={() => { window.location.href = "/"; }} />);
   });
 }
 

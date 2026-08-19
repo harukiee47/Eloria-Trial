@@ -1386,6 +1386,23 @@ const openDownloadPage = () => {
     }
   };
 
+  const openWebWorkspace = () => {
+    const url = "/web";
+    if (window.__TAURI__) {
+      window.location.href = url;
+    } else {
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleWebClick = () => {
+    if (userPlan !== "pro" && userPlan !== "admin") {
+      setShowCodeLockModal(true);
+      return;
+    }
+    openWebWorkspace();
+  };
+
   const togglePanel = name => {
     setPanel(p => p === name ? null : name);
     setSearch(""); setOpenMenuId(null); setProjMenuId(null);
@@ -1504,6 +1521,13 @@ const openDownloadPage = () => {
     </svg>
   );
 
+  const IconGlobe = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+      <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+    </svg>
+  );
+
   const IconChat = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
@@ -1619,6 +1643,16 @@ const openDownloadPage = () => {
         >
           <IconCode />
           <span>Code</span>
+        </button>
+
+        <button
+          className="sb-btn"
+          title={userPlan === "pro" || userPlan === "admin" ? "Eloria Web" : "Eloria Web — Pro only"}
+          onClick={handleWebClick}
+          style={userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}}
+        >
+          <IconGlobe />
+          <span>Web</span>
         </button>
 
         <div className="sb-spacer" />
