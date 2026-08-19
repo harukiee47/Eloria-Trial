@@ -225,24 +225,34 @@ const SIDEBAR_STYLE = `
   }
   .sb-panel.open { width: var(--panel-w); }
 
-  /* ── QUICK POPOVER variant (desktop): Chats / Projects open as a small
-     floating box near the rail instead of a full-height slide panel ── */
+  /* ── QUICK MODAL variant (desktop): Chats / Projects open as a centered
+     popup in the middle of the chat window — Claude-style command palette ── */
   @media(min-width: 641px) {
     .sb-panel--quick {
-      top: 60px;
+      top: 50%;
+      left: calc(50% + var(--strip-w) / 2);
       height: auto;
-      max-height: min(70vh, 560px);
-      border-right: none;
+      width: 0;
+      max-height: min(80vh, 720px);
       border: 1px solid var(--border);
       border-radius: var(--r-lg);
-      box-shadow: var(--shadow-pop);
-      left: calc(var(--strip-w) + 10px);
-      animation: qpIn .15s ease;
+      box-shadow: 0 30px 80px rgba(13,58,53,.22), 0 4px 18px rgba(13,58,53,.10);
+      transform: translate(-50%, -46%) scale(.97);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform .22s cubic-bezier(.16,1,.3,1), opacity .16s ease, width 0s linear .22s;
+    }
+    .sb-panel--quick.open {
+      width: min(760px, 92vw);
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+      transition: transform .24s cubic-bezier(.16,1,.3,1), opacity .18s ease;
     }
     .sb-panel--quick .panel-inner {
-      width: 360px;
+      width: min(760px, 92vw);
       height: auto;
-      max-height: min(70vh, 560px);
+      max-height: min(80vh, 720px);
       border-radius: var(--r-lg);
     }
   }
@@ -250,6 +260,117 @@ const SIDEBAR_STYLE = `
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+  /* ── DARKER, BLURRED BACKDROP FOR THE CENTERED QUICK MODAL ───────── */
+  .sb-overlay--quick {
+    background: rgba(9, 22, 19, 0.46);
+    backdrop-filter: blur(7px);
+  }
+
+  /* ── STAGGERED ENTRANCE FOR LIST ROWS (chats / projects) ─────────── */
+  @keyframes rowIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .panel-list .chat-row,
+  .panel-list .cat-row,
+  .panel-list .proj-block {
+    animation: rowIn .28s cubic-bezier(.16,1,.3,1) both;
+  }
+  .panel-list .chat-row:nth-child(1),  .panel-list .cat-row:nth-child(1),  .panel-list .proj-block:nth-child(1)  { animation-delay: .01s; }
+  .panel-list .chat-row:nth-child(2),  .panel-list .cat-row:nth-child(2),  .panel-list .proj-block:nth-child(2)  { animation-delay: .03s; }
+  .panel-list .chat-row:nth-child(3),  .panel-list .cat-row:nth-child(3),  .panel-list .proj-block:nth-child(3)  { animation-delay: .05s; }
+  .panel-list .chat-row:nth-child(4),  .panel-list .cat-row:nth-child(4),  .panel-list .proj-block:nth-child(4)  { animation-delay: .07s; }
+  .panel-list .chat-row:nth-child(5),  .panel-list .cat-row:nth-child(5),  .panel-list .proj-block:nth-child(5)  { animation-delay: .09s; }
+  .panel-list .chat-row:nth-child(6),  .panel-list .cat-row:nth-child(6),  .panel-list .proj-block:nth-child(6)  { animation-delay: .11s; }
+  .panel-list .chat-row:nth-child(7),  .panel-list .cat-row:nth-child(7),  .panel-list .proj-block:nth-child(7)  { animation-delay: .13s; }
+  .panel-list .chat-row:nth-child(8),  .panel-list .cat-row:nth-child(8),  .panel-list .proj-block:nth-child(8)  { animation-delay: .15s; }
+  .panel-list .chat-row:nth-child(n+9),.panel-list .cat-row:nth-child(n+9),.panel-list .proj-block:nth-child(n+9){ animation-delay: .16s; }
+
+  /* smooth momentum-style scroll inside the popup list */
+  .sb-panel--quick .panel-list { scroll-behavior: smooth; }
+
+  /* ── "CHATS AND TASKS" STYLE HEADER (matches app cream / dark-green theme) ── */
+  .cat-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 26px 16px; flex-shrink: 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .cat-title {
+    font-size: 20px; font-weight: 600; color: var(--t1); letter-spacing: -.02em;
+  }
+  .cat-actions { display: flex; align-items: center; gap: 8px; }
+  .cat-icon-btn {
+    width: 34px; height: 34px; border-radius: var(--r-md);
+    border: none; background: var(--accent-bg); color: var(--t2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background .12s, color .12s; flex-shrink: 0;
+  }
+  .cat-icon-btn svg { width: 15px; height: 15px; }
+  .cat-icon-btn:hover, .cat-icon-btn.active { background: var(--accent); color: var(--accent-fg); }
+
+  .cat-filter-wrap { position: relative; }
+  .cat-filter-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: var(--r-md);
+    border: none; background: var(--accent-bg); color: var(--t2);
+    font-size: 13px; font-family: var(--font); cursor: pointer;
+    transition: background .12s;
+  }
+  .cat-filter-btn strong { color: var(--t1); font-weight: 600; }
+  .cat-filter-btn svg { width: 13px; height: 13px; }
+  .cat-filter-btn:hover { background: #e6e1d9; }
+  .cat-filter-menu {
+    position: absolute; top: calc(100% + 4px); right: 0; left: auto;
+    min-width: 120px;
+  }
+
+  .cat-btn-select {
+    padding: 8px 14px; border-radius: var(--r-md);
+    border: none; background: var(--accent-bg); color: var(--t1);
+    font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer;
+    transition: background .12s;
+  }
+  .cat-btn-select:hover { background: #e6e1d9; }
+
+  .cat-btn-new {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: var(--r-md);
+    border: none; background: var(--accent); color: var(--accent-fg);
+    font-size: 13px; font-weight: 600; font-family: var(--font); cursor: pointer;
+    transition: background .12s, transform .1s;
+  }
+  .cat-btn-new svg { width: 13px; height: 13px; }
+  .cat-btn-new:hover { background: var(--accent-deep); }
+  .cat-btn-new:active { transform: scale(.97); }
+
+  .cat-search { margin: 14px 26px 4px; }
+
+  .cat-list { padding: 8px 12px 20px; }
+  .cat-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 14px; border-radius: var(--r-md);
+    border-bottom: 1px solid var(--border-soft);
+    position: relative; cursor: pointer;
+    transition: background .12s;
+  }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-row:hover { background: #f2ede7; }
+  .cat-row.selected { background: var(--accent-bg); }
+  .cat-row.selected .cat-row-title { color: var(--accent-deep); font-weight: 600; }
+  .cat-row-title {
+    flex: 1; font-size: 14.5px; color: var(--t1); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cat-row-time {
+    font-size: 12.5px; color: var(--t3); flex-shrink: 0;
+    transition: opacity .12s;
+  }
+  .cat-row-menu {
+    opacity: 0; font-size: 17px; flex-shrink: 0;
+  }
+  .cat-row:hover .cat-row-menu { opacity: 1; }
+  .cat-row:hover .cat-row-time { opacity: .7; }
   .qp-filter-row {
     display: flex; gap: 6px; padding: 0 14px 8px;
   }
@@ -1265,6 +1386,24 @@ const openDownloadPage = () => {
   };
 
   const [chatFilter, setChatFilter] = useState("all");
+  const [showChatSearch, setShowChatSearch] = useState(false);
+  const [showChatFilterMenu, setShowChatFilterMenu] = useState(false);
+
+  const formatRelativeTime = idOrMs => {
+    const ms = Number(idOrMs) || 0;
+    if (!ms) return "";
+    const diff = Date.now() - ms;
+    const min = Math.floor(diff / 60000);
+    const hr  = Math.floor(diff / 3600000);
+    const day = Math.floor(diff / 86400000);
+    if (min < 1)  return "Just now";
+    if (min < 60) return `${min} minute${min !== 1 ? "s" : ""} ago`;
+    if (hr  < 24) return `${hr} hour${hr !== 1 ? "s" : ""} ago`;
+    if (day < 2)  return "Yesterday";
+    if (day < 7)  return `${day} days ago`;
+    const d = new Date(ms);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  };
   const filtered = chats
     .filter(c => c.title?.toLowerCase().includes(search.toLowerCase()))
     .filter(c => {
@@ -1376,7 +1515,12 @@ const openDownloadPage = () => {
 
   return (
     <>
-      {panel && <div className="sb-overlay" onClick={() => setPanel(null)} />}
+      {panel && (
+        <div
+          className={`sb-overlay${(panel === "chats" || panel === "projects") ? " sb-overlay--quick" : ""}`}
+          onClick={() => setPanel(null)}
+        />
+      )}
 
       {/* ── MOBILE CODE TAKEOVER ── */}
       {showMobileCode && (
@@ -1522,36 +1666,55 @@ const openDownloadPage = () => {
 
           {/* ── CHATS PANEL ── */}
           {panel === "chats" && <>
-            <div className="panel-hdr">
-              <span className="panel-title">
-                <span className="panel-title-icon"><IconChat /></span>
-                Chats
-              </span>
-              <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
+            <div className="cat-hdr">
+              <span className="cat-title">Chats and tasks</span>
+              <div className="cat-actions">
+                <button
+                  className={`cat-icon-btn${showChatSearch ? " active" : ""}`}
+                  onClick={() => setShowChatSearch(s => !s)}
+                  aria-label="Search chats"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                </button>
+                <div className="cat-filter-wrap">
+                  <button className="cat-filter-btn" onClick={() => setShowChatFilterMenu(s => !s)}>
+                    Filter by <strong>{chatFilter === "all" ? "All" : chatFilter === "recent" ? "Recent" : "Older"}</strong>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                  {showChatFilterMenu && (
+                    <div className="row-dropdown cat-filter-menu">
+                      <button onClick={() => { setChatFilter("all"); setShowChatFilterMenu(false); }}>All</button>
+                      <button onClick={() => { setChatFilter("recent"); setShowChatFilterMenu(false); }}>Recent</button>
+                      <button onClick={() => { setChatFilter("older"); setShowChatFilterMenu(false); }}>Older</button>
+                    </div>
+                  )}
+                </div>
+                <button className="cat-btn-select">Select</button>
+                <button className="cat-btn-new" onClick={addChat}>New</button>
+                <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
+              </div>
             </div>
-            <div className="panel-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <input placeholder="Search chats…" value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-            <div className="qp-filter-row">
-              <button className={`qp-filter-chip${chatFilter === "all" ? " active" : ""}`} onClick={() => setChatFilter("all")}>All</button>
-              <button className={`qp-filter-chip${chatFilter === "recent" ? " active" : ""}`} onClick={() => setChatFilter("recent")}>Recent</button>
-              <button className={`qp-filter-chip${chatFilter === "older" ? " active" : ""}`} onClick={() => setChatFilter("older")}>Older</button>
-            </div>
-            <div className="panel-list">
+            {showChatSearch && (
+              <div className="panel-search cat-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input autoFocus placeholder="Search chats…" value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
+            )}
+            <div className="panel-list cat-list">
               {filtered.length === 0
                 ? <div className="panel-empty">
                     <span className="panel-empty-icon"></span>
                     <strong>No chats yet</strong>
                     Hit New above to start your first conversation.
                   </div>
-                : <>
-                    <div className="panel-section-label">{filtered.length} conversation{filtered.length !== 1 ? "s" : ""}</div>
-                    {filtered.map(chat => (
-                      <div key={chat.id} className={`chat-row${activeChatId === chat.id ? " selected" : ""}${chat.animate ? " new-chat-anim" : ""}`}>
-                        <span className="chat-row-icon"><IconChat /></span>
+                : filtered.map(chat => (
+                      <div key={chat.id} className={`cat-row${activeChatId === chat.id ? " selected" : ""}${chat.animate ? " new-chat-anim" : ""}`}>
                         {chat.renameOpen
                           ? <input className="rename-input-row" defaultValue={chat.title} autoFocus
                               onBlur={e => renameChat(chat.id, e.target.value.trim())}
@@ -1559,9 +1722,10 @@ const openDownloadPage = () => {
                                 if (e.key === "Enter") renameChat(chat.id, e.target.value.trim());
                                 if (e.key === "Escape") setChats(p => p.map(c => c.id === chat.id ? { ...c, renameOpen: false } : c));
                               }} />
-                          : <span className="chat-row-label" onClick={() => selectChat(chat.id)}>{chat.title}</span>
+                          : <span className="cat-row-title" onClick={() => selectChat(chat.id)}>{chat.title}</span>
                         }
-                        <button className="row-menu-btn" onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === chat.id ? null : chat.id); }}>⋯</button>
+                        <span className="cat-row-time">{formatRelativeTime(chat.id)}</span>
+                        <button className="row-menu-btn cat-row-menu" onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === chat.id ? null : chat.id); }}>⋯</button>
                         {openMenuId === chat.id && (
                           <div className="row-dropdown">
                             <button onClick={() => { setChats(p => p.map(c => c.id === chat.id ? { ...c, renameOpen: true } : c)); setOpenMenuId(null); }}>
@@ -1610,24 +1774,20 @@ const openDownloadPage = () => {
                           </div>
                         )}
                       </div>
-                    ))}
-                  </>
+                    ))
               }
             </div>
           </>}
 
           {/* ── PROJECTS PANEL ── */}
           {panel === "projects" && <>
-            <div className="panel-hdr">
-              <span className="panel-title">
-                <span className="panel-title-icon"><IconFolder /></span>
-                Projects
-              </span>
-              <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
+            <div className="cat-hdr">
+              <span className="cat-title">Projects</span>
+              <div className="cat-actions">
+                <button className="cat-btn-new" onClick={() => setShowNewProj(true)}><IconPlus /> New</button>
+                <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
+              </div>
             </div>
-            <button className="new-proj-btn" onClick={() => setShowNewProj(true)}>
-              <IconPlus /> New Project
-            </button>
             {showNewProj && (
               <div className="new-proj-form">
                 <input autoFocus placeholder="Project name…" value={newProjName}
