@@ -1386,24 +1386,8 @@ const openDownloadPage = () => {
     }
   };
 
-  const openWebWorkspace = () => {
-    const url = "/web";
-    if (window.__TAURI__) {
-      window.location.href = url;
-    } else {
-      window.open(url, "_blank");
-    }
-  };
-
-  const handleWebClick = () => {
-    if (userPlan !== "pro" && userPlan !== "admin") {
-      setShowCodeLockModal(true);
-      return;
-    }
-    openWebWorkspace();
-  };
-
   const togglePanel = name => {
+    
     setPanel(p => p === name ? null : name);
     setSearch(""); setOpenMenuId(null); setProjMenuId(null);
   };
