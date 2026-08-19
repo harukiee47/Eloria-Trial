@@ -1394,7 +1394,6 @@ const openDownloadPage = () => {
   };
 
   const [chatFilter, setChatFilter] = useState("all");
-    const [chatFilter, setChatFilter] = useState("all");
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const toggleSelectMode = () => { setSelectMode(s => !s); setSelectedIds([]); };
