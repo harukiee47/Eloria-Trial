@@ -358,6 +358,7 @@ const SIDEBAR_STYLE = `
   .cat-row:hover { background: #f2ede7; }
   .cat-row.selected { background: var(--accent-bg); }
   .cat-row.selected .cat-row-title { color: var(--accent-deep); font-weight: 600; }
+    .cat-row-checkbox { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
   .cat-row-title {
     flex: 1; font-size: 14.5px; color: var(--t1); font-weight: 500;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -460,9 +461,10 @@ const SIDEBAR_STYLE = `
 
   /* ── PANEL LIST ──────────────────────────────────────── */
   .panel-list {
-    flex:1; overflow-y:auto; padding: 6px 8px 16px;
+    flex:1; overflow-y:auto; overflow-x:visible; padding: 6px 8px 16px;
     scrollbar-width:thin; scrollbar-color:#d8d4cc transparent;
   }
+  .cat-row:last-child, .chat-row:last-child { margin-bottom: 60px; }
   .panel-list::-webkit-scrollbar       { width:3px; }
   .panel-list::-webkit-scrollbar-thumb { background:#d2cec8; border-radius:2px; }
 
@@ -521,7 +523,7 @@ const SIDEBAR_STYLE = `
     position:absolute; right:0; top:calc(100% + 2px);
     background:var(--bg-panel); border:1px solid var(--border);
     border-radius:var(--r-md); box-shadow:var(--shadow-pop);
-    z-index:100; min-width:140px; padding:4px;
+    z-index:1000; min-width:140px; padding:4px;
     animation: ddIn .12s ease;
   }
   @keyframes ddIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
@@ -1176,7 +1178,8 @@ export default function Sidebar({
   userPlan, setShowPricing, setShowBilling, setShowSettings,
   mode, setMode,
 }) {
-  const [panel, setPanel]           = useState(null);
+    const [panel, setPanel]           = useState(null);
+  const [renderedPanel, setRenderedPanel] = useState(null);
   const [search, setSearch]         = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showAcct, setShowAcct]     = useState(false);
@@ -1227,6 +1230,11 @@ const openDownloadPage = () => {
       document.head.appendChild(tag);
     }
   }, []);
+
+    useEffect(() => {
+    if (panel) { setRenderedPanel(panel); }
+    else { const t = setTimeout(() => setRenderedPanel(null), 240); return () => clearTimeout(t); }
+  }, [panel]);
 
   useEffect(() => {
     localStorage.setItem("eloria_projects", JSON.stringify(projects));
@@ -1386,6 +1394,17 @@ const openDownloadPage = () => {
   };
 
   const [chatFilter, setChatFilter] = useState("all");
+    const [chatFilter, setChatFilter] = useState("all");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const toggleSelectMode = () => { setSelectMode(s => !s); setSelectedIds([]); };
+  const toggleSelectOne = id => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const selectAllChats = () => setSelectedIds(filtered.map(c => c.id));
+  const deselectAllChats = () => setSelectedIds([]);
+  const deleteSelectedChats = () => {
+    setChats(p => p.filter(c => !selectedIds.includes(c.id)));
+    setSelectedIds([]); setSelectMode(false);
+  };
   const [showChatSearch, setShowChatSearch] = useState(false);
   const [showChatFilterMenu, setShowChatFilterMenu] = useState(false);
 
@@ -1634,7 +1653,7 @@ const openDownloadPage = () => {
       {/* ── SLIDE PANEL (mobile) / QUICK POPOVER (desktop, chats & projects) ── */}
       <div
         ref={quickPanelRef}
-        className={`sb-panel${panel ? " open" : ""}${(panel === "chats" || panel === "projects") ? " sb-panel--quick" : ""}`}
+                className={`sb-panel${panel ? " open" : ""}${(renderedPanel === "chats" || renderedPanel === "projects") ? " sb-panel--quick" : ""}`}
       >
         <div className="panel-inner">
 
@@ -1665,7 +1684,7 @@ const openDownloadPage = () => {
           </div>
 
           {/* ── CHATS PANEL ── */}
-          {panel === "chats" && <>
+                    {renderedPanel === "chats" && <>
             <div className="cat-hdr">
               <span className="cat-title">Chats and tasks</span>
               <div className="cat-actions">
@@ -1693,7 +1712,19 @@ const openDownloadPage = () => {
                     </div>
                   )}
                 </div>
-                <button className="cat-btn-select">Select</button>
+                <button className="cat-btn-select" onClick={toggleSelectMode}>
+                  {selectMode ? "Cancel" : "Select"}
+                </button>
+                {selectMode && (
+                  <>
+                    <button className="cat-btn-select" onClick={selectedIds.length === filtered.length ? deselectAllChats : selectAllChats}>
+                      {selectedIds.length === filtered.length ? "Deselect all" : "Select all"}
+                    </button>
+                    <button className="cat-btn-select" style={{ color: "var(--danger)" }} onClick={deleteSelectedChats}>
+                      Delete{selectedIds.length ? ` (${selectedIds.length})` : ""}
+                    </button>
+                  </>
+                )}
                 <button className="cat-btn-new" onClick={addChat}>New</button>
                 <button className="panel-x" onClick={() => setPanel(null)}><CloseX /></button>
               </div>
@@ -1722,7 +1753,15 @@ const openDownloadPage = () => {
                                 if (e.key === "Enter") renameChat(chat.id, e.target.value.trim());
                                 if (e.key === "Escape") setChats(p => p.map(c => c.id === chat.id ? { ...c, renameOpen: false } : c));
                               }} />
-                          : <span className="cat-row-title" onClick={() => selectChat(chat.id)}>{chat.title}</span>
+                                                    : <>
+                              {selectMode && (
+                                <input type="checkbox" className="cat-row-checkbox"
+                                  checked={selectedIds.includes(chat.id)}
+                                  onChange={() => toggleSelectOne(chat.id)}
+                                  onClick={e => e.stopPropagation()} />
+                              )}
+                              <span className="cat-row-title" onClick={() => selectMode ? toggleSelectOne(chat.id) : selectChat(chat.id)}>{chat.title}</span>
+                            </>
                         }
                         <span className="cat-row-time">{formatRelativeTime(chat.id)}</span>
                         <button className="row-menu-btn cat-row-menu" onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === chat.id ? null : chat.id); }}>⋯</button>
@@ -1780,7 +1819,7 @@ const openDownloadPage = () => {
           </>}
 
           {/* ── PROJECTS PANEL ── */}
-          {panel === "projects" && <>
+                    {renderedPanel === "projects" && <>
             <div className="cat-hdr">
               <span className="cat-title">Projects</span>
               <div className="cat-actions">
@@ -1873,7 +1912,7 @@ const openDownloadPage = () => {
           </>}
 
           {/* ── CODE PANEL ── */}
-          {panel === "code" && <>
+                    {panel === "code" && <>
             <div className="panel-hdr">
               <span className="panel-title">
                 <span className="panel-title-icon"><IconCode /></span>
