@@ -1404,9 +1404,14 @@ const openDownloadPage = () => {
   const toggleSelectOne = id => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const selectAllChats = () => setSelectedIds(filtered.map(c => c.id));
   const deselectAllChats = () => setSelectedIds([]);
-  const deleteSelectedChats = () => {
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const requestDeleteSelected = () => {
+    if (!selectedIds.length) return;
+    setBulkDeleteConfirm(true);
+  };
+  const confirmDeleteSelected = () => {
     setChats(p => p.filter(c => !selectedIds.includes(c.id)));
-    setSelectedIds([]); setSelectMode(false);
+    setSelectedIds([]); setSelectMode(false); setBulkDeleteConfirm(false);
   };
   const [showChatSearch, setShowChatSearch] = useState(false);
   const [showChatFilterMenu, setShowChatFilterMenu] = useState(false);
@@ -1723,7 +1728,7 @@ const openDownloadPage = () => {
                     <button className="cat-btn-select" onClick={selectedIds.length === filtered.length ? deselectAllChats : selectAllChats}>
                       {selectedIds.length === filtered.length ? "Deselect all" : "Select all"}
                     </button>
-                    <button className="cat-btn-select" style={{ color: "var(--danger)" }} onClick={deleteSelectedChats}>
+                                        <button className="cat-btn-select" style={{ color: "var(--danger)" }} onClick={requestDeleteSelected}>
                       Delete{selectedIds.length ? ` (${selectedIds.length})` : ""}
                     </button>
                   </>
@@ -2065,6 +2070,27 @@ const openDownloadPage = () => {
             <div className="del-confirm-footer">
               <button className="del-confirm-cancel" onClick={() => setDeleteConfirm(null)}>Keep it</button>
               <button className="del-confirm-ok" onClick={confirmDeleteChat}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+            {bulkDeleteConfirm && (
+        <div className="del-confirm-backdrop" onClick={() => setBulkDeleteConfirm(false)}>
+          <div className="del-confirm-box" onClick={e => e.stopPropagation()}>
+            <div className="del-confirm-top">
+              <div className="del-confirm-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </div>
+              <h4>Delete {selectedIds.length} chat{selectedIds.length !== 1 ? "s" : ""}?</h4>
+              <p>This can't be undone.</p>
+            </div>
+            <div className="del-confirm-footer">
+              <button className="del-confirm-cancel" onClick={() => setBulkDeleteConfirm(false)}>Keep it</button>
+              <button className="del-confirm-ok" onClick={confirmDeleteSelected}>Delete</button>
             </div>
           </div>
         </div>
