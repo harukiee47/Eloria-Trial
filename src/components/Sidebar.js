@@ -225,6 +225,46 @@ const SIDEBAR_STYLE = `
   }
   .sb-panel.open { width: var(--panel-w); }
 
+  /* ── QUICK POPOVER variant (desktop): Chats / Projects open as a small
+     floating box near the rail instead of a full-height slide panel ── */
+  @media(min-width: 641px) {
+    .sb-panel--quick {
+      top: 60px;
+      height: auto;
+      max-height: min(70vh, 560px);
+      border-right: none;
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-pop);
+      left: calc(var(--strip-w) + 10px);
+      animation: qpIn .15s ease;
+    }
+    .sb-panel--quick .panel-inner {
+      width: 360px;
+      height: auto;
+      max-height: min(70vh, 560px);
+      border-radius: var(--r-lg);
+    }
+  }
+  @keyframes qpIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .qp-filter-row {
+    display: flex; gap: 6px; padding: 0 14px 8px;
+  }
+  .qp-filter-chip {
+    padding: 5px 10px; font-size: 11.5px; font-weight: 600;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--bg-card, transparent); color: var(--t2);
+    cursor: pointer; font-family: var(--font);
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .qp-filter-chip.active {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  .qp-filter-chip:hover:not(.active) { background: var(--accent-bg); }
+
   @media(max-width: 640px) {
     .sb-panel {
       left: 0;
@@ -1031,6 +1071,7 @@ export default function Sidebar({
   const [newProjName, setNewProjName] = useState("");
   const [showNewProj, setShowNewProj] = useState(false);
   const [addChatProj, setAddChatProj] = useState(null);
+  const [addToProjectMenuId, setAddToProjectMenuId] = useState(null);
 
   const [codeProjects] = useState(() => {
     try { return JSON.parse(localStorage.getItem("eloria_code_projects") || "[]"); } catch { return []; }
@@ -1087,6 +1128,20 @@ const openDownloadPage = () => {
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  const quickPanelRef = useRef(null);
+  useEffect(() => {
+    if (!(panel === "chats" || panel === "projects")) return;
+    if (isMobile()) return;
+    const h = e => {
+      if (quickPanelRef.current && !quickPanelRef.current.contains(e.target)
+          && !e.target.closest(".sb-btn")) {
+        setPanel(null);
+      }
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [panel]);
 
   useEffect(() => {
     if (sidebarOpen) { setPanel("chats"); setSidebarOpen(false); }
@@ -1209,7 +1264,17 @@ const openDownloadPage = () => {
     if (onLogout) onLogout();
   };
 
-  const filtered = chats.filter(c => c.title?.toLowerCase().includes(search.toLowerCase()));
+  const [chatFilter, setChatFilter] = useState("all");
+  const filtered = chats
+    .filter(c => c.title?.toLowerCase().includes(search.toLowerCase()))
+    .filter(c => {
+      if (chatFilter === "all") return true;
+      const ageMs = Date.now() - (Number(c.id) || 0);
+      const days = ageMs / 86400000;
+      if (chatFilter === "recent") return days <= 7;
+      if (chatFilter === "older") return days > 7;
+      return true;
+    });
   const initials  = user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
 
   /* ── shared snippet: "Download desktop app" button (hidden in Tauri) ── */
@@ -1422,8 +1487,11 @@ const openDownloadPage = () => {
         </div>
       </aside>
 
-      {/* ── SLIDE PANEL ── */}
-      <div className={`sb-panel${panel ? " open" : ""}`}>
+      {/* ── SLIDE PANEL (mobile) / QUICK POPOVER (desktop, chats & projects) ── */}
+      <div
+        ref={quickPanelRef}
+        className={`sb-panel${panel ? " open" : ""}${(panel === "chats" || panel === "projects") ? " sb-panel--quick" : ""}`}
+      >
         <div className="panel-inner">
 
           {/* ── MOBILE NAV ── */}
@@ -1467,6 +1535,11 @@ const openDownloadPage = () => {
               </svg>
               <input placeholder="Search chats…" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            <div className="qp-filter-row">
+              <button className={`qp-filter-chip${chatFilter === "all" ? " active" : ""}`} onClick={() => setChatFilter("all")}>All</button>
+              <button className={`qp-filter-chip${chatFilter === "recent" ? " active" : ""}`} onClick={() => setChatFilter("recent")}>Recent</button>
+              <button className={`qp-filter-chip${chatFilter === "older" ? " active" : ""}`} onClick={() => setChatFilter("older")}>Older</button>
+            </div>
             <div className="panel-list">
               {filtered.length === 0
                 ? <div className="panel-empty">
@@ -1504,6 +1577,28 @@ const openDownloadPage = () => {
                               </svg>
                               Share
                             </button>
+                            <button onClick={() => { setAddToProjectMenuId(addToProjectMenuId === chat.id ? null : chat.id); }}>
+                              <IconFolder />
+                              Add to project
+                            </button>
+                            {addToProjectMenuId === chat.id && (
+                              <div className="row-dropdown row-dropdown-sub">
+                                {projects.length === 0
+                                  ? <div className="picker-lbl" style={{ padding: "6px 10px" }}>No projects yet.</div>
+                                  : projects.map(proj => (
+                                      <button key={proj.id} onClick={() => {
+                                        addChatToProject(proj.id, chat.id);
+                                        setAddToProjectMenuId(null);
+                                        setOpenMenuId(null);
+                                      }}>
+                                        <IconFolder />
+                                        {proj.name}
+                                        {(proj.chatIds || []).includes(chat.id) ? " ✓" : ""}
+                                      </button>
+                                    ))
+                                }
+                              </div>
+                            )}
                             <div className="row-dropdown-div" />
                             <button className="del" onClick={() => requestDeleteChat(chat.id, chat.title)}>
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
