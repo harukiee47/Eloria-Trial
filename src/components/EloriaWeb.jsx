@@ -7,7 +7,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiChevronUp,
-  FiChevronDown,
   FiExternalLink,
   FiX,
   FiSend,
