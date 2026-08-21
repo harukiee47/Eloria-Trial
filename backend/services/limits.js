@@ -8,7 +8,7 @@ export const PLANS = {
     githubToolCallsPerTurn: 6,
     eloriaCodeAccess: false,
     browsingSessions: 3,
-    eloriaWebAccess: false,
+    eloriaWebAccess: true,
   },
 
   pro: {

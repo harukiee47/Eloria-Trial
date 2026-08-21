@@ -1634,19 +1634,13 @@ const openDownloadPage = () => {
           href="/web"
           target={window.__TAURI__ ? undefined : "_blank"}
           rel="noopener noreferrer"
-          title={userPlan === "pro" || userPlan === "admin" ? "Eloria Web" : "Eloria Web — Pro only"}
+          title="Eloria Web"
           onClick={(e) => {
-            if (userPlan !== "pro" && userPlan !== "admin") {
-              e.preventDefault();
-              setShowCodeLockModal(true);
-              return;
-            }
             if (window.__TAURI__) {
               e.preventDefault();
               window.location.href = "/web";
             }
           }}
-          style={userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}}
         >
           <IconGlobe />
           <span>Web</span>
@@ -1728,17 +1722,11 @@ const openDownloadPage = () => {
               rel="noopener noreferrer"
               onClick={(e) => {
                 setPanel(null);
-                if (userPlan !== "pro" && userPlan !== "admin") {
-                  e.preventDefault();
-                  setShowCodeLockModal(true);
-                  return;
-                }
                 if (window.__TAURI__) {
                   e.preventDefault();
                   window.location.href = "/web";
                 }
               }}
-              style={userPlan !== "pro" && userPlan !== "admin" ? { opacity: 0.45 } : {}}
             >
               <IconGlobe /> Eloria Web
             </a>

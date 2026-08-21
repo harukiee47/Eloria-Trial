@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyUser } from "../middleware/auth.js";
-import { requireEloriaWeb, checkBrowsingLimit } from "../middleware/rateLimit.js";
+import { checkBrowsingLimit } from "../middleware/rateLimit.js";
 import { incrementUsage } from "../services/usageTracker.js";
 import { anthropic } from "../services/anthropic.js";
 import { MODELS } from "../config/models.js";
@@ -28,12 +28,44 @@ async function callBrowserBackend(path, body) {
   return data;
 }
 
+// Friendly, human-readable label for a tool call — used to build the
+// activity trail shown in the UI.
+function describeStep(name, input) {
+  switch (name) {
+    case "navigate":
+      return `Opening ${input.url}`;
+    case "click":
+      return "Clicking on the page";
+    case "type":
+      return `Typing "${(input.text || "").slice(0, 40)}"`;
+    case "scroll":
+      return `Scrolling ${input.direction || "down"}`;
+    case "extract":
+      return "Reading the page content";
+    case "download":
+      return "Downloading a file";
+    case "wait":
+      return "Waiting for the page to settle";
+    case "open_tab":
+      return input.url ? `Opening a new tab: ${input.url}` : "Opening a new tab";
+    case "switch_tab":
+      return `Switching to tab ${Number(input.index) + 1}`;
+    case "close_tab":
+      return "Closing a tab";
+    case "finish":
+      return "Wrapping up";
+    default:
+      return `Running ${name}`;
+  }
+}
+
 /**
  * POST /api/browser/session/start
- * Pro-only, quota-checked. Starts a new Playwright session on the
- * Render browser backend and returns { sessionId }.
+ * Available on every plan, quota-checked (see limits.js: browsingSessions).
+ * Starts a new Playwright session on the Render browser backend and
+ * returns { sessionId }.
  */
-router.post("/session/start", verifyUser, requireEloriaWeb, checkBrowsingLimit, async (req, res) => {
+router.post("/session/start", verifyUser, checkBrowsingLimit, async (req, res) => {
   try {
     const upstream = await fetch(`${BROWSER_BACKEND_URL}/session/start`, {
       method: "POST",
@@ -58,7 +90,7 @@ router.post("/session/start", verifyUser, requireEloriaWeb, checkBrowsingLimit, 
  * Body: { sessionId, action, params }
  * Used for manual mouse/keyboard control from the frontend (raw passthrough).
  */
-router.post("/session/action", verifyUser, requireEloriaWeb, async (req, res) => {
+router.post("/session/action", verifyUser, async (req, res) => {
   try {
     const upstream = await fetch(`${BROWSER_BACKEND_URL}/session/action`, {
       method: "POST",
@@ -77,7 +109,7 @@ router.post("/session/action", verifyUser, requireEloriaWeb, async (req, res) =>
  * POST /api/browser/session/close
  * Body: { sessionId }
  */
-router.post("/session/close", verifyUser, requireEloriaWeb, async (req, res) => {
+router.post("/session/close", verifyUser, async (req, res) => {
   try {
     const upstream = await fetch(`${BROWSER_BACKEND_URL}/session/close`, {
       method: "POST",
@@ -96,7 +128,7 @@ router.post("/session/close", verifyUser, requireEloriaWeb, async (req, res) => 
 const BROWSER_TOOLS = [
   {
     name: "navigate",
-    description: "Go to a URL in the browser.",
+    description: "Go to a URL in the browser (current tab).",
     input_schema: {
       type: "object",
       properties: { url: { type: "string", description: "Full URL to navigate to, including https://" } },
@@ -161,6 +193,33 @@ const BROWSER_TOOLS = [
     },
   },
   {
+    name: "open_tab",
+    description: "Open a new browser tab, optionally navigating it to a URL right away. The new tab becomes active.",
+    input_schema: {
+      type: "object",
+      properties: { url: { type: "string", description: "Optional URL to open in the new tab" } },
+      required: [],
+    },
+  },
+  {
+    name: "switch_tab",
+    description: "Switch focus to a different open tab by its index (0-based, from the tabs list in the page state).",
+    input_schema: {
+      type: "object",
+      properties: { index: { type: "number" } },
+      required: ["index"],
+    },
+  },
+  {
+    name: "close_tab",
+    description: "Close a tab by index. If omitted, closes the current active tab.",
+    input_schema: {
+      type: "object",
+      properties: { index: { type: "number" } },
+      required: [],
+    },
+  },
+  {
     name: "finish",
     description: "Call this when the task is complete (or cannot be completed). Ends the session turn and shows your summary to the user.",
     input_schema: {
@@ -176,15 +235,16 @@ const BROWSER_TOOLS = [
   },
 ];
 
-const AGENT_SYSTEM_PROMPT = `You are Eloria Web, an AI agent that controls a real web browser on the user's behalf.
+const AGENT_SYSTEM_PROMPT = `You are Eloria Web, an AI agent that controls a real web browser (with support for multiple tabs) on the user's behalf.
 
-You will be given the user's instruction (in whatever language/style they used — could be Roman Urdu, English, mixed, casual, anything) and the current page state (url, title, visible text, and a list of interactive elements each with an "id" you can reference).
+You will be given the user's instruction (in whatever language/style they used — could be Roman Urdu, English, mixed, casual, anything) and the current page state (url, title, visible text, a list of interactive elements each with an "id" you can reference, and a "tabs" list showing every open tab).
 
 Rules:
 - Work autonomously. Do not ask the user clarifying questions — make a reasonable judgment call and proceed.
-- Use the tools step by step: navigate, click, type, scroll, extract, download, wait.
-- After every action you will automatically receive the updated page state — use it to decide the next step.
+- Use the tools step by step: navigate, click, type, scroll, extract, download, wait, open_tab, switch_tab, close_tab.
+- After every action you will automatically receive the updated page state (including the current tabs list) — use it to decide the next step.
 - To click or type into something, use the "id" field from the elements list (never guess a CSS selector).
+- Use open_tab when the task genuinely needs a separate tab (e.g. comparing two sites side by side, or keeping a reference page open while working in another). Otherwise just navigate the current tab.
 - For tasks like "find/summarize listings" (e.g. "daraz par jao gaming chairs dekho"): navigate to the site, search, then use "extract" to read the results text, and summarize the best options for the user with names/prices/key details so they can pick one.
 - For "download X": find the right link/button and use the "download" tool.
 - Keep going until the task is actually done, then call "finish" with a clear summary in the same language/tone the user used. If something can't be done, call "finish" and explain why.
@@ -195,13 +255,16 @@ Rules:
  * Body: { sessionId, instruction }
  * Runs an autonomous Claude tool-use loop: interprets the user's free-text
  * instruction (any language/phrasing), drives the browser step by step via
- * the Render backend, and returns a final summary once done.
+ * the Render backend, and returns a final summary plus an activity trail
+ * (steps taken) once done.
  */
-router.post("/session/agent", verifyUser, requireEloriaWeb, async (req, res) => {
+router.post("/session/agent", verifyUser, async (req, res) => {
   const { sessionId, instruction } = req.body || {};
   if (!sessionId || !instruction) {
     return res.status(400).json({ error: "sessionId and instruction are required." });
   }
+
+  const steps = [];
 
   try {
     await callBrowserBackend("/session/lock", { sessionId, locked: true });
@@ -237,7 +300,7 @@ router.post("/session/agent", verifyUser, requireEloriaWeb, async (req, res) => 
       if (toolUses.length === 0) {
         // Model replied with plain text instead of calling finish — treat as summary.
         const text = response.content.find((b) => b.type === "text");
-        summary = text?.text || "Ho gaya.";
+        summary = text?.text || "Done.";
         break;
       }
 
@@ -245,8 +308,12 @@ router.post("/session/agent", verifyUser, requireEloriaWeb, async (req, res) => 
 
       const toolResults = [];
       for (const toolUse of toolUses) {
+        const stepEntry = { label: describeStep(toolUse.name, toolUse.input || {}), status: "done" };
+
         if (toolUse.name === "finish") {
-          summary = toolUse.input.summary || "Ho gaya.";
+          summary = toolUse.input.summary || "Done.";
+          stepEntry.label = "Task complete";
+          steps.push(stepEntry);
           toolResults.push({
             type: "tool_result",
             tool_use_id: toolUse.id,
@@ -268,12 +335,16 @@ router.post("/session/agent", verifyUser, requireEloriaWeb, async (req, res) => 
               downloadUrl: `/api/browser/download/${sessionId}/${encodeURIComponent(resultData.filename)}`,
             });
           }
+          steps.push(stepEntry);
           toolResults.push({
             type: "tool_result",
             tool_use_id: toolUse.id,
             content: JSON.stringify(resultData),
           });
         } catch (err) {
+          stepEntry.status = "error";
+          stepEntry.label = `${stepEntry.label} — failed`;
+          steps.push(stepEntry);
           toolResults.push({
             type: "tool_result",
             tool_use_id: toolUse.id,
@@ -287,13 +358,14 @@ router.post("/session/agent", verifyUser, requireEloriaWeb, async (req, res) => 
     }
 
     if (!summary) {
-      summary = "Yeh kaam thoda lamba nikla — jitna ho saka main ne kar diya, live view check kar lo.";
+      summary = "This task turned out to be longer than expected — I made as much progress as I could. Check the live view for the current state.";
+      steps.push({ label: "Stopped after reaching the step limit", status: "pending" });
     }
 
-    res.json({ ok: true, summary, downloads });
+    res.json({ ok: true, summary, downloads, steps });
   } catch (err) {
     console.error("browser/session/agent error:", err);
-    res.status(502).json({ error: err.message || "Agent failed." });
+    res.status(502).json({ error: err.message || "Agent failed.", steps });
   } finally {
     try {
       await callBrowserBackend("/session/lock", { sessionId, locked: false });
@@ -306,7 +378,7 @@ router.post("/session/agent", verifyUser, requireEloriaWeb, async (req, res) => 
  * Streams a downloaded file from the Render browser backend to the user,
  * gated by Firebase auth (the shared secret never reaches the frontend).
  */
-router.get("/download/:sessionId/:filename", verifyUser, requireEloriaWeb, async (req, res) => {
+router.get("/download/:sessionId/:filename", verifyUser, async (req, res) => {
   try {
     const { sessionId, filename } = req.params;
     const upstream = await fetch(
