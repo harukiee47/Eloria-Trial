@@ -55,6 +55,11 @@ export const checkBrowsingLimit = makeLimitChecker(
   "Daily browsing session limit reached."
 );
 
+export const checkResearchLimit = makeLimitChecker(
+  "researchRuns",
+  "Daily research limit reached."
+);
+
 /**
  * Blocks users without Eloria Web access (free plan) entirely.
  * Place this BEFORE checkBrowsingLimit in the route chain.

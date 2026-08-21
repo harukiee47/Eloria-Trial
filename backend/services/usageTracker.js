@@ -13,6 +13,7 @@ function freshUsage() {
     voiceTurns: 0,
     githubActions: 0,     // ← added: counts approved write/create/delete actions
     browsingSessions: 0,  // ← added: counts Eloria Web (Playwright) sessions started
+    researchRuns: 0,       // ← added: counts Eloria Web Deep Research runs
   };
 }
 

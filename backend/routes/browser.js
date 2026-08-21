@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyUser } from "../middleware/auth.js";
-import { checkBrowsingLimit } from "../middleware/rateLimit.js";
+import { checkBrowsingLimit, checkResearchLimit } from "../middleware/rateLimit.js";
 import { incrementUsage } from "../services/usageTracker.js";
 import { anthropic } from "../services/anthropic.js";
 import { MODELS } from "../config/models.js";
@@ -396,6 +396,170 @@ router.get("/download/:sessionId/:filename", verifyUser, async (req, res) => {
   } catch (err) {
     console.error("browser/download error:", err);
     res.status(502).json({ error: "Failed to reach browser backend." });
+  }
+});
+
+// ── Deep Research (parallel multi-source crawl → structured report) ────
+
+const SUBMIT_RESEARCH_TOOL = {
+  name: "submit_research",
+  description: "Submit the final structured research report built from the crawled sources.",
+  input_schema: {
+    type: "object",
+    properties: {
+      results: {
+        type: "array",
+        description: "The individual options/products/items found, one per relevant source.",
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            price: {
+              type: "object",
+              properties: {
+                pkr: { type: "string", description: "e.g. '149,999' — omit currency symbol" },
+                usd: { type: "string", description: "e.g. '540' — approximate, omit currency symbol" },
+              },
+            },
+            specs: {
+              type: "object",
+              description: "Key spec fields as short label→value pairs, e.g. { CPU: 'Intel i5-1135G7', RAM: '16GB', Storage: '512GB SSD', Display: '14\" FHD' }",
+            },
+            bullets: {
+              type: "array",
+              items: { type: "string" },
+              description: "2-4 short highlight bullets for this item.",
+            },
+            domain: { type: "string" },
+            sourceUrl: { type: "string" },
+            type: { type: "string", description: "e.g. 'Product Page', 'Marketplace Listing', 'Review'" },
+          },
+          required: ["title", "domain", "sourceUrl"],
+        },
+      },
+      keyFacts: {
+        type: "array",
+        items: { type: "string" },
+        description: "Notable facts/insights that emerged across sources (not tied to one item).",
+      },
+      comparisonTable: {
+        type: "object",
+        properties: {
+          columns: { type: "array", items: { type: "string" } },
+          rows: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                model: { type: "string" },
+                values: { type: "array", items: { type: "string" }, description: "One value per column, in the same order as columns." },
+              },
+              required: ["model", "values"],
+            },
+          },
+        },
+        description: "A compact spec-comparison table across the top results (max 4-6 rows).",
+      },
+      summary: { type: "string", description: "2-4 sentence plain-language summary of the research, in the same language/tone the user used." },
+      recommendations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            reason: { type: "string", description: "Short reason, e.g. 'Best overall', 'Best value'" },
+          },
+          required: ["title", "reason"],
+        },
+        description: "Ranked top picks (max 4), each with a one-line reason.",
+      },
+    },
+    required: ["results", "keyFacts", "comparisonTable", "summary", "recommendations"],
+  },
+};
+
+const RESEARCH_SYSTEM_PROMPT = `You are Eloria Web's research analyst. You are given a user's research query plus raw crawled text from several web sources. Read all sources, then call submit_research ONCE with a structured, decision-ready report.
+
+Rules:
+- Write in the SAME language/tone the user used in their query (Roman Urdu, English, mixed — match it).
+- Only include items/facts actually supported by the crawled text — never invent prices or specs. If a source didn't have a clear price or spec, omit that field rather than guessing.
+- Keep the comparison table to the most relevant shared attributes only (e.g. for products: CPU/RAM/Storage/Display/Weight; adapt to whatever the query is actually about).
+- Keep bullets and facts short and scannable — this feeds a UI of cards, not prose.
+- If sources disagree or a source failed to load, just work with what's usable — don't mention crawl failures in the report itself.`;
+
+/**
+ * POST /api/browser/research
+ * Body: { query }
+ * Runs the independent parallel-crawl research pipeline on the Render
+ * browser backend, then feeds all crawled source text into a single
+ * forced tool-use Claude call to produce a structured research report.
+ */
+router.post("/research", verifyUser, checkResearchLimit, async (req, res) => {
+  const { query } = req.body || {};
+  if (!query || !query.trim()) {
+    return res.status(400).json({ error: "query is required." });
+  }
+
+  try {
+    const crawl = await callBrowserBackend("/research/run", { query });
+    const usableSources = (crawl.results || []).filter((r) => r.ok && r.text);
+
+    if (usableSources.length === 0) {
+      return res.status(502).json({ error: "Couldn't gather usable results for that query. Try rephrasing it." });
+    }
+
+    const sourcesBlock = usableSources
+      .map(
+        (s, i) =>
+          `--- Source ${i + 1}: ${s.title} (${s.source.domain}) — ${s.source.url} ---\n${s.text}`
+      )
+      .join("\n\n");
+
+    const response = await anthropic.messages.create({
+      model: MODELS.WEB,
+      max_tokens: 4000,
+      system: RESEARCH_SYSTEM_PROMPT,
+      tools: [SUBMIT_RESEARCH_TOOL],
+      tool_choice: { type: "tool", name: "submit_research" },
+      messages: [
+        {
+          role: "user",
+          content: `Research query: "${query}"\n\nCrawled sources:\n\n${sourcesBlock}`,
+        },
+      ],
+    });
+
+    const toolUse = response.content.find((b) => b.type === "tool_use" && b.name === "submit_research");
+    if (!toolUse) {
+      return res.status(502).json({ error: "Failed to build a structured report from the sources." });
+    }
+
+    const report = toolUse.input;
+
+    await incrementUsage(req.user.uid, "researchRuns");
+
+    res.json({
+      ok: true,
+      query,
+      sourcesAnalyzed: usableSources.map((s) => ({
+        domain: s.source.domain,
+        favicon: s.source.favicon,
+        url: s.source.url,
+        title: s.title,
+      })),
+      steps: [
+        { label: "Understanding request", status: "done" },
+        { label: "Searching web", status: "done" },
+        { label: `${crawl.sourcesRequested || usableSources.length} results found`, status: "done" },
+        { label: "Reading relevant sources", status: "done" },
+        { label: "Comparing specifications", status: "done" },
+        { label: "Synthesizing findings", status: "done" },
+      ],
+      ...report,
+    });
+  } catch (err) {
+    console.error("browser/research error:", err);
+    res.status(502).json({ error: err.message || "Research failed." });
   }
 });
 

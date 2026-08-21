@@ -8,6 +8,7 @@ export const PLANS = {
     githubToolCallsPerTurn: 6,
     eloriaCodeAccess: false,
     browsingSessions: 3,
+    researchRuns: 2,
     eloriaWebAccess: true,
   },
 
@@ -20,6 +21,7 @@ export const PLANS = {
     githubToolCallsPerTurn: 15,
     eloriaCodeAccess: true,
     browsingSessions: 20,
+    researchRuns: 12,
     eloriaWebAccess: true,
   },
 
@@ -32,6 +34,7 @@ export const PLANS = {
     githubToolCallsPerTurn: Infinity,
     eloriaCodeAccess: true,
     browsingSessions: Infinity,
+    researchRuns: Infinity,
     eloriaWebAccess: true,
   },
 };
